@@ -1,14 +1,24 @@
 
+"use client"
+
+import { useState } from "react"
 import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownRight, Wallet, Banknote } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 export default function Home() {
+  const [showAmounts, setShowAmounts] = useState(false)
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo')
+
+  const togglePrivacy = () => setShowAmounts(!showAmounts)
+
+  const formatAmount = (amount: string) => {
+    return showAmounts ? amount : "*****"
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20">
@@ -30,12 +40,17 @@ export default function Home() {
             </div>
             <h1 className="text-2xl font-black font-headline tracking-tight">أبو صابر</h1>
           </div>
-          {/* Removed redundant icon to simplify UI */}
+          <button 
+            onClick={togglePrivacy}
+            className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+          >
+            {showAmounts ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
+          </button>
         </div>
         <div className="space-y-1 relative z-10">
           <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح</p>
           <p className="text-4xl font-black tabular-nums tracking-tighter">
-            2,450,000 <span className="text-lg font-normal opacity-80">ر.ي</span>
+            {formatAmount("2,450,000")} <span className="text-lg font-normal opacity-80">ر.ي</span>
           </p>
         </div>
       </header>
@@ -48,8 +63,12 @@ export default function Home() {
                 <ArrowUpRight className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</p>
-                <p className="text-xl font-black text-green-700">840,000 <span className="text-xs font-normal">ر.ي</span></p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</p>
+                </div>
+                <p className="text-xl font-black text-green-700">
+                  {formatAmount("840,000")} <span className="text-xs font-normal">ر.ي</span>
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -59,8 +78,12 @@ export default function Home() {
                 <ArrowDownRight className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</p>
-                <p className="text-xl font-black text-red-700">320,000 <span className="text-xs font-normal">ر.ي</span></p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</p>
+                </div>
+                <p className="text-xl font-black text-red-700">
+                  {formatAmount("320,000")} <span className="text-xs font-normal">ر.ي</span>
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -75,7 +98,9 @@ export default function Home() {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
-              <p className="text-2xl font-black">1,215,000 <span className="text-sm font-normal opacity-70">ر.ي</span></p>
+              <p className="text-2xl font-black">
+                {formatAmount("1,215,000")} <span className="text-sm font-normal opacity-70">ر.ي</span>
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -106,7 +131,7 @@ export default function Home() {
                 "font-black text-sm tabular-nums",
                 item.type === "income" ? "text-green-600" : "text-red-500"
               )}>
-                {item.amount}
+                {showAmounts ? item.amount : "*****"}
               </span>
             </div>
           ))}
