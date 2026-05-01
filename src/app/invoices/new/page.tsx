@@ -70,6 +70,20 @@ export default function NewInvoicePage() {
 
   const { data: customers } = useCollection(customersQuery)
 
+  const formatInputNumber = (val: string) => {
+    if (!val) return ""
+    const parts = val.split('.')
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    return parts.join('.')
+  }
+
+  const handleInputNumberChange = (field: string, value: string) => {
+    const rawValue = value.replace(/,/g, "")
+    if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
+      setCurrentItem(prev => ({ ...prev, [field]: rawValue }))
+    }
+  }
+
   const handleAddItem = () => {
     const qty = parseFloat(currentItem.quantity)
     const price = parseFloat(currentItem.pricePerKg)
@@ -249,11 +263,12 @@ export default function NewInvoicePage() {
                           الكمية (كجم)
                         </Label>
                         <Input 
-                          type="number" 
-                          placeholder="0.00" 
-                          className="h-11 rounded-xl border-primary/20"
-                          value={currentItem.quantity}
-                          onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})}
+                          type="text" 
+                          inputMode="decimal"
+                          placeholder="0" 
+                          className="h-11 rounded-xl border-primary/20 tabular-nums"
+                          value={formatInputNumber(currentItem.quantity)}
+                          onChange={(e) => handleInputNumberChange('quantity', e.target.value)}
                         />
                       </div>
                       <div className="space-y-1">
@@ -262,11 +277,12 @@ export default function NewInvoicePage() {
                           سعر الكيلو (ر.ي)
                         </Label>
                         <Input 
-                          type="number" 
+                          type="text" 
+                          inputMode="decimal"
                           placeholder="0" 
-                          className="h-11 rounded-xl border-primary/20"
-                          value={currentItem.pricePerKg}
-                          onChange={(e) => setCurrentItem({...currentItem, pricePerKg: e.target.value})}
+                          className="h-11 rounded-xl border-primary/20 tabular-nums"
+                          value={formatInputNumber(currentItem.pricePerKg)}
+                          onChange={(e) => handleInputNumberChange('pricePerKg', e.target.value)}
                         />
                       </div>
                     </div>
@@ -287,7 +303,7 @@ export default function NewInvoicePage() {
                       الأصناف المضافة ({addedItems.length})
                     </h3>
                     {addedItems.length > 0 && (
-                      <span className="text-xs font-bold text-primary tabular-nums">الإجمالي: {grandTotal.toLocaleString()} ر.ي</span>
+                      <span className="text-xs font-bold text-primary tabular-nums">الإجمالي: {grandTotal.toLocaleString('en-US')} ر.ي</span>
                     )}
                   </div>
                   
@@ -296,12 +312,12 @@ export default function NewInvoicePage() {
                       <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm animate-in slide-in-from-right-2">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold">{item.fishType}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {item.quantity} كجم × {item.pricePerKg.toLocaleString()} ر.ي
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {item.quantity.toLocaleString('en-US')} kg × {item.pricePerKg.toLocaleString('en-US')} ر.ي
                           </span>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="text-sm font-black tabular-nums">{item.total.toLocaleString()} ر.ي</span>
+                          <span className="text-sm font-black tabular-nums">{item.total.toLocaleString('en-US')} ر.ي</span>
                           <button onClick={() => removeItem(idx)} className="text-destructive p-2 hover:bg-destructive/10 rounded-full transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -325,7 +341,7 @@ export default function NewInvoicePage() {
                       disabled={loading}
                     >
                       {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-                      حفظ وإصدار الفاتورة ({grandTotal.toLocaleString()} ر.ي)
+                      حفظ وإصدار الفاتورة ({grandTotal.toLocaleString('en-US')} ر.ي)
                     </Button>
                   </div>
                 )}

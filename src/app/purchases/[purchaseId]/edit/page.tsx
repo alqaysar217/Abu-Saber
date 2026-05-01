@@ -59,7 +59,7 @@ import {
 
 interface PurchaseItem {
   tempId: string
-  id?: string // Firestore ID if exists
+  id?: string
   fishType: string
   quantity: number
   pricePerKg: number
@@ -91,19 +91,11 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
 
   const { data: existingItems } = useCollection(itemsQuery)
 
-  // Header State
   const [campaignId, setCampaignId] = useState("")
   const [supplierId, setSupplierId] = useState("")
   const [date, setDate] = useState("")
 
-  // Items List State
-  const [currentItem, setCurrentItem] = useState({ 
-    fishType: "", 
-    quantity: "", 
-    pricePerKg: "", 
-    paymentType: "نقد", 
-    paidAmount: "" 
-  })
+  const [currentItem, setCurrentItem] = useState({ fishType: "", quantity: "", pricePerKg: "", paymentType: "نقد", paidAmount: "" })
   const [addedItems, setAddedItems] = useState<PurchaseItem[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -119,7 +111,7 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
 
   useEffect(() => {
     if (existingItems) {
-      const mapped = existingItems.map(item => ({
+      setAddedItems(existingItems.map(item => ({
         tempId: item.id,
         id: item.id,
         fishType: item.fishType,
@@ -128,18 +120,14 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
         lineTotal: item.lineTotal,
         paymentType: item.paymentType || "نقد",
         paidAmount: item.paidAmount || 0
-      }))
-      setAddedItems(mapped)
+      })))
       setFetchingData(false)
     }
   }, [existingItems])
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(
-      collection(db, "users", user.uid, "campaigns"),
-      where("status", "==", "open")
-    )
+    return query(collection(db, "users", user.uid, "campaigns"), where("status", "==", "open"))
   }, [db, user])
 
   const { data: openCampaigns } = useCollection(campaignsQuery)
@@ -151,6 +139,20 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
 
   const { data: suppliers } = useCollection(suppliersQuery)
 
+  const formatInputNumber = (val: string) => {
+    if (!val) return ""
+    const parts = val.split('.')
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    return parts.join('.')
+  }
+
+  const handleInputNumberChange = (field: string, value: string) => {
+    const rawValue = value.replace(/,/g, "")
+    if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
+      setCurrentItem(prev => ({ ...prev, [field]: rawValue }))
+    }
+  }
+
   const handleAddItem = () => {
     const qty = parseFloat(currentItem.quantity)
     const price = parseFloat(currentItem.pricePerKg)
@@ -158,11 +160,7 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
     const lineTotal = qty * price
 
     if (!currentItem.fishType || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) {
-      toast({
-        variant: "destructive",
-        title: "بيانات ناقصة",
-        description: "يرجى إدخال نوع السمك والكمية والسعر بشكل صحيح",
-      })
+      toast({ variant: "destructive", title: "بيانات ناقصة" })
       return
     }
 
@@ -182,7 +180,6 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
     } else {
       setAddedItems([newItem, ...addedItems])
     }
-
     setCurrentItem({ fishType: "", quantity: "", pricePerKg: "", paymentType: "نقد", paidAmount: "" })
   }
 
@@ -207,188 +204,109 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
 
   const handleUpdate = async () => {
     if (!db || !user || !purchaseRef) return
-    if (!campaignId || !supplierId || addedItems.length === 0) {
-      toast({ variant: "destructive", title: "بيانات ناقصة" })
-      return
-    }
-
     setLoading(true)
-    
-    const updateData = {
-      campaignId,
-      supplierId,
-      totalAmount: grandTotal,
-      paidAmount: totalPaid,
-      status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
-      purchaseDate: new Date(date).toISOString(),
-      updatedAt: serverTimestamp(),
-    }
-
     try {
-      await updateDoc(purchaseRef, updateData)
-      
-      // Update items: for simplicity in MVP, we delete all and re-add
-      // A batch would be better
+      await updateDoc(purchaseRef, {
+        campaignId,
+        supplierId,
+        totalAmount: grandTotal,
+        paidAmount: totalPaid,
+        status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
+        purchaseDate: new Date(date).toISOString(),
+        updatedAt: serverTimestamp(),
+      })
       const batch = writeBatch(db)
-      
-      // Delete old items
-      const oldItemsSnapshot = await getDocs(collection(purchaseRef, "items"))
-      oldItemsSnapshot.docs.forEach(d => batch.delete(d.ref))
-      
-      // Add new items
-      addedItems.forEach((item) => {
-        const itemRef = doc(collection(purchaseRef, "items"))
-        batch.set(itemRef, {
-          id: itemRef.id,
-          purchaseId: purchaseId,
-          userId: user.uid,
-          fishType: item.fishType,
-          quantity: item.quantity,
-          unitPrice: item.pricePerKg,
-          lineTotal: item.lineTotal,
-          paymentType: item.paymentType,
-          paidAmount: item.paidAmount
+      const oldItems = await getDocs(collection(purchaseRef, "items"))
+      oldItems.docs.forEach(d => batch.delete(d.ref))
+      addedItems.forEach(item => {
+        const iRef = doc(collection(purchaseRef, "items"))
+        batch.set(iRef, {
+          id: iRef.id, purchaseId, userId: user.uid, fishType: item.fishType, quantity: item.quantity,
+          unitPrice: item.pricePerKg, lineTotal: item.lineTotal, paymentType: item.paymentType, paidAmount: item.paidAmount
         })
       })
-
       await batch.commit()
-      toast({ title: "تم تحديث الفاتورة بنجاح" })
+      toast({ title: "تم التحديث بنجاح" })
       router.back()
-    } catch (error) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: purchaseRef.path,
-        operation: 'update',
-        requestResourceData: updateData
-      }))
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update' }))
+    } finally { setLoading(false) }
   }
 
-  if (fetchingData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+  if (fetchingData) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin" /></div>
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
-      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-20 shadow-sm">
-        <button onClick={() => router.back()} className="p-2 -mr-2">
-          <ChevronLeft className="w-6 h-6 rotate-180" />
-        </button>
+      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-20">
+        <button onClick={() => router.back()} className="p-2 -mr-2"><ChevronLeft className="rotate-180" /></button>
         <h1 className="text-lg font-bold">تعديل فاتورة شراء</h1>
         <div className="w-6" />
       </header>
 
       <main className="p-4 space-y-6">
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
-          <CardHeader className="bg-orange-50/50 border-b border-orange-100 p-4">
-            <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4" />
-              بيانات التوريد
-            </CardTitle>
-          </CardHeader>
+          <CardHeader className="bg-orange-50/50 border-b p-4"><CardTitle className="text-sm font-bold flex items-center gap-2"><ClipboardList className="w-4 h-4" />بيانات التوريد</CardTitle></CardHeader>
           <CardContent className="p-4 space-y-5">
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                <Ship className="w-3.5 h-3.5 text-primary" />
-                الحملة
-              </Label>
+              <Label className="text-[11px] font-bold">الحملة</Label>
               <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
-                <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="اختر الحملة..." />
-                </SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر الحملة" /></SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {openCampaigns?.map((camp) => (
-                    <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
-                  ))}
-                  {/* Include current campaign if it's already completed */}
-                  {!openCampaigns?.find(c => c.id === campaignId) && (
-                    <SelectItem value={campaignId}>{purchaseData?.campaignName || "الحملة الحالية"}</SelectItem>
-                  )}
+                  {openCampaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                <User className="w-3.5 h-3.5 text-primary" />
-                المورد
-              </Label>
+              <Label className="text-[11px] font-bold">المورد</Label>
               <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
-                <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="اختر المورد..." />
-                </SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر المورد" /></SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {suppliers?.map((sup) => (
-                    <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
-                  ))}
+                  {suppliers?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
-                <CalendarIcon className="w-3.5 h-3.5 text-primary" />
-                التاريخ
-              </Label>
-              <Input type="date" className="h-12 rounded-xl text-right" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label className="text-[11px] font-bold">التاريخ</Label>
+              <Input type="date" className="h-12 rounded-xl text-right" value={date} onChange={e => setDate(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
         <Card className={cn("border-2 shadow-md rounded-2xl bg-white", editingId ? "border-accent" : "border-primary/10")}>
-           <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Fish className="w-4 h-4" />
-                {editingId ? "تعديل الصنف" : "إضافة صنف جديد"}
-              </CardTitle>
-           </CardHeader>
+           <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold flex items-center gap-2"><Fish className="w-4 h-4" />{editingId ? "تعديل الصنف" : "إضافة صنف جديد"}</CardTitle></CardHeader>
            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold">نوع السمك</Label>
-                <Input placeholder="مثال: هامور..." className="h-12 rounded-xl" value={currentItem.fishType} onChange={(e) => setCurrentItem({...currentItem, fishType: e.target.value})} />
+                <Input placeholder="مثال: هامور" className="h-12 rounded-xl" value={currentItem.fishType} onChange={e => setCurrentItem({...currentItem, fishType: e.target.value})} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold">الكمية (كجم)</Label>
-                  <Input type="number" className="h-12 rounded-xl" value={currentItem.quantity} onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})} />
+                  <Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.quantity)} onChange={e => handleInputNumberChange('quantity', e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold">السعر</Label>
-                  <Input type="number" className="h-12 rounded-xl" value={currentItem.pricePerKg} onChange={(e) => setCurrentItem({...currentItem, pricePerKg: e.target.value})} />
+                  <Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.pricePerKg)} onChange={e => handleInputNumberChange('pricePerKg', e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold">طريقة السداد</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {["نقد", "دين", "جزئي"].map((t) => (
-                    <button key={t} type="button" onClick={() => setCurrentItem({...currentItem, paymentType: t})} className={cn("py-3 text-[11px] font-bold rounded-xl border", currentItem.paymentType === t ? 'bg-primary text-white' : 'bg-muted/30')}>
-                      {t}
-                    </button>
-                  ))}
+                  {["نقد", "دين", "جزئي"].map(t => <button key={t} type="button" onClick={() => setCurrentItem({...currentItem, paymentType: t})} className={cn("py-3 text-[11px] font-bold rounded-xl border", currentItem.paymentType === t ? 'bg-primary text-white' : 'bg-muted/30')}>{t}</button>)}
                 </div>
               </div>
               {currentItem.paymentType === "جزئي" && (
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold">المبلغ المدفوع</Label>
-                  <Input type="number" className="h-12 rounded-xl" value={currentItem.paidAmount} onChange={(e) => setCurrentItem({...currentItem, paidAmount: e.target.value})} />
+                  <Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.paidAmount)} onChange={e => handleInputNumberChange('paidAmount', e.target.value)} />
                 </div>
               )}
-              <Button onClick={handleAddItem} className="w-full h-12 rounded-xl font-bold lux-gradient">
-                {editingId ? "تحديث الصنف" : "إضافة للقائمة"}
-              </Button>
+              <Button onClick={handleAddItem} className="w-full h-12 rounded-xl font-bold lux-gradient">{editingId ? "تحديث الصنف" : "إضافة للقائمة"}</Button>
            </CardContent>
         </Card>
 
         <div className="space-y-3">
-          <h3 className="text-sm font-black flex items-center gap-2 px-2">
-            <TableIcon className="w-4 h-4 text-primary" />
-            الأصناف الحالية ({addedItems.length})
-          </h3>
+          <h3 className="text-sm font-black flex items-center gap-2 px-2"><TableIcon className="w-4 h-4 text-primary" />الأصناف الحالية ({addedItems.length})</h3>
           <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
             <Table dir="rtl">
               <TableHeader className="bg-muted/50">
@@ -400,10 +318,10 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {addedItems.map((item) => (
+                {addedItems.map(item => (
                   <TableRow key={item.tempId}>
                     <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
-                    <TableCell className="text-center text-xs">{item.quantity} kg</TableCell>
+                    <TableCell className="text-center text-xs">{item.quantity.toLocaleString('en-US')} kg</TableCell>
                     <TableCell className="text-center text-xs font-bold text-orange-600">{item.lineTotal.toLocaleString('en-US')}</TableCell>
                     <TableCell className="text-left">
                       <div className="flex gap-2">
@@ -424,22 +342,12 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
               <span className="text-xs font-bold opacity-80">الإجمالي النهائي</span>
               <span className="text-xl font-black">{grandTotal.toLocaleString('en-US')} ر.ي</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <span className="text-[10px] block opacity-70">المدفوع</span>
-                <span className="font-bold">{totalPaid.toLocaleString('en-US')}</span>
-              </div>
-              <div className="text-center border-r border-white/10">
-                <span className="text-[10px] block opacity-70">المتبقي</span>
-                <span className="font-bold text-orange-400">{totalDue.toLocaleString('en-US')}</span>
-              </div>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div><span className="text-[10px] block opacity-70">المدفوع</span><span className="font-bold">{totalPaid.toLocaleString('en-US')}</span></div>
+              <div className="border-r border-white/10"><span className="text-[10px] block opacity-70">المتبقي</span><span className="font-bold text-orange-400">{totalDue.toLocaleString('en-US')}</span></div>
             </div>
           </Card>
-
-          <Button className="w-full h-14 rounded-2xl text-lg font-black bg-orange-600 hover:bg-orange-700" onClick={handleUpdate} disabled={loading}>
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-            تحديث الفاتورة
-          </Button>
+          <Button className="w-full h-14 rounded-2xl text-lg font-black bg-orange-600" onClick={handleUpdate} disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : <Save className="w-6 h-6" />}تحديث الفاتورة</Button>
         </div>
       </main>
     </div>

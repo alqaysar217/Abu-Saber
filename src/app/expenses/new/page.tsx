@@ -52,9 +52,24 @@ export default function NewExpensePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState("")
 
+  const formatInputNumber = (val: string) => {
+    if (!val) return ""
+    const parts = val.split('.')
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    return parts.join('.')
+  }
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/,/g, "")
+    if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
+      setAmount(rawValue)
+    }
+  }
+
   const handleSave = async () => {
     if (!db || !user) return
-    if (!campaignId || !type || !amount || parseFloat(amount) <= 0) {
+    const numAmount = parseFloat(amount)
+    if (!campaignId || !type || isNaN(numAmount) || numAmount <= 0) {
       toast({
         variant: "destructive",
         title: "خطأ في الإدخال",
@@ -67,7 +82,7 @@ export default function NewExpensePage() {
     const expenseData = {
       campaignId,
       type,
-      amount: parseFloat(amount),
+      amount: numAmount,
       paymentType,
       date: new Date(date).toISOString(),
       notes,
@@ -161,11 +176,12 @@ export default function NewExpensePage() {
               </Label>
               <Input 
                 id="amount"
-                type="number"
-                placeholder="0.00" 
+                type="text"
+                inputMode="decimal"
+                placeholder="0" 
                 className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-lg font-black tabular-nums"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={formatInputNumber(amount)}
+                onChange={handleAmountChange}
               />
             </div>
 
