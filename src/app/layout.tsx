@@ -1,7 +1,7 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
   title: 'أبو صابر - لتجارة الأسماك',
@@ -26,10 +26,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col">
-        <main className="flex-1 pb-20">
-          {children}
-        </main>
-        <Toaster />
+        <FirebaseClientProvider>
+          <main className="flex-1 pb-20">
+            {children}
+          </main>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );

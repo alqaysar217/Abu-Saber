@@ -1,9 +1,8 @@
-
 "use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Calendar as CalendarIcon, Save, X, Loader2 } from "lucide-react"
+import { ChevronLeft, Calendar as CalendarIcon, Save, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,15 +15,15 @@ import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-// Note: Assuming firebase initialization is handled in the project structure
-// In a real scenario, we'd import db from our firebase config
+import { useFirestore } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { getFirestore } from "firebase/firestore"
-import { initializeApp } from "firebase/app"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 export default function NewCampaignPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const db = useFirestore()
   const [loading, setLoading] = useState(false)
   
   const [name, setName] = useState("")
@@ -34,6 +33,7 @@ export default function NewCampaignPage() {
   const [notes, setNotes] = useState("")
 
   const handleSave = async () => {
+    if (!db) return
     if (!name || !startDate) {
       toast({
         variant: "destructive",
@@ -44,34 +44,34 @@ export default function NewCampaignPage() {
     }
 
     setLoading(true)
-    try {
-      // Basic firestore logic - in a real app this would use the project's initialized db
-      const db = getFirestore()
-      await addDoc(collection(db, "campaigns"), {
-        name,
-        startDate: startDate.toISOString(),
-        endDate: endDate ? endDate.toISOString() : null,
-        status,
-        notes,
-        createdAt: serverTimestamp(),
-      })
-
-      toast({
-        title: "تم بنجاح",
-        description: "تم إنشاء الحملة بنجاح",
-      })
-      
-      router.push("/campaigns")
-    } catch (error) {
-      console.error("Error saving campaign:", error)
-      toast({
-        variant: "destructive",
-        title: "حدث خطأ",
-        description: "لم نتمكن من حفظ الحملة، حاول مرة أخرى",
-      })
-    } finally {
-      setLoading(false)
+    const campaignData = {
+      name,
+      startDate: startDate.toISOString(),
+      endDate: endDate ? endDate.toISOString() : null,
+      status,
+      notes,
+      createdAt: serverTimestamp(),
     }
+
+    addDoc(collection(db, "campaigns"), campaignData)
+      .then(() => {
+        toast({
+          title: "تم بنجاح",
+          description: "تم إنشاء الحملة بنجاح",
+        })
+        router.push("/campaigns")
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'campaigns',
+          operation: 'create',
+          requestResourceData: campaignData,
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   return (

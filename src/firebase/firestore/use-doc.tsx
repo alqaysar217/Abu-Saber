@@ -1,0 +1,46 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { 
+  DocumentReference, 
+  onSnapshot, 
+  DocumentData, 
+  DocumentSnapshot 
+} from 'firebase/firestore';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
+
+export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!docRef) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot: DocumentSnapshot<T>) => {
+        setData(snapshot.exists() ? { ...snapshot.data(), id: snapshot.id } : null);
+        setLoading(false);
+      },
+      async (err) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+        });
+        setError(permissionError);
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [docRef]);
+
+  return { data, loading, error };
+}
