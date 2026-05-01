@@ -21,7 +21,6 @@ export default function Home() {
     debtsByMe: false,
   })
 
-  // Prevent hydration errors by ensuring we only render browser-specific logic after mount
   useEffect(() => {
     setMounted(true)
   }, [])
