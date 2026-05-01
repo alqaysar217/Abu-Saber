@@ -53,6 +53,7 @@ export default function Home() {
     if (auth) signOut(auth)
   }
 
+  // تجنب رندر أي محتوى يعتمد على الوقت أو الموقع قبل الـ Mount
   if (!mounted) return <div className="min-h-screen bg-background" />
 
   return (

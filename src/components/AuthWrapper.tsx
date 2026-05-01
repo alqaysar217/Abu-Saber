@@ -14,19 +14,22 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  // منع أي رندر على السيرفر لتجنب Hydration errors
+  // المرحلة الأولى: الانتظار حتى يجهز المتصفح تماماً
   if (!mounted) {
     return <div className="min-h-screen bg-background" />
   }
 
+  // المرحلة الثانية: عرض شاشة التحميل أثناء جلب حالة المستخدم
   if (isUserLoading) {
     return <SplashScreen />
   }
 
+  // المرحلة الثالثة: طلب تسجيل الدخول إذا لم يكن المستخدم موجوداً
   if (!user) {
     return <LoginPage />
   }
 
+  // المرحلة الأخيرة: عرض محتوى التطبيق
   return (
     <div className="relative flex min-h-screen flex-col">
       {children}

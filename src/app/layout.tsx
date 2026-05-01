@@ -10,6 +10,7 @@ const cairo = Cairo({
   subsets: ['arabic'],
   weight: ['400', '500', '600', '700', '800', '900'],
   variable: '--font-cairo',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -32,12 +33,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`${cairo.variable} font-body antialiased bg-background min-h-screen overscroll-none`}>
+      <body className={`${cairo.variable} font-body antialiased bg-background min-h-screen overscroll-none`} suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthWrapper>
             {children}
-            <Toaster />
           </AuthWrapper>
+          <Toaster />
         </FirebaseClientProvider>
       </body>
     </html>
