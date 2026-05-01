@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Calendar as CalendarIcon } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Calendar as CalendarIcon, Ship, FileText, LayoutList } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -81,11 +81,17 @@ export default function NewCampaignPage() {
       <main className="p-4 space-y-6">
         <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
-            <CardTitle className="text-md font-bold text-primary">تفاصيل الحملة</CardTitle>
+            <CardTitle className="text-md font-bold text-primary flex items-center gap-2">
+              <LayoutList className="w-5 h-5" />
+              تفاصيل الحملة
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="campaign-name" className="text-sm font-bold">اسم الحملة <span className="text-destructive">*</span></Label>
+              <Label htmlFor="campaign-name" className="text-sm font-bold flex items-center gap-2">
+                <Ship className="w-4 h-4 text-primary" />
+                اسم الحملة <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 id="campaign-name"
                 placeholder="مثال: حملة المكلا - عدن" 
@@ -96,7 +102,10 @@ export default function NewCampaignPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="start-date" className="text-sm font-bold">تاريخ البداية <span className="text-destructive">*</span></Label>
+              <Label htmlFor="start-date" className="text-sm font-bold flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+                تاريخ البداية <span className="text-destructive">*</span>
+              </Label>
               <div className="relative">
                 <Input 
                   id="start-date"
@@ -110,14 +119,19 @@ export default function NewCampaignPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-bold">وصف أو ملاحظات (اختياري)</Label>
-              <Textarea 
-                id="notes"
-                placeholder="ملاحظات إضافية عن الرحلة أو الأهداف..." 
-                className="min-h-[120px] rounded-xl border-muted-foreground/20 resize-none"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              <Label htmlFor="notes" className="text-sm font-bold flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                وصف أو ملاحظات (اختياري)
+              </Label>
+              <div className="relative">
+                <Textarea 
+                  id="notes"
+                  placeholder="ملاحظات إضافية عن الرحلة أو الأهداف..." 
+                  className="min-h-[120px] rounded-xl border-muted-foreground/20 resize-none"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
