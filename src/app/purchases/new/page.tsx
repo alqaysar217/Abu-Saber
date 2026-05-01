@@ -3,7 +3,20 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Calendar as CalendarIcon, UserPlus } from "lucide-react"
+import { 
+  ChevronLeft, 
+  Save, 
+  Loader2, 
+  Calendar as CalendarIcon, 
+  UserPlus, 
+  Ship, 
+  User, 
+  Fish, 
+  Scale, 
+  Coins, 
+  Wallet,
+  ClipboardList
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -108,11 +121,17 @@ export default function NewPurchasePage() {
       <main className="p-4 space-y-6">
         <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
           <CardHeader className="bg-orange-50 border-b border-orange-100">
-            <CardTitle className="text-md font-bold text-orange-700">بيانات التوريد</CardTitle>
+            <CardTitle className="text-md font-bold text-orange-700 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              بيانات التوريد
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label className="text-sm font-bold">الحملة <span className="text-destructive">*</span></Label>
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <Ship className="w-4 h-4 text-primary" />
+                الحملة <span className="text-destructive">*</span>
+              </Label>
               <Select onValueChange={setCampaignId}>
                 <SelectTrigger className="h-12 rounded-xl">
                   <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
@@ -126,7 +145,10 @@ export default function NewPurchasePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-bold">المورد <span className="text-destructive">*</span></Label>
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <User className="w-4 h-4 text-primary" />
+                المورد <span className="text-destructive">*</span>
+              </Label>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Select onValueChange={setSupplierId}>
@@ -152,7 +174,10 @@ export default function NewPurchasePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-bold">نوع السمك <span className="text-destructive">*</span></Label>
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <Fish className="w-4 h-4 text-primary" />
+                نوع السمك <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 placeholder="مثال: تونة، بياض، هامور" 
                 className="h-12 rounded-xl"
@@ -163,7 +188,10 @@ export default function NewPurchasePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-bold">الكمية (كجم)</Label>
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-primary" />
+                  الكمية (كجم)
+                </Label>
                 <Input 
                   type="number" 
                   placeholder="0.00" 
@@ -173,7 +201,10 @@ export default function NewPurchasePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-bold">سعر الكيلو (ر.ي)</Label>
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-primary" />
+                  سعر الكيلو (ر.ي)
+                </Label>
                 <Input 
                   type="number" 
                   placeholder="0.00" 
@@ -191,7 +222,10 @@ export default function NewPurchasePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-bold">طريقة الدفع</Label>
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  طريقة الدفع
+                </Label>
                 <Select onValueChange={setPaymentType} defaultValue={paymentType}>
                   <SelectTrigger className="h-12 rounded-xl">
                     <SelectValue />
@@ -203,7 +237,10 @@ export default function NewPurchasePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-bold">التاريخ</Label>
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-primary" />
+                  التاريخ
+                </Label>
                 <div className="relative">
                   <Input 
                     type="date" 
