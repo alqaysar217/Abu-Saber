@@ -28,6 +28,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, doc, setDoc, serverTimestamp, query, where } from "firebase/firestore"
@@ -348,7 +357,7 @@ export default function NewPurchasePage() {
                           : 'bg-muted/30 text-muted-foreground border-border'
                       )}
                     >
-                      {type === "نقد" ? "نقد كاش" : (type === "دين" ? "على الحساب" : "دفع جزئي")}
+                      {type === "نقد" ? "نقد" : (type === "دين" ? "دين" : "جزئي")}
                     </button>
                   ))}
                 </div>
@@ -394,8 +403,8 @@ export default function NewPurchasePage() {
            </CardContent>
         </Card>
 
-        {/* Section 3: Added Items List (Table-like for Mobile) */}
-        <div className="space-y-3">
+        {/* Section 3: Added Items List (Table Format) */}
+        <div className="space-y-3 overflow-hidden">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-sm font-black flex items-center gap-2">
               <TableIcon className="w-4 h-4 text-primary" />
@@ -403,61 +412,72 @@ export default function NewPurchasePage() {
             </h3>
           </div>
           
-          <div className="space-y-3">
-            {addedItems.map((item) => (
-              <div key={item.tempId} className="bg-white rounded-[1.5rem] border border-border/50 shadow-sm overflow-hidden animate-in fade-in slide-in-from-right-2">
-                <div className="p-4 flex justify-between items-start">
-                  <div className="space-y-1">
-                    <span className="text-md font-black block">{item.fishType}</span>
-                    <div className="flex gap-3 text-[10px] font-bold text-muted-foreground">
-                      <span className="flex items-center gap-1"><Scale className="w-3 h-3" /> {item.quantity} كجم</span>
-                      <span className="flex items-center gap-1"><Coins className="w-3 h-3" /> {item.pricePerKg.toLocaleString()} ر.ي</span>
-                    </div>
-                  </div>
-                  <div className="text-left">
-                    <span className="text-sm font-black text-orange-600 block">{item.lineTotal.toLocaleString()} ر.ي</span>
-                    <span className={cn(
-                      "text-[9px] font-black px-2 py-0.5 rounded-full inline-block mt-1",
-                      item.paymentType === "نقد" ? "bg-green-100 text-green-700" : (item.paymentType === "دين" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")
-                    )}>
-                      {item.paymentType === "نقد" ? "نقد" : (item.paymentType === "دين" ? "دين" : `جزئي (${item.paidAmount.toLocaleString()})`)}
-                    </span>
-                  </div>
-                </div>
-                <div className="px-4 py-3 bg-muted/30 border-t border-dashed flex justify-end gap-4">
-                  <button onClick={() => handleEditItem(item)} className="text-accent text-[11px] font-black flex items-center gap-1">
-                    <Edit3 className="w-3.5 h-3.5" /> تعديل
-                  </button>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button className="text-destructive text-[11px] font-black flex items-center gap-1">
-                        <Trash2 className="w-3.5 h-3.5" /> حذف
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="rounded-3xl max-w-[90%]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-right">تأكيد حذف الصنف</AlertDialogTitle>
-                        <AlertDialogDescription className="text-right">
-                          هل أنت متأكد من رغبتك في حذف ({item.fishType}) من قائمة المشتريات؟
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter className="flex-row gap-2">
-                        <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleRemoveItem(item.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none">نعم، احذف</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+          {addedItems.length > 0 ? (
+            <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+              <div className="overflow-x-auto">
+                <Table dir="rtl">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-right font-black text-[10px] whitespace-nowrap">النوع</TableHead>
+                      <TableHead className="text-center font-black text-[10px] whitespace-nowrap">الكمية</TableHead>
+                      <TableHead className="text-center font-black text-[10px] whitespace-nowrap">السعر</TableHead>
+                      <TableHead className="text-center font-black text-[10px] whitespace-nowrap">الإجمالي</TableHead>
+                      <TableHead className="text-center font-black text-[10px] whitespace-nowrap">الدفع</TableHead>
+                      <TableHead className="text-left font-black text-[10px] whitespace-nowrap">إجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {addedItems.map((item) => (
+                      <TableRow key={item.tempId} className="animate-in fade-in slide-in-from-right-2">
+                        <TableCell className="text-right font-bold text-xs whitespace-nowrap">{item.fishType}</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.quantity} كجم</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.pricePerKg.toLocaleString()}</TableCell>
+                        <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums whitespace-nowrap">{item.lineTotal.toLocaleString()}</TableCell>
+                        <TableCell className="text-center whitespace-nowrap">
+                          <Badge variant="outline" className={cn(
+                            "text-[8px] px-1.5 py-0 border-none",
+                            item.paymentType === "نقد" ? "bg-green-100 text-green-700" : (item.paymentType === "دين" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")
+                          )}>
+                            {item.paymentType === "جزئي" ? `جزئي (${item.paidAmount.toLocaleString()})` : item.paymentType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-left whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleEditItem(item)} className="text-accent hover:opacity-70 p-1">
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="text-destructive hover:opacity-70 p-1">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-right">تأكيد حذف الصنف</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-right">
+                                    هل أنت متأكد من رغبتك في حذف ({item.fishType}) من قائمة المشتريات؟
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-row gap-2 mt-4">
+                                  <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleRemoveItem(item.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none">نعم، احذف</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            ))}
-            
-            {addedItems.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem] bg-white/50">
-                لا توجد أصناف في القائمة حالياً
-              </div>
-            )}
-          </div>
+            </Card>
+          ) : (
+            <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem] bg-white/50">
+              لا توجد أصناف في القائمة حالياً
+            </div>
+          )}
         </div>
 
         {/* Summary & Save */}
