@@ -1,7 +1,6 @@
-
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
@@ -10,16 +9,21 @@ import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2 } from "luci
 import { cn } from "@/lib/utils"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, where, limit, orderBy } from "firebase/firestore"
+import { collection, query, limit, orderBy } from "firebase/firestore"
 
 export default function Home() {
   const { user, isUserLoading } = useUser()
   const db = useFirestore()
+  const [mounted, setMounted] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     profit: false,
     debtsToMe: false,
     debtsByMe: false,
   })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo')
 
@@ -28,10 +32,10 @@ export default function Home() {
   }
 
   const formatAmount = (key: string, amount: number) => {
-    return visibility[key] ? amount.toLocaleString() : "*****"
+    if (!mounted) return "*****"
+    return visibility[key] ? amount.toLocaleString('ar-YE') : "*****"
   }
 
-  // Get recent activities (Invoices and Purchases)
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(
@@ -43,7 +47,7 @@ export default function Home() {
 
   const { data: recentInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
 
-  if (isUserLoading) {
+  if (isUserLoading || !mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -173,12 +177,12 @@ export default function Home() {
               <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-bold text-sm">فاتورة مبيعات #{item.id.substring(0, 5)}</span>
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase" suppressHydrationWarning>
                     {item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString('ar-YE') : 'بدون تاريخ'}
                   </span>
                 </div>
-                <span className="font-black text-sm tabular-nums text-green-600">
-                  + {item.totalAmount?.toLocaleString()} ر.ي
+                <span className="font-black text-sm tabular-nums text-green-600" suppressHydrationWarning>
+                  + {item.totalAmount?.toLocaleString('ar-YE')} ر.ي
                 </span>
               </div>
             ))

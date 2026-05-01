@@ -1,24 +1,17 @@
-
-"use client"
-
-import { useEffect } from "react"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase/client-provider"
-import { useAuth } from "@/firebase"
-import { signInAnonymously } from "firebase/auth"
+import { AuthWrapper } from "@/components/AuthWrapper"
 import './globals.css'
+import { Metadata, Viewport } from "next"
 
-function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const auth = useAuth()
+export const metadata: Metadata = {
+  title: "أبو صابر - لتجارة الأسماك",
+  description: "نظام إدارة تجارة الأسماك",
+};
 
-  useEffect(() => {
-    if (auth && !auth.currentUser) {
-      signInAnonymously(auth).catch(console.error)
-    }
-  }, [auth])
-
-  return <>{children}</>
-}
+export const viewport: Viewport = {
+  themeColor: "#123524",
+};
 
 export default function RootLayout({
   children,
@@ -26,21 +19,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <meta name="theme-color" content="#123524" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <title>أبو صابر - لتجارة الأسماك</title>
       </head>
-      <body className="font-body antialiased bg-background min-h-screen">
+      <body className="font-body antialiased bg-background min-h-screen" suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthWrapper>
-            <main className="min-h-screen">
+            <div className="min-h-screen">
               {children}
-            </main>
+            </div>
             <Toaster />
           </AuthWrapper>
         </FirebaseClientProvider>
