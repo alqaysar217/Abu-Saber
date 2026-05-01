@@ -1,18 +1,16 @@
+
 "use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Calendar as CalendarIcon, Save, Loader2 } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore } from "@/firebase"
@@ -27,8 +25,8 @@ export default function NewCampaignPage() {
   const [loading, setLoading] = useState(false)
   
   const [name, setName] = useState("")
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [status, setStatus] = useState("open")
   const [notes, setNotes] = useState("")
 
@@ -46,8 +44,8 @@ export default function NewCampaignPage() {
     setLoading(true)
     const campaignData = {
       name,
-      startDate: startDate.toISOString(),
-      endDate: endDate ? endDate.toISOString() : null,
+      startDate: new Date(startDate).toISOString(),
+      endDate: endDate ? new Date(endDate).toISOString() : null,
       status,
       notes,
       createdAt: serverTimestamp(),
@@ -102,58 +100,32 @@ export default function NewCampaignPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2 flex flex-col">
-                <Label className="text-sm font-bold">تاريخ البداية <span className="text-destructive">*</span></Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "h-12 justify-start text-right font-normal rounded-xl border-muted-foreground/20",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="ml-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP", { locale: ar }) : <span>اختر التاريخ</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                      locale={ar}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="space-y-2">
+                <Label htmlFor="start-date" className="text-sm font-bold">تاريخ البداية <span className="text-destructive">*</span></Label>
+                <div className="relative">
+                  <Input 
+                    id="start-date"
+                    type="date"
+                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-primary text-right pr-10"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
 
-              <div className="space-y-2 flex flex-col">
-                <Label className="text-sm font-bold">تاريخ النهاية (اختياري)</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "h-12 justify-start text-right font-normal rounded-xl border-muted-foreground/20",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="ml-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP", { locale: ar }) : <span>اختر التاريخ</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                      locale={ar}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="space-y-2">
+                <Label htmlFor="end-date" className="text-sm font-bold">تاريخ النهاية (اختياري)</Label>
+                <div className="relative">
+                  <Input 
+                    id="end-date"
+                    type="date"
+                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-primary text-right pr-10"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
             </div>
 

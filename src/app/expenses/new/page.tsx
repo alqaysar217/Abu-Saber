@@ -1,19 +1,15 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Calendar as CalendarIcon, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
@@ -48,7 +44,7 @@ export default function NewExpensePage() {
   const [type, setType] = useState("")
   const [amount, setAmount] = useState("")
   const [paymentType, setPaymentType] = useState("نقد")
-  const [date, setDate] = useState<Date>(new Date())
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState("")
 
   const handleSave = async () => {
@@ -68,7 +64,7 @@ export default function NewExpensePage() {
       type,
       amount: parseFloat(amount),
       paymentType,
-      date: date.toISOString(),
+      date: new Date(date).toISOString(),
       notes,
       createdAt: serverTimestamp(),
     }
@@ -175,31 +171,18 @@ export default function NewExpensePage() {
                 </Select>
               </div>
 
-              <div className="space-y-2 flex flex-col">
-                <Label className="text-sm font-bold">التاريخ</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "h-12 justify-start text-right font-normal rounded-xl border-muted-foreground/20",
-                        !date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="ml-2 h-4 w-4" />
-                      {date ? format(date, "PPP", { locale: ar }) : <span>اختر التاريخ</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(d) => d && setDate(d)}
-                      initialFocus
-                      locale={ar}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="space-y-2">
+                <Label htmlFor="expense-date" className="text-sm font-bold">التاريخ</Label>
+                <div className="relative">
+                  <Input 
+                    id="expense-date"
+                    type="date"
+                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-right pr-10"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
             </div>
 
