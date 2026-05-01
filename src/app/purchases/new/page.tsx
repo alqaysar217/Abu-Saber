@@ -21,7 +21,9 @@ import {
   AlertCircle,
   Edit3,
   Check,
-  X
+  X,
+  CreditCard,
+  Hash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -250,7 +252,7 @@ export default function NewPurchasePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Section 1: Campaign & Supplier */}
+        {/* Section 1: Campaign & Supplier - NOW STACKED */}
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
           <CardHeader className="bg-orange-50/50 border-b border-orange-100 p-4">
             <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
@@ -258,38 +260,52 @@ export default function NewPurchasePage() {
               بيانات التوريد الأساسية
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-muted-foreground">الحملة المرتبطة *</Label>
-                <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder="اختر" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {openCampaigns?.map((camp) => (
-                      <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-muted-foreground">المورد *</Label>
-                <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder="اختر" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {suppliers?.map((sup) => (
-                      <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <CardContent className="p-4 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
+                <Ship className="w-3.5 h-3.5 text-primary" />
+                الحملة المرتبطة <span className="text-destructive">*</span>
+              </Label>
+              <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
+                <SelectTrigger className="h-12 rounded-xl">
+                  <SelectValue placeholder="اختر الحملة..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {openCampaigns?.map((camp) => (
+                    <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-muted-foreground">تاريخ الشراء</Label>
-              <Input type="date" className="h-10 rounded-xl text-right" value={date} onChange={(e) => setDate(e.target.value)} />
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
+                <User className="w-3.5 h-3.5 text-primary" />
+                المورد / الصياد <span className="text-destructive">*</span>
+              </Label>
+              <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
+                <SelectTrigger className="h-12 rounded-xl">
+                  <SelectValue placeholder="اختر المورد..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {suppliers?.map((sup) => (
+                    <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
+                <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                تاريخ الشراء
+              </Label>
+              <Input 
+                type="date" 
+                className="h-12 rounded-xl text-right tabular-nums" 
+                value={date} 
+                onChange={(e) => setDate(e.target.value)} 
+              />
             </div>
           </CardContent>
         </Card>
@@ -310,11 +326,14 @@ export default function NewPurchasePage() {
            </CardHeader>
            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fish-type-input" className="text-[10px] font-bold">نوع السمك</Label>
+                <Label htmlFor="fish-type-input" className="text-[11px] font-bold flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5 text-primary" />
+                  نوع السمك
+                </Label>
                 <Input 
                   id="fish-type-input"
                   placeholder="مثال: هامور، صابات..." 
-                  className="h-11 rounded-xl"
+                  className="h-12 rounded-xl"
                   value={currentItem.fishType}
                   onChange={(e) => setCurrentItem({...currentItem, fishType: e.target.value})}
                 />
@@ -322,21 +341,27 @@ export default function NewPurchasePage() {
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold">الكمية (كجم)</Label>
+                  <Label className="text-[11px] font-bold flex items-center gap-2">
+                    <Scale className="w-3.5 h-3.5 text-primary" />
+                    الكمية (كجم)
+                  </Label>
                   <Input 
                     type="number" 
                     placeholder="0.00" 
-                    className="h-11 rounded-xl"
+                    className="h-12 rounded-xl tabular-nums"
                     value={currentItem.quantity}
                     onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold">سعر الكيلو (ر.ي)</Label>
+                  <Label className="text-[11px] font-bold flex items-center gap-2">
+                    <Coins className="w-3.5 h-3.5 text-primary" />
+                    سعر الكيلو (ر.ي)
+                  </Label>
                   <Input 
                     type="number" 
                     placeholder="0" 
-                    className="h-11 rounded-xl"
+                    className="h-12 rounded-xl tabular-nums"
                     value={currentItem.pricePerKg}
                     onChange={(e) => setCurrentItem({...currentItem, pricePerKg: e.target.value})}
                   />
@@ -344,20 +369,23 @@ export default function NewPurchasePage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold">طريقة السداد لهذا الصنف</Label>
+                <Label className="text-[11px] font-bold flex items-center gap-2">
+                  <CreditCard className="w-3.5 h-3.5 text-primary" />
+                  طريقة السداد لهذا الصنف
+                </Label>
                 <div className="grid grid-cols-3 gap-2">
                   {["نقد", "دين", "جزئي"].map((type) => (
                     <button
                       key={type}
                       onClick={() => setCurrentItem({...currentItem, paymentType: type})}
                       className={cn(
-                        "py-2.5 text-[11px] font-bold rounded-xl border transition-all",
+                        "py-3 text-[11px] font-bold rounded-xl border transition-all",
                         currentItem.paymentType === type 
                           ? 'bg-primary text-white border-primary shadow-sm' 
                           : 'bg-muted/30 text-muted-foreground border-border'
                       )}
                     >
-                      {type === "نقد" ? "نقد" : (type === "دين" ? "دين" : "جزئي")}
+                      {type}
                     </button>
                   ))}
                 </div>
@@ -365,11 +393,14 @@ export default function NewPurchasePage() {
 
               {currentItem.paymentType === "جزئي" && (
                 <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <Label className="text-[10px] font-bold text-accent">المبلغ المسدد لهذا الصنف (ر.ي)</Label>
+                  <Label className="text-[11px] font-bold text-accent flex items-center gap-2">
+                    <Wallet className="w-3.5 h-3.5 text-accent" />
+                    المبلغ المسدد لهذا الصنف (ر.ي)
+                  </Label>
                   <Input 
                     type="number" 
                     placeholder="أدخل المبلغ المسدد..." 
-                    className="h-11 rounded-xl border-accent/30 text-accent font-black"
+                    className="h-12 rounded-xl border-accent/30 text-accent font-black tabular-nums"
                     value={currentItem.paidAmount}
                     onChange={(e) => setCurrentItem({...currentItem, paidAmount: e.target.value})}
                   />
@@ -430,15 +461,15 @@ export default function NewPurchasePage() {
                     {addedItems.map((item) => (
                       <TableRow key={item.tempId} className="animate-in fade-in slide-in-from-right-2">
                         <TableCell className="text-right font-bold text-xs whitespace-nowrap">{item.fishType}</TableCell>
-                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.quantity} كجم</TableCell>
-                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.pricePerKg.toLocaleString()}</TableCell>
-                        <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums whitespace-nowrap">{item.lineTotal.toLocaleString()}</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.quantity} kg</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums whitespace-nowrap">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
+                        <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums whitespace-nowrap">{item.lineTotal.toLocaleString('en-US')}</TableCell>
                         <TableCell className="text-center whitespace-nowrap">
                           <Badge variant="outline" className={cn(
                             "text-[8px] px-1.5 py-0 border-none",
                             item.paymentType === "نقد" ? "bg-green-100 text-green-700" : (item.paymentType === "دين" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")
                           )}>
-                            {item.paymentType === "جزئي" ? `جزئي (${item.paidAmount.toLocaleString()})` : item.paymentType}
+                            {item.paymentType === "جزئي" ? `جزئي (${item.paidAmount.toLocaleString('en-US')})` : item.paymentType}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-left whitespace-nowrap">
@@ -454,7 +485,10 @@ export default function NewPurchasePage() {
                               </AlertDialogTrigger>
                               <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-right">تأكيد حذف الصنف</AlertDialogTitle>
+                                  <AlertDialogTitle className="text-right flex items-center justify-end gap-2">
+                                    حذف الصنف
+                                    <Trash2 className="w-5 h-5 text-destructive" />
+                                  </AlertDialogTitle>
                                   <AlertDialogDescription className="text-right">
                                     هل أنت متأكد من رغبتك في حذف ({item.fishType}) من قائمة المشتريات؟
                                   </AlertDialogDescription>
@@ -486,18 +520,27 @@ export default function NewPurchasePage() {
             <Card className="border-none shadow-lg rounded-[2rem] bg-primary text-white overflow-hidden">
                <CardContent className="p-6">
                   <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
-                    <span className="text-xs font-bold opacity-80">إجمالي الفاتورة:</span>
-                    <span className="text-xl font-black">{grandTotal.toLocaleString()} ر.ي</span>
+                    <span className="text-xs font-bold opacity-80 flex items-center gap-2">
+                      <TableIcon className="w-3.5 h-3.5" />
+                      إجمالي الفاتورة:
+                    </span>
+                    <span className="text-xl font-black tabular-nums">{grandTotal.toLocaleString('en-US')} ر.ي</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold opacity-70 block uppercase">تم سداده</span>
-                      <span className="text-md font-black text-accent-foreground">{totalPaid.toLocaleString()}</span>
+                      <span className="text-[10px] font-bold opacity-70 block uppercase flex items-center justify-center gap-1">
+                        <Check className="w-3 h-3" />
+                        تم سداده
+                      </span>
+                      <span className="text-md font-black text-accent-foreground tabular-nums">{totalPaid.toLocaleString('en-US')}</span>
                     </div>
                     <div className="space-y-1 border-r border-white/10">
-                      <span className="text-[10px] font-bold opacity-70 block uppercase">متبقي (دين)</span>
-                      <span className={cn("text-md font-black", totalDue > 0 ? "text-orange-400" : "text-white")}>
-                        {totalDue.toLocaleString()}
+                      <span className="text-[10px] font-bold opacity-70 block uppercase flex items-center justify-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        متبقي (دين)
+                      </span>
+                      <span className={cn("text-md font-black tabular-nums", totalDue > 0 ? "text-orange-400" : "text-white")}>
+                        {totalDue.toLocaleString('en-US')}
                       </span>
                     </div>
                   </div>
