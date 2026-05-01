@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Calendar as CalendarIcon, Save, Loader2, Fuel, Users, Snowflake, Grain, Package, Utensils, MoreHorizontal } from "lucide-react"
+import { ChevronLeft, Calendar as CalendarIcon, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,13 +16,16 @@ import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { collection, addDoc, serverTimestamp, getDocs, query, where, getFirestore } from "firebase/firestore"
+import { useFirestore, useCollection } from "@/firebase"
+import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 const expenseTypes = [
   { label: "ديزل", icon: Fuel, value: "ديزل" },
   { label: "عمال", icon: Users, value: "عمال" },
   { label: "ثلج", icon: Snowflake, value: "ثلج" },
-  { label: "ملح", icon: Grain, value: "ملح" },
+  { label: "ملح", icon: Waves, value: "ملح" },
   { label: "أكياس", icon: Package, value: "أكياس" },
   { label: "أكل", icon: Utensils, value: "أكل" },
   { label: "أخرى", icon: MoreHorizontal, value: "أخرى" },
@@ -31,9 +34,15 @@ const expenseTypes = [
 export default function NewExpensePage() {
   const router = useRouter()
   const { toast } = useToast()
+  const db = useFirestore()
   const [loading, setLoading] = useState(false)
-  const [campaigns, setCampaigns] = useState<{id: string, name: string}[]>([])
-  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
+
+  // Fetch only open campaigns
+  const campaignsQuery = query(
+    collection(db || ({} as any), "campaigns"),
+    where("status", "==", "open")
+  )
+  const { data: openCampaigns, loading: loadingCampaigns } = useCollection(db ? campaignsQuery : null)
 
   const [campaignId, setCampaignId] = useState("")
   const [type, setType] = useState("")
@@ -42,27 +51,8 @@ export default function NewExpensePage() {
   const [date, setDate] = useState<Date>(new Date())
   const [notes, setNotes] = useState("")
 
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const db = getFirestore()
-        const q = query(collection(db, "campaigns"), where("status", "==", "open"))
-        const querySnapshot = await getDocs(q)
-        const fetchedCampaigns = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().name
-        }))
-        setCampaigns(fetchedCampaigns)
-      } catch (error) {
-        console.error("Error fetching campaigns:", error)
-      } finally {
-        setLoadingCampaigns(false)
-      }
-    }
-    fetchCampaigns()
-  }, [])
-
   const handleSave = async () => {
+    if (!db) return
     if (!campaignId || !type || !amount || parseFloat(amount) <= 0) {
       toast({
         variant: "destructive",
@@ -73,37 +63,35 @@ export default function NewExpensePage() {
     }
 
     setLoading(true)
-    try {
-      const db = getFirestore()
-      await addDoc(collection(db, "expenses"), {
-        campaignId,
-        type,
-        amount: parseFloat(amount),
-        paymentType,
-        date: date.toISOString(),
-        notes,
-        createdAt: serverTimestamp(),
-      })
-
-      // Logic for debt/cash balance would go here in a full app
-      // For now, we just notify the user
-
-      toast({
-        title: "تم بنجاح",
-        description: "تم حفظ المصروف بنجاح",
-      })
-      
-      router.push("/")
-    } catch (error) {
-      console.error("Error saving expense:", error)
-      toast({
-        variant: "destructive",
-        title: "حدث خطأ",
-        description: "لم نتمكن من حفظ المصروف، حاول مرة أخرى",
-      })
-    } finally {
-      setLoading(false)
+    const expenseData = {
+      campaignId,
+      type,
+      amount: parseFloat(amount),
+      paymentType,
+      date: date.toISOString(),
+      notes,
+      createdAt: serverTimestamp(),
     }
+
+    addDoc(collection(db, "expenses"), expenseData)
+      .then(() => {
+        toast({
+          title: "تم بنجاح",
+          description: "تم حفظ المصروف بنجاح",
+        })
+        router.push("/")
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'expenses',
+          operation: 'create',
+          requestResourceData: expenseData,
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   return (
@@ -124,14 +112,17 @@ export default function NewExpensePage() {
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
               <Label className="text-sm font-bold">اختيار الحملة <span className="text-destructive">*</span></Label>
-              <Select onValueChange={setCampaignId} disabled={loadingCampaigns}>
+              <Select onValueChange={setCampaignId}>
                 <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
                   <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {campaigns.map((camp) => (
+                  {openCampaigns?.map((camp) => (
                     <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
                   ))}
+                  {(!openCampaigns || openCampaigns.length === 0) && !loadingCampaigns && (
+                    <div className="p-2 text-center text-xs text-muted-foreground">لا توجد حملات مفتوحة</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -229,7 +220,7 @@ export default function NewExpensePage() {
           <Button 
             className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg gap-2 bg-accent hover:bg-accent/90" 
             onClick={handleSave}
-            disabled={loading}
+            disabled={loading || loadingCampaigns}
           >
             {loading ? (
               <Loader2 className="w-6 h-6 animate-spin" />
