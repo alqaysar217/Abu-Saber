@@ -37,27 +37,27 @@ export default function DebtsPage() {
           
           <TabsContent value="suppliers" className="space-y-4">
             <div className="p-4 bg-red-50 text-red-700 rounded-2xl flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <ArrowUpFromLine className="w-6 h-6" />
-                <span className="font-bold">إجمالي ديونك</span>
-              </div>
               <span className="text-xl font-black">١٦٥,٠٠٠ ر.ي</span>
+              <div className="flex items-center gap-3">
+                <span className="font-bold">إجمالي ديونك</span>
+                <ArrowUpFromLine className="w-6 h-6" />
+              </div>
             </div>
 
             {suppliers.map((s) => (
               <div key={s.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
+                <div className="flex flex-col items-start">
+                  <span className="font-bold text-red-600">{s.amount}</span>
+                  <button className="text-[10px] text-primary font-bold mt-1">تسجيل سداد</button>
+                </div>
                 <div className="flex gap-4 items-center">
-                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                    <Wallet className="w-6 h-6" />
-                  </div>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col text-right">
                     <span className="font-bold">{s.name}</span>
                     <span className="text-[10px] text-muted-foreground">{s.lastUpdate}</span>
                   </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-bold text-red-600">{s.amount}</span>
-                  <button className="text-[10px] text-primary font-bold mt-1">تسجيل سداد</button>
+                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                    <Wallet className="w-6 h-6" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -65,29 +65,29 @@ export default function DebtsPage() {
 
           <TabsContent value="customers" className="space-y-4">
             <div className="p-4 bg-green-50 text-green-700 rounded-2xl flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <ArrowDownToLine className="w-6 h-6" />
-                <span className="font-bold">إجمالي مستحقاتك</span>
-              </div>
               <span className="text-xl font-black">٦٥٥,٠٠٠ ر.ي</span>
+              <div className="flex items-center gap-3">
+                <span className="font-bold">إجمالي مستحقاتك</span>
+                <ArrowDownToLine className="w-6 h-6" />
+              </div>
             </div>
             
             {customers.map((c) => (
               <div key={c.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm active:bg-secondary/20 transition-colors">
-                <div className="flex gap-4 items-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <User className="w-6 h-6" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold">{c.name}</span>
-                    <span className="text-[10px] text-muted-foreground">آخر سداد: {c.lastUpdate}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-start">
                   <span className="font-bold text-green-600">{c.amount}</span>
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                     <Phone className="w-3 h-3" />
                     <span>{c.phone}</span>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-center">
+                  <div className="flex flex-col text-right">
+                    <span className="font-bold">{c.name}</span>
+                    <span className="text-[10px] text-muted-foreground">آخر سداد: {c.lastUpdate}</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <User className="w-6 h-6" />
                   </div>
                 </div>
               </div>
