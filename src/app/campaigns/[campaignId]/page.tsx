@@ -99,14 +99,29 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12 rounded-2xl p-1 mb-6">
-            <TabsTrigger value="overview" className="rounded-xl text-xs font-bold">نظرة عامة</TabsTrigger>
-            <TabsTrigger value="purchases" className="rounded-xl text-xs font-bold">المشتريات</TabsTrigger>
-            <TabsTrigger value="expenses" className="rounded-xl text-xs font-bold">المصاريف</TabsTrigger>
+        <Tabs defaultValue="overview" className="w-full" dir="rtl">
+          <TabsList className="grid w-full grid-cols-3 h-12 rounded-2xl p-1 mb-6 bg-muted/50">
+            <TabsTrigger 
+              value="overview" 
+              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+            >
+              نظرة عامة
+            </TabsTrigger>
+            <TabsTrigger 
+              value="purchases" 
+              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+            >
+              المشتريات
+            </TabsTrigger>
+            <TabsTrigger 
+              value="expenses" 
+              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+            >
+              المصاريف
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4">
+          <TabsContent value="overview" className="space-y-4 outline-none">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-orange-50 rounded-2xl space-y-1">
                 <div className="flex items-center gap-2 text-orange-600 mb-1">
@@ -135,7 +150,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             )}
           </TabsContent>
 
-          <TabsContent value="purchases" className="space-y-3">
+          <TabsContent value="purchases" className="space-y-3 outline-none">
             {purchases && purchases.length > 0 ? (
               purchases.map((p: any) => (
                 <div key={p.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
@@ -156,7 +171,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             )}
           </TabsContent>
 
-          <TabsContent value="expenses" className="space-y-3">
+          <TabsContent value="expenses" className="space-y-3 outline-none">
              {expenses && expenses.length > 0 ? (
               expenses.map((e: any) => {
                 const typeIcon = {
