@@ -148,22 +148,24 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600">
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
-                  <AlertDialogDescription className="text-right text-sm">
-                    هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟
+                  <AlertDialogDescription asChild>
+                    <div className="text-right text-sm">
+                      <p className="text-muted-foreground">هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟</p>
+                      <div className="mt-4">
+                        <span className="font-bold block text-xs">عند الأرشفة:</span>
+                        <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
+                          <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
+                          <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
+                          <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
+                        </ul>
+                      </div>
+                    </div>
                   </AlertDialogDescription>
-                  <div className="text-muted-foreground">
-                    <span className="font-bold block text-xs">عند الأرشفة:</span>
-                    <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
-                      <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
-                      <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
-                      <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
-                    </ul>
-                  </div>
                 </div>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row gap-3 mt-4">
@@ -197,7 +199,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
           <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
             <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة النهائية</span>
-            <span className="text-4xl font-black tabular-nums">{totalCost.toLocaleString()}</span>
+            <span className="text-4xl font-black tabular-nums">{totalCost.toLocaleString('en-US')}</span>
             <span className="text-xs opacity-70">ريال يمني</span>
           </CardContent>
         </Card>
@@ -234,14 +236,14 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   <ArrowDownRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي الشراء</span>
                 </div>
-                <p className="text-2xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString()}</p>
+                <p className="text-2xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString('en-US')}</p>
               </div>
               <div className="p-5 bg-accent/5 rounded-2xl border border-accent/10 space-y-1">
                 <div className="flex items-center gap-2 text-accent mb-1">
                   <ArrowUpRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي المصاريف</span>
                 </div>
-                <p className="text-2xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString()}</p>
+                <p className="text-2xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString('en-US')}</p>
               </div>
             </div>
             
@@ -267,11 +269,11 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   <div className="flex flex-col">
                     <span className="text-sm font-bold">{p.fishType}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      {p.quantity} كجم × {p.pricePerKg?.toLocaleString()} ر.ي
+                      {p.quantity} kg × {p.pricePerKg?.toLocaleString('en-US')} ر.ي
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-black text-orange-600 tabular-nums">{p.totalAmount?.toLocaleString()} ر.ي</span>
+                    <span className="text-sm font-black text-orange-600 tabular-nums">{p.totalAmount?.toLocaleString('en-US')} ر.ي</span>
                     <p className="text-[10px] text-muted-foreground">{p.date ? format(new Date(p.date), "dd MMM") : ""}</p>
                   </div>
                 </div>
@@ -308,7 +310,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString()} ر.ي</span>
+                      <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString('en-US')} ر.ي</span>
                       <p className="text-[10px] text-muted-foreground">{e.date ? format(new Date(e.date), "dd MMM") : ""}</p>
                     </div>
                   </div>

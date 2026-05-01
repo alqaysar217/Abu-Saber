@@ -33,10 +33,10 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // عرض الأصفار في البداية كما طلب المستخدم
+  // استخدام en-US لضمان ظهور الأرقام بالإنجليزية
   const formatAmount = (key: string, amount: number = 0) => {
     if (!mounted) return "*****"
-    return visibility[key] ? amount.toLocaleString('ar-YE') : "*****"
+    return visibility[key] ? amount.toLocaleString('en-US') : "*****"
   }
 
   const invoicesQuery = useMemoFirebase(() => {
@@ -184,11 +184,11 @@ export default function Home() {
                 <div className="flex flex-col gap-0.5">
                   <span className="font-bold text-sm">فاتورة مبيعات #{item.id.substring(0, 5)}</span>
                   <span className="text-[10px] text-muted-foreground font-medium uppercase">
-                    {item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString('ar-YE') : 'بدون تاريخ'}
+                    {item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString('en-US') : 'بدون تاريخ'}
                   </span>
                 </div>
                 <span className="font-black text-sm tabular-nums text-green-600">
-                  + {item.totalAmount?.toLocaleString('ar-YE')} ر.ي
+                  + {item.totalAmount?.toLocaleString('en-US')} ر.ي
                 </span>
               </div>
             ))

@@ -252,7 +252,7 @@ export default function NewPurchasePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Section 1: Campaign & Supplier - NOW STACKED */}
+        {/* Section 1: Campaign & Supplier */}
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
           <CardHeader className="bg-orange-50/50 border-b border-orange-100 p-4">
             <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
@@ -377,6 +377,7 @@ export default function NewPurchasePage() {
                   {["نقد", "دين", "جزئي"].map((type) => (
                     <button
                       key={type}
+                      type="button"
                       onClick={() => setCurrentItem({...currentItem, paymentType: type})}
                       className={cn(
                         "py-3 text-[11px] font-bold rounded-xl border transition-all",
