@@ -3,7 +3,22 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, ChevronLeft, Save, Loader2, Table as TableIcon, AlertCircle } from "lucide-react"
+import { 
+  Plus, 
+  Trash2, 
+  ChevronLeft, 
+  Save, 
+  Loader2, 
+  Table as TableIcon, 
+  AlertCircle,
+  Ship,
+  User,
+  Keyboard,
+  Sparkles,
+  Fish,
+  Scale,
+  Coins
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +30,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebas
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { cn } from "@/lib/utils"
 
 interface InvoiceItem {
   fishType: string
@@ -34,11 +50,9 @@ export default function NewInvoicePage() {
   const [campaignId, setCampaignId] = useState("")
   const [customerId, setCustomerId] = useState("")
   
-  // States for fast entry
   const [currentItem, setCurrentItem] = useState({ fishType: "", quantity: "", pricePerKg: "" })
   const [addedItems, setAddedItems] = useState<InvoiceItem[]>([])
 
-  // Fetch open campaigns
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(
@@ -49,7 +63,6 @@ export default function NewInvoicePage() {
 
   const { data: openCampaigns } = useCollection(campaignsQuery)
   
-  // Using suppliers as customers for now
   const customersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "suppliers"))
@@ -145,7 +158,10 @@ export default function NewInvoicePage() {
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground">الحملة المرتبطة</Label>
+              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                <Ship className="w-3 h-3 text-primary" />
+                الحملة المرتبطة
+              </Label>
               <Select onValueChange={setCampaignId} value={campaignId}>
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر الحملة" />
@@ -159,7 +175,10 @@ export default function NewInvoicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground">العميل / المشتري</Label>
+              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                <User className="w-3 h-3 text-primary" />
+                العميل / المشتري
+              </Label>
               <Select onValueChange={setCustomerId} value={customerId}>
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر العميل" />
@@ -174,24 +193,32 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-xl">
+        <div className="flex items-center gap-2 p-1.5 bg-secondary/30 rounded-2xl border border-primary/5">
           <button
             onClick={() => setUseAI(false)}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${!useAI ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground'}`}
+            className={cn(
+              "flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+              !useAI ? 'lux-gradient text-white shadow-lg' : 'text-muted-foreground hover:bg-white/50'
+            )}
           >
+            <Keyboard className={cn("w-4 h-4", !useAI ? "text-white" : "text-primary")} />
             إدخال يدوي سريع
           </button>
           <button
             onClick={() => setUseAI(true)}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${useAI ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground'}`}
+            className={cn(
+              "flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+              useAI ? 'lux-gradient text-white shadow-lg' : 'text-muted-foreground hover:bg-white/50'
+            )}
           >
+            <Sparkles className={cn("w-4 h-4", useAI ? "text-white" : "text-primary")} />
             مسح بالذكاء الاصطناعي
           </button>
         </div>
 
         {!campaignId || !customerId ? (
           <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 opacity-50">
-            <AlertCircle className="w-10 h-10 text-muted-foreground" />
+            <AlertCircle className="w-10 h-10 text-primary" />
             <p className="text-sm font-medium">يرجى اختيار الحملة والعميل أولاً للبدء</p>
           </div>
         ) : (
@@ -203,7 +230,10 @@ export default function NewInvoicePage() {
                 <Card className="border-2 border-primary/10 shadow-md rounded-2xl bg-white sticky top-20 z-10">
                   <CardContent className="p-4 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fish-type-input" className="text-xs font-bold">نوع السمك</Label>
+                      <Label htmlFor="fish-type-input" className="text-xs font-bold flex items-center gap-2">
+                        <Fish className="w-3 h-3 text-primary" />
+                        نوع السمك
+                      </Label>
                       <Input 
                         id="fish-type-input"
                         placeholder="مثال: تونة، بياض..." 
@@ -214,7 +244,10 @@ export default function NewInvoicePage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold">الكمية (كجم)</Label>
+                        <Label className="text-[10px] font-bold flex items-center gap-2">
+                          <Scale className="w-3 h-3 text-primary" />
+                          الكمية (كجم)
+                        </Label>
                         <Input 
                           type="number" 
                           placeholder="0.00" 
@@ -224,7 +257,10 @@ export default function NewInvoicePage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold">سعر الكيلو (ر.ي)</Label>
+                        <Label className="text-[10px] font-bold flex items-center gap-2">
+                          <Coins className="w-3 h-3 text-primary" />
+                          سعر الكيلو (ر.ي)
+                        </Label>
                         <Input 
                           type="number" 
                           placeholder="0" 
@@ -236,7 +272,7 @@ export default function NewInvoicePage() {
                     </div>
                     <Button 
                       onClick={handleAddItem} 
-                      className="w-full h-12 rounded-xl bg-primary text-white font-bold gap-2"
+                      className="w-full h-12 rounded-xl lux-gradient text-white font-bold gap-2 shadow-lg"
                     >
                       <Plus className="w-5 h-5" />
                       إضافة للفاتورة
@@ -284,7 +320,7 @@ export default function NewInvoicePage() {
                 {addedItems.length > 0 && (
                   <div className="pt-4 sticky bottom-4">
                     <Button 
-                      className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl gap-2" 
+                      className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl gap-2 lux-gradient" 
                       onClick={handleFinalSave}
                       disabled={loading}
                     >
