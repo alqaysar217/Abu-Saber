@@ -213,7 +213,7 @@ export default function NewPurchasePage() {
         <button onClick={() => router.back()} className="p-2 -mr-2">
           <ChevronLeft className="w-6 h-6 rotate-180" />
         </button>
-        <h1 className="text-lg font-bold">تسجيل شراء أسماك (متعدد)</h1>
+        <h1 className="text-lg font-bold">تسجيل شراء أسماك</h1>
         <div className="w-6" />
       </header>
 
@@ -274,12 +274,13 @@ export default function NewPurchasePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+              <Label htmlFor="purchase-date" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
                 <CalendarIcon className="w-3 h-3 text-primary" />
                 تاريخ الشراء
               </Label>
               <div className="relative">
                 <Input 
+                  id="purchase-date"
                   type="date" 
                   className="h-11 rounded-xl text-right pr-10" 
                   value={date}
@@ -301,7 +302,10 @@ export default function NewPurchasePage() {
            </CardHeader>
            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fish-type-input" className="text-[10px] font-bold">نوع السمك</Label>
+                <Label htmlFor="fish-type-input" className="text-[10px] font-bold flex items-center gap-2">
+                  <Fish className="w-3 h-3 text-primary" />
+                  نوع السمك
+                </Label>
                 <Input 
                   id="fish-type-input"
                   placeholder="مثال: بياض، هامور، صابات..." 
@@ -312,11 +316,12 @@ export default function NewPurchasePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold flex items-center gap-2">
+                  <Label htmlFor="qty-input" className="text-[10px] font-bold flex items-center gap-2">
                     <Scale className="w-3 h-3 text-primary" />
                     الكمية (كجم)
                   </Label>
                   <Input 
+                    id="qty-input"
                     type="number" 
                     placeholder="0.00" 
                     className="h-11 rounded-xl border-primary/20"
@@ -325,11 +330,12 @@ export default function NewPurchasePage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold flex items-center gap-2">
+                  <Label htmlFor="price-input" className="text-[10px] font-bold flex items-center gap-2">
                     <Coins className="w-3 h-3 text-primary" />
                     سعر الكيلو (ر.ي)
                   </Label>
                   <Input 
+                    id="price-input"
                     type="number" 
                     placeholder="0" 
                     className="h-11 rounded-xl border-primary/20"
@@ -388,29 +394,31 @@ export default function NewPurchasePage() {
 
         {/* Section 4: Payment Options */}
         {addedItems.length > 0 && (
-          <Card className="border-none shadow-md rounded-[1.5rem] bg-secondary/10">
-            <CardHeader className="p-4 pb-2">
+          <Card className="border-none shadow-md rounded-[1.5rem] bg-secondary/10 overflow-hidden">
+            <CardHeader className="p-4 pb-2 bg-primary/5">
                <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
                   <Wallet className="w-4 h-4" />
-                  طريقة السداد
+                  طريقة السداد للفاتورة
                </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
               <div className="grid grid-cols-3 gap-2">
-                {["نقد", "دين", "جزئي"].map((type) => (
+                {[
+                  { id: "نقد", label: "نقد كاش" },
+                  { id: "دين", label: "على الحساب" },
+                  { id: "جزئي", label: "دفع جزئي" }
+                ].map((option) => (
                   <button
-                    key={type}
-                    onClick={() => setPaymentType(type)}
+                    key={option.id}
+                    onClick={() => setPaymentType(option.id)}
                     className={cn(
                       "py-3 text-xs font-bold rounded-xl border transition-all",
-                      paymentType === type 
+                      paymentType === option.id 
                         ? 'bg-primary text-white border-primary shadow-md' 
                         : 'bg-white text-muted-foreground border-border'
                     )}
                   >
-                    {type === "نقد" && "نقد كاش"}
-                    {type === "دين" && "على الحساب"}
-                    {type === "جزئي" && "دفع جزئي"}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -419,20 +427,29 @@ export default function NewPurchasePage() {
                 <div className="space-y-2 animate-in slide-in-from-top-2">
                   <Label htmlFor="paid-amount" className="text-xs font-bold flex items-center gap-2">
                     <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    المبلغ المدفوع الآن (ر.ي)
+                    المبلغ المسدد الآن (ر.ي)
                   </Label>
                   <Input 
                     id="paid-amount"
                     type="number" 
-                    placeholder="0.00" 
+                    placeholder="أدخل المبلغ المسدد..." 
                     className="h-11 rounded-xl border-primary/30 text-lg font-black text-primary"
                     value={paidAmount}
                     onChange={(e) => setPaidAmount(e.target.value)}
                   />
-                  <p className="text-[10px] text-muted-foreground bg-white p-2 rounded-lg border border-dashed flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    سيتم تسجيل باقي المبلغ ({ (grandTotal - (parseFloat(paidAmount) || 0)).toLocaleString() } ر.ي) كدين للمورد.
-                  </p>
+                  <div className="p-3 bg-white rounded-xl border border-dashed flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[10px] text-muted-foreground font-bold">
+                       <span>إجمالي الفاتورة:</span>
+                       <span>{grandTotal.toLocaleString()} ر.ي</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black text-orange-600">
+                       <span className="flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          المتبقي كدين:
+                       </span>
+                       <span>{ (grandTotal - (parseFloat(paidAmount) || 0)).toLocaleString() } ر.ي</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -456,3 +473,4 @@ export default function NewPurchasePage() {
     </div>
   )
 }
+
