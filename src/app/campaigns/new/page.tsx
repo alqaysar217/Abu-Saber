@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
@@ -25,9 +22,7 @@ export default function NewCampaignPage() {
   const [loading, setLoading] = useState(false)
   
   const [name, setName] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [status, setStatus] = useState("open")
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState("")
 
   const handleSave = async () => {
@@ -45,8 +40,7 @@ export default function NewCampaignPage() {
     const campaignData = {
       name,
       startDate: new Date(startDate).toISOString(),
-      endDate: endDate ? new Date(endDate).toISOString() : null,
-      status,
+      status: "open", // تعيين الحالة مفتوحة تلقائياً
       notes,
       createdAt: serverTimestamp(),
     }
@@ -99,51 +93,22 @@ export default function NewCampaignPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label htmlFor="start-date" className="text-sm font-bold">تاريخ البداية <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <Input 
-                    id="start-date"
-                    type="date"
-                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-primary text-right pr-10"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="end-date" className="text-sm font-bold">تاريخ النهاية (اختياري)</Label>
-                <div className="relative">
-                  <Input 
-                    id="end-date"
-                    type="date"
-                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-primary text-right pr-10"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="start-date" className="text-sm font-bold">تاريخ البداية <span className="text-destructive">*</span></Label>
+              <div className="relative">
+                <Input 
+                  id="start-date"
+                  type="date"
+                  className="h-12 rounded-xl border-muted-foreground/20 focus:ring-primary text-right pr-10"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-bold">حالة الحملة</Label>
-              <Select onValueChange={setStatus} defaultValue={status}>
-                <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                  <SelectValue placeholder="اختر الحالة" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="open">مفتوحة</SelectItem>
-                  <SelectItem value="closed">مغلقة</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-bold">وصف الحملة (اختياري)</Label>
+              <Label htmlFor="notes" className="text-sm font-bold">وصف أو ملاحظات (اختياري)</Label>
               <Textarea 
                 id="notes"
                 placeholder="ملاحظات إضافية عن الرحلة أو الأهداف..." 
