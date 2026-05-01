@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Plus, Search, Calendar, Loader2 } from "lucide-react"
+import { Plus, Search, Calendar, Loader2, Archive, CheckCircle2, ChevronRight } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 export default function CampaignsPage() {
   const db = useFirestore()
@@ -36,7 +37,7 @@ export default function CampaignsPage() {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">الحملات</h1>
           <Link href="/campaigns/new">
-            <Button size="icon" className="rounded-full shadow-lg">
+            <Button size="icon" className="rounded-full shadow-lg lux-gradient text-white">
               <Plus className="w-6 h-6" />
             </Button>
           </Link>
@@ -58,45 +59,67 @@ export default function CampaignsPage() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : filteredCampaigns && filteredCampaigns.length > 0 ? (
-          filteredCampaigns.map((camp: any) => (
-            <Link key={camp.id} href={`/campaigns/${camp.id}`}>
-              <Card className="border-none shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-shadow mb-4">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="space-y-1">
-                        <h3 className="font-bold text-lg">{camp.name}</h3>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span>
-                            {camp.startDate ? format(new Date(camp.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
-                          </span>
+          filteredCampaigns.map((camp: any) => {
+            const isCompleted = camp.status === 'completed'
+            
+            return (
+              <Link key={camp.id} href={`/campaigns/${camp.id}`}>
+                <Card className={cn(
+                  "border-none shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all active:scale-[0.98] mb-4 group",
+                  isCompleted ? "bg-muted/30" : "bg-white"
+                )}>
+                  <CardContent className="p-0">
+                    <div className="p-5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="space-y-1.5">
+                          <h3 className={cn("font-bold text-lg", isCompleted && "text-muted-foreground")}>{camp.name}</h3>
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <Calendar className="w-3.5 h-3.5 text-primary" />
+                            <span>
+                              {camp.startDate ? format(new Date(camp.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant={isCompleted ? 'secondary' : 'default'} 
+                          className={cn(
+                            "rounded-full px-3 py-1 font-bold text-[10px]",
+                            !isCompleted && "lux-gradient text-white"
+                          )}
+                        >
+                          {isCompleted ? (
+                            <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> مكتملة</span>
+                          ) : (
+                            <span className="flex items-center gap-1">نشطة</span>
+                          )}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-4 border-t border-border/50">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full animate-pulse",
+                            isCompleted ? "bg-muted-foreground" : "bg-accent"
+                          )} />
+                          <p className="text-[10px] text-muted-foreground font-bold">
+                            {isCompleted ? 'هذه الحملة مؤرشفة' : 'الحملة قيد التشغيل حالياً'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary font-bold text-xs">
+                          <span>عرض التفاصيل</span>
+                          <ChevronRight className="w-4 h-4" />
                         </div>
                       </div>
-                      <Badge variant={camp.status === 'open' ? 'default' : 'secondary'} className="rounded-full px-3">
-                        {camp.status === 'open' ? 'نشطة' : 'مكتملة'}
-                      </Badge>
                     </div>
-                    
-                    <div className="flex justify-between items-end pt-3 border-t mt-2">
-                      <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase">الحالة</p>
-                        <div className="flex items-center gap-1 text-primary font-bold">
-                          <span>{camp.status === 'open' ? 'قيد العمل' : 'تم الإغلاق'}</span>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="rounded-xl border-primary text-primary hover:bg-primary/5">
-                        عرض التفاصيل
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })
         ) : (
-          <div className="text-center p-10 text-muted-foreground">
-            لا توجد حملات مسجلة حالياً
+          <div className="text-center p-12 bg-white rounded-3xl border border-dashed border-muted-foreground/30 text-muted-foreground text-sm space-y-2">
+            <Archive className="w-10 h-10 mx-auto opacity-20" />
+            <p>لا توجد حملات مسجلة حالياً</p>
           </div>
         )}
       </div>

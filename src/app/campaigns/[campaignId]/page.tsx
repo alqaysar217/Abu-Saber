@@ -1,7 +1,7 @@
 
 "use client"
 
-import { use } from "react"
+import { use, useState } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
@@ -18,22 +18,41 @@ import {
   Calendar,
   LayoutDashboard,
   ShoppingBag,
-  Receipt
+  Receipt,
+  Archive,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { doc, collection, query, where } from "firebase/firestore"
+import { doc, collection, query, where, updateDoc } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { BottomNav } from "@/components/layout/BottomNav"
+import { useToast } from "@/hooks/use-toast"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
   const { campaignId } = use(params)
   const db = useFirestore()
   const { user } = useUser()
+  const { toast } = useToast()
+  const [archiving, setArchiving] = useState(false)
 
   const campaignRef = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
@@ -56,6 +75,34 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
 
+  const handleArchiveCampaign = async () => {
+    if (!campaignRef || !user) return
+    
+    setArchiving(true)
+    const updateData = {
+      status: "completed",
+      endDate: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    updateDoc(campaignRef, updateData)
+      .then(() => {
+        toast({
+          title: "تمت الأرشفة",
+          description: "تم نقل الحملة إلى الأرشيف بنجاح",
+        })
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: campaignRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => setArchiving(false))
+  }
+
   const totalExpenses = expenses?.reduce((acc, curr) => acc + curr.amount, 0) || 0
   const totalPurchases = purchases?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0
   const totalCost = totalExpenses + totalPurchases
@@ -77,8 +124,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
     )
   }
 
-  // Active tab styling classes
-  const activeTabClass = "data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+  const isCompleted = campaign.status === 'completed'
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20">
@@ -89,18 +135,56 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         <div className="text-center flex-1">
           <h1 className="text-lg font-bold truncate px-4">{campaign.name}</h1>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-            <Calendar className="w-3 h-3" />
+            <Calendar className="w-3 h-3 text-primary" />
             {campaign.startDate ? format(new Date(campaign.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
           </p>
         </div>
-        <div className="w-6" />
+        {!isCompleted ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="p-2 -ml-2 text-muted-foreground hover:text-primary transition-colors">
+                <Archive className="w-5 h-5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-right">أرشفة الحملة؟</AlertDialogTitle>
+                <AlertDialogDescription className="text-right">
+                  سيتم تحويل حالة الحملة إلى "مكتملة". لن تتمكن من إضافة مصاريف أو مشتريات جديدة إليها لاحقاً بسهولة.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-row gap-3">
+                <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleArchiveCampaign}
+                  className="flex-1 rounded-xl lux-gradient text-white"
+                  disabled={archiving}
+                >
+                  {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : "نعم، أرشفة"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <div className="p-2 -ml-2 text-accent">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        )}
       </header>
 
       <main className="p-4 space-y-6">
-        <Card className="border-none shadow-sm rounded-2xl lux-gradient text-white">
-          <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة</span>
-            <span className="text-3xl font-black tabular-nums">{totalCost.toLocaleString()}</span>
+        {isCompleted && (
+          <div className="p-4 bg-muted border-2 border-dashed rounded-2xl flex items-center gap-3 text-muted-foreground">
+            <AlertCircle className="w-5 h-5" />
+            <p className="text-xs font-bold">هذه الحملة مؤرشفة. تم إغلاقها في {campaign.endDate ? format(new Date(campaign.endDate), "PPP", { locale: ar }) : ""}</p>
+          </div>
+        )}
+
+        <Card className="border-none shadow-sm rounded-2xl lux-gradient text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+          <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
+            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة النهائية</span>
+            <span className="text-4xl font-black tabular-nums">{totalCost.toLocaleString()}</span>
             <span className="text-xs opacity-70">ريال يمني</span>
           </CardContent>
         </Card>
@@ -109,21 +193,21 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
-              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>نظرة عامة</span>
             </TabsTrigger>
             <TabsTrigger 
               value="purchases" 
-              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>المشتريات</span>
             </TabsTrigger>
             <TabsTrigger 
               value="expenses" 
-              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <Receipt className="w-4 h-4" />
               <span>المصاريف</span>
@@ -132,27 +216,31 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
           <TabsContent value="overview" className="space-y-4 outline-none animate-in fade-in duration-300">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-orange-50 rounded-2xl space-y-1">
+              <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100/50 space-y-1">
                 <div className="flex items-center gap-2 text-orange-600 mb-1">
                   <ArrowDownRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي الشراء</span>
                 </div>
-                <p className="text-xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString()}</p>
+                <p className="text-2xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString()}</p>
               </div>
-              <div className="p-4 bg-accent/5 rounded-2xl space-y-1">
+              <div className="p-5 bg-accent/5 rounded-2xl border border-accent/10 space-y-1">
                 <div className="flex items-center gap-2 text-accent mb-1">
                   <ArrowUpRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي المصاريف</span>
                 </div>
-                <p className="text-xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString()}</p>
+                <p className="text-2xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString()}</p>
               </div>
             </div>
+            
             {campaign.notes && (
-              <Card className="border-none shadow-sm rounded-2xl">
+              <Card className="border-none shadow-sm rounded-2xl bg-white">
                 <CardHeader className="p-4 pb-0">
-                  <CardTitle className="text-sm font-bold">ملاحظات الحملة</CardTitle>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-primary" />
+                    ملاحظات الحملة
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 text-sm text-muted-foreground whitespace-pre-wrap">
+                <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed">
                   {campaign.notes}
                 </CardContent>
               </Card>
@@ -176,7 +264,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                 </div>
               ))
             ) : (
-              <div className="text-center py-10 text-muted-foreground text-sm">لا توجد مشتريات لهذه الحملة</div>
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد مشتريات لهذه الحملة</div>
             )}
           </TabsContent>
 
@@ -203,7 +291,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{e.type}</span>
-                        <span className="text-[10px] text-muted-foreground">{e.notes || "لا يوجد ملاحظات"}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{e.notes || "لا يوجد ملاحظات"}</span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -214,7 +302,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                 )
               })
             ) : (
-              <div className="text-center py-10 text-muted-foreground text-sm">لا توجد مصاريف لهذه الحملة</div>
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد مصاريف لهذه الحملة</div>
             )}
           </TabsContent>
         </Tabs>
