@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
+import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -31,14 +31,18 @@ export default function NewExpensePage() {
   const router = useRouter()
   const { toast } = useToast()
   const db = useFirestore()
+  const { user } = useUser()
   const [loading, setLoading] = useState(false)
 
-  // Fetch only open campaigns
-  const campaignsQuery = query(
-    collection(db || ({} as any), "campaigns"),
-    where("status", "==", "open")
-  )
-  const { data: openCampaigns, loading: loadingCampaigns } = useCollection(db ? campaignsQuery : null)
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "users", user.uid, "campaigns"),
+      where("status", "==", "open")
+    )
+  }, [db, user])
+
+  const { data: openCampaigns, isLoading: loadingCampaigns } = useCollection(campaignsQuery)
 
   const [campaignId, setCampaignId] = useState("")
   const [type, setType] = useState("")
@@ -48,7 +52,7 @@ export default function NewExpensePage() {
   const [notes, setNotes] = useState("")
 
   const handleSave = async () => {
-    if (!db) return
+    if (!db || !user) return
     if (!campaignId || !type || !amount || parseFloat(amount) <= 0) {
       toast({
         variant: "destructive",
@@ -66,10 +70,11 @@ export default function NewExpensePage() {
       paymentType,
       date: new Date(date).toISOString(),
       notes,
+      userId: user.uid,
       createdAt: serverTimestamp(),
     }
 
-    addDoc(collection(db, "expenses"), expenseData)
+    addDoc(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"), expenseData)
       .then(() => {
         toast({
           title: "تم بنجاح",
@@ -79,7 +84,7 @@ export default function NewExpensePage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: 'expenses',
+          path: `users/${user.uid}/campaigns/${campaignId}/expenses`,
           operation: 'create',
           requestResourceData: expenseData,
         })
@@ -116,9 +121,6 @@ export default function NewExpensePage() {
                   {openCampaigns?.map((camp) => (
                     <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
                   ))}
-                  {(!openCampaigns || openCampaigns.length === 0) && !loadingCampaigns && (
-                    <div className="p-2 text-center text-xs text-muted-foreground">لا توجد حملات مفتوحة</div>
-                  )}
                 </SelectContent>
               </Select>
             </div>

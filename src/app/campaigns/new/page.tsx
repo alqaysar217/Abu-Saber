@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -19,6 +19,7 @@ export default function NewCampaignPage() {
   const router = useRouter()
   const { toast } = useToast()
   const db = useFirestore()
+  const { user } = useUser()
   const [loading, setLoading] = useState(false)
   
   const [name, setName] = useState("")
@@ -26,7 +27,7 @@ export default function NewCampaignPage() {
   const [notes, setNotes] = useState("")
 
   const handleSave = async () => {
-    if (!db) return
+    if (!db || !user) return
     if (!name || !startDate) {
       toast({
         variant: "destructive",
@@ -40,12 +41,13 @@ export default function NewCampaignPage() {
     const campaignData = {
       name,
       startDate: new Date(startDate).toISOString(),
-      status: "open", // تعيين الحالة مفتوحة تلقائياً
+      status: "open",
       notes,
+      userId: user.uid,
       createdAt: serverTimestamp(),
     }
 
-    addDoc(collection(db, "campaigns"), campaignData)
+    addDoc(collection(db, "users", user.uid, "campaigns"), campaignData)
       .then(() => {
         toast({
           title: "تم بنجاح",
@@ -55,7 +57,7 @@ export default function NewCampaignPage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: 'campaigns',
+          path: `users/${user.uid}/campaigns`,
           operation: 'create',
           requestResourceData: campaignData,
         })

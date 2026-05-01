@@ -1,14 +1,24 @@
-import type {Metadata} from 'next';
-import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
 
-export const metadata: Metadata = {
-  title: 'أبو صابر - لتجارة الأسماك',
-  description: 'نظام إدارة تجارة الأسماك المتقدم - أبو صابر',
-  manifest: '/manifest.json',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover',
-};
+"use client"
+
+import { useEffect } from "react"
+import { Toaster } from "@/components/ui/toaster"
+import { FirebaseClientProvider } from "@/firebase/client-provider"
+import { useAuth } from "@/firebase"
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login"
+import './globals.css'
+
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const auth = useAuth()
+
+  useEffect(() => {
+    if (auth && !auth.currentUser) {
+      initiateAnonymousSignIn(auth)
+    }
+  }, [auth])
+
+  return <>{children}</>
+}
 
 export default function RootLayout({
   children,
@@ -24,13 +34,16 @@ export default function RootLayout({
         <meta name="theme-color" content="#29993D" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <title>أبو صابر - لتجارة الأسماك</title>
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col">
         <FirebaseClientProvider>
-          <main className="flex-1 pb-20">
-            {children}
-          </main>
-          <Toaster />
+          <AuthInitializer>
+            <main className="flex-1 pb-20">
+              {children}
+            </main>
+            <Toaster />
+          </AuthInitializer>
         </FirebaseClientProvider>
       </body>
     </html>

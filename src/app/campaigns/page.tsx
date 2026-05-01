@@ -1,13 +1,13 @@
 
 "use client"
 
-import { Plus, Search, Calendar, MapPin, TrendingUp, Loader2, ChevronLeft } from "lucide-react"
+import { Plus, Search, Calendar, Loader2 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useFirestore, useCollection } from "@/firebase"
+import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
 import Link from "next/link"
 import { useState } from "react"
@@ -16,10 +16,15 @@ import { ar } from "date-fns/locale"
 
 export default function CampaignsPage() {
   const db = useFirestore()
+  const { user } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
 
-  const campaignsQuery = db ? query(collection(db, "campaigns"), orderBy("createdAt", "desc")) : null
-  const { data: campaigns, loading } = useCollection(campaignsQuery)
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "campaigns"), orderBy("createdAt", "desc"))
+  }, [db, user])
+
+  const { data: campaigns, isLoading } = useCollection(campaignsQuery)
 
   const filteredCampaigns = campaigns?.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -48,7 +53,7 @@ export default function CampaignsPage() {
       </header>
 
       <div className="p-4 space-y-4">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center p-10">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
