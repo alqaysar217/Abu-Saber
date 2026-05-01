@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,10 +45,19 @@ export default function NewExpensePage() {
 
   const { data: openCampaigns, isLoading: loadingCampaigns } = useCollection(campaignsQuery)
 
+  const customersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "customers"))
+  }, [db, user])
+
+  const { data: customers } = useCollection(customersQuery)
+
   const [campaignId, setCampaignId] = useState("")
   const [type, setType] = useState("")
   const [amount, setAmount] = useState("")
   const [paymentType, setPaymentType] = useState("نقد")
+  const [paidAmount, setPaidAmount] = useState("")
+  const [payeeId, setPayeeId] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState("")
 
@@ -66,14 +75,33 @@ export default function NewExpensePage() {
     }
   }
 
+  const handlePaidAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/,/g, "")
+    if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
+      setPaidAmount(rawValue)
+    }
+  }
+
+  const numAmount = parseFloat(amount) || 0
+  const numPaidAmount = paymentType === "نقد" ? numAmount : (paymentType === "دين" ? 0 : (parseFloat(paidAmount) || 0))
+  const remainingAmount = numAmount - numPaidAmount
+
   const handleSave = async () => {
     if (!db || !user) return
-    const numAmount = parseFloat(amount)
-    if (!campaignId || !type || isNaN(numAmount) || numAmount <= 0) {
+    if (!campaignId || !type || numAmount <= 0) {
       toast({
         variant: "destructive",
         title: "خطأ في الإدخال",
         description: "يرجى اختيار الحملة ونوع المصروف وإدخال مبلغ صحيح",
+      })
+      return
+    }
+
+    if ((paymentType === "دين" || paymentType === "جزئي") && !payeeId) {
+      toast({
+        variant: "destructive",
+        title: "بيانات ناقصة",
+        description: "يرجى اختيار اسم العميل لتسجيل الدين عليه",
       })
       return
     }
@@ -83,7 +111,10 @@ export default function NewExpensePage() {
       campaignId,
       type,
       amount: numAmount,
+      paidAmount: numPaidAmount,
+      remainingAmount: remainingAmount,
       paymentType,
+      payeeId: (paymentType !== "نقد") ? payeeId : null,
       date: new Date(date).toISOString(),
       notes,
       userId: user.uid,
@@ -117,14 +148,14 @@ export default function NewExpensePage() {
         <button onClick={() => router.back()} className="p-2 -mr-2">
           <ChevronLeft className="w-6 h-6 rotate-180" />
         </button>
-        <h1 className="text-lg font-bold">إضافة مصروف</h1>
+        <h1 className="text-lg font-bold">إضافة مصروف جديد</h1>
         <div className="w-6" />
       </header>
 
       <main className="p-4 space-y-6">
         <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
           <CardHeader className="bg-accent/5 border-b border-accent/10">
-            <CardTitle className="text-md font-bold text-accent">تفاصيل المصروف</CardTitle>
+            <CardTitle className="text-md font-bold text-accent">تفاصيل المصروف والتشغيل</CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
@@ -172,7 +203,7 @@ export default function NewExpensePage() {
             <div className="space-y-2">
               <Label htmlFor="amount" className="text-sm font-bold flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-primary" />
-                المبلغ (ر.ي) <span className="text-destructive">*</span>
+                إجمالي المبلغ (ر.ي) <span className="text-destructive">*</span>
               </Label>
               <Input 
                 id="amount"
@@ -185,49 +216,89 @@ export default function NewExpensePage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                طريقة الدفع
+              </Label>
+              <Select onValueChange={setPaymentType} defaultValue={paymentType} dir="rtl">
+                <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
+                  <SelectValue placeholder="اختر الطريقة" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="نقد">نقد (سداد كامل)</SelectItem>
+                  <SelectItem value="دين">دين (على الحساب)</SelectItem>
+                  <SelectItem value="جزئي">سداد جزئي</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(paymentType === "دين" || paymentType === "جزئي") && (
+              <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                 <Label className="text-sm font-bold flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  طريقة الدفع
+                  <User className="w-4 h-4 text-primary" />
+                  اسم العميل (صاحب الدين) <span className="text-destructive">*</span>
                 </Label>
-                <Select onValueChange={setPaymentType} defaultValue={paymentType} dir="rtl">
+                <Select onValueChange={setPayeeId} dir="rtl">
                   <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                    <SelectValue placeholder="اختر الطريقة" />
+                    <SelectValue placeholder="اختر العميل" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    <SelectItem value="نقد">نقد</SelectItem>
-                    <SelectItem value="دين">دين</SelectItem>
+                    {customers?.map((cust) => (
+                      <SelectItem key={cust.id} value={cust.id}>{cust.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="expense-date" className="text-sm font-bold flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-primary" />
-                  التاريخ
-                </Label>
-                <div className="relative">
+            {paymentType === "جزئي" && (
+              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="space-y-2">
+                  <Label htmlFor="paidAmount" className="text-sm font-bold text-accent">المبلغ المدفوع</Label>
                   <Input 
-                    id="expense-date"
-                    type="date"
-                    className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-right pr-10"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    id="paidAmount"
+                    type="text"
+                    inputMode="decimal"
+                    className="h-12 rounded-xl border-accent/20 font-bold text-accent tabular-nums"
+                    value={formatInputNumber(paidAmount)}
+                    onChange={handlePaidAmountChange}
                   />
-                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-destructive">المبلغ المتبقي</Label>
+                  <div className="h-12 flex items-center px-4 bg-destructive/5 border border-destructive/10 rounded-xl font-black text-destructive tabular-nums">
+                    {remainingAmount.toLocaleString('en-US')}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="expense-date" className="text-sm font-bold flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+                تاريخ المصروف
+              </Label>
+              <div className="relative">
+                <Input 
+                  id="expense-date"
+                  type="date"
+                  className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-right pr-10 tabular-nums"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="notes" className="text-sm font-bold flex items-center gap-2">
                 <MoreHorizontal className="w-4 h-4 text-primary" />
-                ملاحظات (اختياري)
+                ملاحظات إضافية
               </Label>
               <Textarea 
                 id="notes"
-                placeholder="تفاصيل إضافية..." 
+                placeholder="مثال: ديزل للسيارة رقم 1..." 
                 className="min-h-[100px] rounded-xl border-muted-foreground/20 resize-none"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -247,7 +318,7 @@ export default function NewExpensePage() {
             ) : (
               <Save className="w-6 h-6" />
             )}
-            حفظ المصروف
+            حفظ وتأكيد المصروف
           </Button>
           <Button 
             variant="ghost" 
@@ -255,7 +326,7 @@ export default function NewExpensePage() {
             onClick={() => router.back()}
             disabled={loading}
           >
-            إلغاء
+            تراجع
           </Button>
         </div>
       </main>
