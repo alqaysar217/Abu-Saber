@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,7 +7,6 @@ import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, limit, orderBy } from "firebase/firestore"
@@ -21,6 +21,7 @@ export default function Home() {
     debtsByMe: false,
   })
 
+  // Prevent hydration errors by ensuring we only render browser-specific logic after mount
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -47,7 +48,7 @@ export default function Home() {
 
   const { data: recentInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
 
-  if (isUserLoading || !mounted) {
+  if (!mounted || isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -165,7 +166,6 @@ export default function Home() {
       <section className="px-4 mb-8">
         <div className="flex justify-between items-center mb-5 px-2">
           <h2 className="text-lg font-black">آخر الفواتير</h2>
-          <button className="text-sm text-primary font-bold hover:underline">عرض الكل</button>
         </div>
         <div className="space-y-4">
           {loadingInvoices ? (
@@ -177,18 +177,18 @@ export default function Home() {
               <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-bold text-sm">فاتورة مبيعات #{item.id.substring(0, 5)}</span>
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase" suppressHydrationWarning>
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase">
                     {item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString('ar-YE') : 'بدون تاريخ'}
                   </span>
                 </div>
-                <span className="font-black text-sm tabular-nums text-green-600" suppressHydrationWarning>
+                <span className="font-black text-sm tabular-nums text-green-600">
                   + {item.totalAmount?.toLocaleString('ar-YE')} ر.ي
                 </span>
               </div>
             ))
           ) : (
-            <div className="text-center py-6 text-muted-foreground text-xs bg-white rounded-3xl border border-dashed">
-              لا توجد نشاطات مسجلة حالياً
+            <div className="text-center py-10 text-muted-foreground text-xs bg-white rounded-[1.5rem] border border-dashed">
+              لا توجد فواتير مسجلة حالياً
             </div>
           )}
         </div>
