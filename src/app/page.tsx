@@ -33,7 +33,7 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // دالة لتنسيق المبالغ مع التعامل مع القيمة 0
+  // عرض الأصفار في البداية كما طلب المستخدم
   const formatAmount = (key: string, amount: number = 0) => {
     if (!mounted) return "*****"
     return visibility[key] ? amount.toLocaleString('ar-YE') : "*****"
@@ -54,13 +54,7 @@ export default function Home() {
     if (auth) signOut(auth)
   }
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary opacity-20" />
-      </div>
-    )
-  }
+  if (!mounted) return null
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">

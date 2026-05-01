@@ -37,8 +37,8 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthWrapper>
             {children}
+            <Toaster />
           </AuthWrapper>
-          <Toaster />
         </FirebaseClientProvider>
       </body>
     </html>

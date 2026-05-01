@@ -10,26 +10,25 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser()
   const [mounted, setMounted] = useState(false)
 
-  // نستخدم mounted لضمان عدم حدوث تعارض Hydration بين الخادم والمتصفح
   useEffect(() => {
     setMounted(true)
   }, [])
 
   if (!mounted) {
-    return <div className="min-h-screen bg-background" />
+    return <div className="min-h-screen bg-[#123524]" />
   }
 
-  // إذا كان النظام لا يزال يتحقق من حالة المستخدم، نعرض شاشة الترحيب
+  // أولاً: شاشة التحميل أثناء التحقق من المستخدم
   if (isUserLoading) {
     return <SplashScreen />
   }
 
-  // إذا لم يكن هناك مستخدم مسجل، نعرض صفحة تسجيل الدخول
+  // ثانياً: إذا لم يكن مسجلاً، يظهر تسجيل الدخول حصراً
   if (!user) {
     return <LoginPage />
   }
 
-  // إذا كان المستخدم مسجلاً، نعرض محتوى التطبيق
+  // ثالثاً: الدخول للتطبيق
   return (
     <div className="relative flex min-h-screen flex-col">
       {children}
