@@ -33,6 +33,7 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  // دالة لتنسيق المبالغ مع التعامل مع القيمة 0
   const formatAmount = (key: string, amount: number) => {
     if (!mounted) return "*****"
     return visibility[key] ? amount.toLocaleString('ar-YE') : "*****"
@@ -53,8 +54,13 @@ export default function Home() {
     if (auth) signOut(auth)
   }
 
-  // تجنب رندر أي محتوى يعتمد على الوقت أو الموقع قبل الـ Mount
-  if (!mounted) return <div className="min-h-screen bg-background" />
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary opacity-20" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -94,7 +100,7 @@ export default function Home() {
             </button>
           </div>
           <p className="text-4xl font-black tabular-nums tracking-tighter">
-            {formatAmount("profit", 2450000)} <span className="text-lg font-normal opacity-80">ر.ي</span>
+            {formatAmount("profit", 0)} <span className="text-lg font-normal opacity-80">ر.ي</span>
           </p>
         </div>
       </header>
@@ -117,7 +123,7 @@ export default function Home() {
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون لك</p>
                 <p className="text-xl font-black text-green-700 tabular-nums">
-                  {formatAmount("debtsToMe", 840000)} <span className="text-xs font-normal">ر.ي</span>
+                  {formatAmount("debtsToMe", 0)} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
@@ -138,7 +144,7 @@ export default function Home() {
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون عليك</p>
                 <p className="text-xl font-black text-red-700 tabular-nums">
-                  {formatAmount("debtsByMe", 320000)} <span className="text-xs font-normal">ر.ي</span>
+                  {formatAmount("debtsByMe", 0)} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
@@ -156,7 +162,7 @@ export default function Home() {
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
                 <p className="text-2xl font-black tabular-nums">
-                  1,215,000 <span className="text-sm font-normal opacity-70">ر.ي</span>
+                  0 <span className="text-sm font-normal opacity-70">ر.ي</span>
                 </p>
               </div>
             </div>

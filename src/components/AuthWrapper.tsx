@@ -14,7 +14,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  // المرحلة الأولى: الانتظار حتى يجهز المتصفح تماماً
+  // المرحلة الأولى: الانتظار حتى يجهز المتصفح تماماً لمنع Hydration Error
   if (!mounted) {
     return <div className="min-h-screen bg-background" />
   }
