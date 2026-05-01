@@ -2,13 +2,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth, useUser } from "@/firebase"
-import { onAuthStateChanged } from "firebase/auth"
+import { useUser } from "@/firebase"
 import { SplashScreen } from "./auth/SplashScreen"
 import { LoginPage } from "./auth/LoginPage"
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const auth = useAuth()
   const { user, isUserLoading } = useUser()
   const [mounted, setMounted] = useState(false)
 
@@ -16,7 +14,12 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  if (!mounted || isUserLoading) {
+  // منع أي رندر على السيرفر لتجنب Hydration errors
+  if (!mounted) {
+    return null
+  }
+
+  if (isUserLoading) {
     return <SplashScreen />
   }
 

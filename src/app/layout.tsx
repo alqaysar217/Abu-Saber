@@ -4,6 +4,13 @@ import { FirebaseClientProvider } from "@/firebase/client-provider"
 import { AuthWrapper } from "@/components/AuthWrapper"
 import './globals.css'
 import { Metadata, Viewport } from "next"
+import { Cairo } from 'next/font/google'
+
+const cairo = Cairo({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-cairo',
+})
 
 export const metadata: Metadata = {
   title: "أبو صابر - لتجارة الأسماك",
@@ -25,12 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased bg-background min-h-screen overscroll-none">
+      <body className={`${cairo.variable} font-body antialiased bg-background min-h-screen overscroll-none`}>
         <FirebaseClientProvider>
           <AuthWrapper>
             <div className="relative flex min-h-screen flex-col">

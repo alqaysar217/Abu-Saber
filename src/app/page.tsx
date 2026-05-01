@@ -53,9 +53,8 @@ export default function Home() {
     if (auth) signOut(auth)
   }
 
-  if (!mounted || isUserLoading) {
-    return null // AuthWrapper handles splash
-  }
+  // Hydration protection
+  if (!mounted) return null
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
