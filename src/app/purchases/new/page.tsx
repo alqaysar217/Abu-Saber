@@ -8,7 +8,6 @@ import {
   Save, 
   Loader2, 
   Calendar as CalendarIcon, 
-  UserPlus, 
   Ship, 
   User, 
   Fish, 
@@ -19,8 +18,10 @@ import {
   Plus, 
   Trash2,
   Table as TableIcon,
-  CreditCard,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Check,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,12 +34,26 @@ import { collection, doc, setDoc, serverTimestamp, query, where } from "firebase
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface PurchaseItem {
+  tempId: string
   fishType: string
   quantity: number
   pricePerKg: number
   lineTotal: number
+  paymentType: string // نقد, دين, جزئي
+  paidAmount: number
 }
 
 export default function NewPurchasePage() {
@@ -54,12 +69,15 @@ export default function NewPurchasePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
   // Items List State
-  const [currentItem, setCurrentItem] = useState({ fishType: "", quantity: "", pricePerKg: "" })
+  const [currentItem, setCurrentItem] = useState({ 
+    fishType: "", 
+    quantity: "", 
+    pricePerKg: "", 
+    paymentType: "نقد", 
+    paidAmount: "" 
+  })
   const [addedItems, setAddedItems] = useState<PurchaseItem[]>([])
-
-  // Payment State
-  const [paymentType, setPaymentType] = useState("نقد") // نقد, دين, جزئي
-  const [paidAmount, setPaidAmount] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -81,6 +99,8 @@ export default function NewPurchasePage() {
   const handleAddItem = () => {
     const qty = parseFloat(currentItem.quantity)
     const price = parseFloat(currentItem.pricePerKg)
+    const paid = parseFloat(currentItem.paidAmount) || 0
+    const lineTotal = qty * price
 
     if (!currentItem.fishType || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) {
       toast({
@@ -91,66 +111,72 @@ export default function NewPurchasePage() {
       return
     }
 
-    const newItem: PurchaseItem = {
-      fishType: currentItem.fishType,
-      quantity: qty,
-      pricePerKg: price,
-      lineTotal: qty * price
-    }
-
-    setAddedItems([newItem, ...addedItems])
-    setCurrentItem({ fishType: "", quantity: "", pricePerKg: "" })
-    
-    // Focus back to fish type input for faster entry
-    const fishInput = document.getElementById("fish-type-input")
-    if (fishInput) fishInput.focus()
-  }
-
-  const removeItem = (idx: number) => {
-    setAddedItems(addedItems.filter((_, i) => i !== idx))
-  }
-
-  const grandTotal = addedItems.reduce((acc, item) => acc + item.lineTotal, 0)
-
-  const handleSave = async () => {
-    if (!db || !user) return
-    if (!campaignId || !supplierId || addedItems.length === 0) {
+    if (currentItem.paymentType === "جزئي" && (paid <= 0 || paid >= lineTotal)) {
       toast({
         variant: "destructive",
-        title: "خطأ في الإدخال",
-        description: "يرجى تحديد الحملة والمورد وإضافة صنف واحد على الأقل",
+        title: "خطأ في السداد",
+        description: "في الدفع الجزئي، يجب أن يكون المبلغ المدفوع أكبر من 0 وأقل من الإجمالي",
       })
       return
     }
 
-    // Validation for partial payment
-    const partialAmount = parseFloat(paidAmount) || 0
-    if (paymentType === "جزئي" && (partialAmount <= 0 || partialAmount >= grandTotal)) {
+    const newItem: PurchaseItem = {
+      tempId: editingId || Math.random().toString(36).substr(2, 9),
+      fishType: currentItem.fishType,
+      quantity: qty,
+      pricePerKg: price,
+      lineTotal: lineTotal,
+      paymentType: currentItem.paymentType,
+      paidAmount: currentItem.paymentType === "نقد" ? lineTotal : (currentItem.paymentType === "دين" ? 0 : paid)
+    }
+
+    if (editingId) {
+      setAddedItems(addedItems.map(item => item.tempId === editingId ? newItem : item))
+      setEditingId(null)
+      toast({ title: "تم تحديث الصنف" })
+    } else {
+      setAddedItems([newItem, ...addedItems])
+      toast({ title: "تم إضافة الصنف للقائمة" })
+    }
+
+    setCurrentItem({ fishType: "", quantity: "", pricePerKg: "", paymentType: "نقد", paidAmount: "" })
+    const fishInput = document.getElementById("fish-type-input")
+    if (fishInput) fishInput.focus()
+  }
+
+  const handleEditItem = (item: PurchaseItem) => {
+    setEditingId(item.tempId)
+    setCurrentItem({
+      fishType: item.fishType,
+      quantity: item.quantity.toString(),
+      pricePerKg: item.pricePerKg.toString(),
+      paymentType: item.paymentType,
+      paidAmount: item.paymentType === "جزئي" ? item.paidAmount.toString() : ""
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleRemoveItem = (tempId: string) => {
+    setAddedItems(addedItems.filter(item => item.tempId !== tempId))
+    toast({ title: "تم حذف الصنف من القائمة" })
+  }
+
+  const grandTotal = addedItems.reduce((acc, item) => acc + item.lineTotal, 0)
+  const totalPaid = addedItems.reduce((acc, item) => acc + item.paidAmount, 0)
+  const totalDue = grandTotal - totalPaid
+
+  const handleFinalSave = async () => {
+    if (!db || !user) return
+    if (!campaignId || !supplierId || addedItems.length === 0) {
       toast({
         variant: "destructive",
-        title: "خطأ في المبلغ",
-        description: "في حالة الدفع الجزئي، يجب أن يكون المبلغ المدفوع أكبر من صفر وأقل من الإجمالي",
+        title: "خطأ",
+        description: "يرجى إكمال بيانات الحملة والمورد والأصناف",
       })
       return
     }
 
     setLoading(true)
-
-    // Calculate paid amount and status
-    let finalPaidAmount = 0
-    let status = "دين"
-
-    if (paymentType === "نقد") {
-      finalPaidAmount = grandTotal
-      status = "مدفوعة"
-    } else if (paymentType === "جزئي") {
-      finalPaidAmount = partialAmount
-      status = "جزئي"
-    } else {
-      finalPaidAmount = 0
-      status = "دين"
-    }
-
     const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
     
     const purchaseData = {
@@ -158,26 +184,28 @@ export default function NewPurchasePage() {
       campaignId,
       supplierId,
       totalAmount: grandTotal,
-      paidAmount: finalPaidAmount,
-      paymentType,
-      status,
+      paidAmount: totalPaid,
+      status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
       purchaseDate: new Date(date).toISOString(),
       userId: user.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
 
-    // 1. Save main Purchase doc
     setDoc(purchaseRef, purchaseData)
       .then(() => {
-        // 2. Save items into subcollection
         addedItems.forEach((item) => {
           const itemRef = doc(collection(purchaseRef, "items"))
           const itemData = {
             id: itemRef.id,
             purchaseId: purchaseRef.id,
             userId: user.uid,
-            ...item
+            fishType: item.fishType,
+            quantity: item.quantity,
+            unitPrice: item.pricePerKg,
+            lineTotal: item.lineTotal,
+            paymentType: item.paymentType,
+            paidAmount: item.paidAmount
           }
           setDoc(itemRef, itemData).catch(err => {
              errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -188,11 +216,8 @@ export default function NewPurchasePage() {
           })
         })
 
-        toast({
-          title: "تم بنجاح",
-          description: "تم تسجيل عملية الشراء بنجاح",
-        })
-        router.push("/")
+        toast({ title: "تم حفظ عملية الشراء بنجاح" })
+        router.push("/campaigns/" + campaignId)
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -202,14 +227,12 @@ export default function NewPurchasePage() {
         })
         errorEmitter.emit('permission-error', permissionError)
       })
-      .finally(() => {
-        setLoading(false)
-      })
+      .finally(() => setLoading(false))
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-10">
-      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-10">
+    <div className="flex flex-col min-h-screen bg-background pb-24">
+      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-20 shadow-sm">
         <button onClick={() => router.back()} className="p-2 -mr-2">
           <ChevronLeft className="w-6 h-6 rotate-180" />
         </button>
@@ -219,253 +242,255 @@ export default function NewPurchasePage() {
 
       <main className="p-4 space-y-6">
         {/* Section 1: Campaign & Supplier */}
-        <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
-          <CardHeader className="bg-orange-50 border-b border-orange-100">
-            <CardTitle className="text-md font-bold text-orange-700 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5" />
+        <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
+          <CardHeader className="bg-orange-50/50 border-b border-orange-100 p-4">
+            <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
               بيانات التوريد الأساسية
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-5">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-                <Ship className="w-3 h-3 text-primary" />
-                الحملة المرتبطة <span className="text-destructive">*</span>
-              </Label>
-              <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
-                <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {openCampaigns?.map((camp) => (
-                    <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-                <User className="w-3 h-3 text-primary" />
-                المورد <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
-                    <SelectTrigger className="h-11 rounded-xl">
-                      <SelectValue placeholder={loadingSuppliers ? "جاري التحميل..." : "اختر المورد"} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {suppliers?.map((sup) => (
-                        <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="h-11 w-11 p-0 rounded-xl"
-                  onClick={() => router.push("/suppliers/new")}
-                >
-                  <UserPlus className="w-4 h-4" />
-                </Button>
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-muted-foreground">الحملة المرتبطة *</Label>
+                <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
+                  <SelectTrigger className="h-10 rounded-xl">
+                    <SelectValue placeholder="اختر" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {openCampaigns?.map((camp) => (
+                      <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-muted-foreground">المورد *</Label>
+                <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
+                  <SelectTrigger className="h-10 rounded-xl">
+                    <SelectValue placeholder="اختر" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {suppliers?.map((sup) => (
+                      <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="purchase-date" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-                <CalendarIcon className="w-3 h-3 text-primary" />
-                تاريخ الشراء
-              </Label>
-              <div className="relative">
-                <Input 
-                  id="purchase-date"
-                  type="date" 
-                  className="h-11 rounded-xl text-right pr-10" 
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold text-muted-foreground">تاريخ الشراء</Label>
+              <Input type="date" className="h-10 rounded-xl text-right" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 2: Item Entry */}
-        <Card className="border-2 border-primary/10 shadow-md rounded-2xl bg-white">
+        {/* Section 2: Item Entry Form */}
+        <Card className={cn(
+          "border-2 shadow-md rounded-2xl transition-colors duration-300 bg-white",
+          editingId ? "border-accent" : "border-primary/10"
+        )}>
            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
-                <Fish className="w-4 h-4" />
-                إضافة صنف سمك جديد
+              <CardTitle className={cn(
+                "text-sm font-bold flex items-center gap-2",
+                editingId ? "text-accent" : "text-primary"
+              )}>
+                {editingId ? <Edit3 className="w-4 h-4" /> : <Fish className="w-4 h-4" />}
+                {editingId ? "تعديل الصنف الحالي" : "إضافة صنف سمك جديد"}
               </CardTitle>
            </CardHeader>
            <CardContent className="p-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fish-type-input" className="text-[10px] font-bold flex items-center gap-2">
-                  <Fish className="w-3 h-3 text-primary" />
-                  نوع السمك
-                </Label>
+                <Label htmlFor="fish-type-input" className="text-[10px] font-bold">نوع السمك</Label>
                 <Input 
                   id="fish-type-input"
-                  placeholder="مثال: بياض، هامور، صابات..." 
-                  className="h-11 rounded-xl border-primary/20"
+                  placeholder="مثال: هامور، صابات..." 
+                  className="h-11 rounded-xl"
                   value={currentItem.fishType}
                   onChange={(e) => setCurrentItem({...currentItem, fishType: e.target.value})}
                 />
               </div>
+              
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="qty-input" className="text-[10px] font-bold flex items-center gap-2">
-                    <Scale className="w-3 h-3 text-primary" />
-                    الكمية (كجم)
-                  </Label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold">الكمية (كجم)</Label>
                   <Input 
-                    id="qty-input"
                     type="number" 
                     placeholder="0.00" 
-                    className="h-11 rounded-xl border-primary/20"
+                    className="h-11 rounded-xl"
                     value={currentItem.quantity}
                     onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="price-input" className="text-[10px] font-bold flex items-center gap-2">
-                    <Coins className="w-3 h-3 text-primary" />
-                    سعر الكيلو (ر.ي)
-                  </Label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold">سعر الكيلو (ر.ي)</Label>
                   <Input 
-                    id="price-input"
                     type="number" 
                     placeholder="0" 
-                    className="h-11 rounded-xl border-primary/20"
+                    className="h-11 rounded-xl"
                     value={currentItem.pricePerKg}
                     onChange={(e) => setCurrentItem({...currentItem, pricePerKg: e.target.value})}
                   />
                 </div>
               </div>
-              <Button 
-                onClick={handleAddItem} 
-                className="w-full h-12 rounded-xl lux-gradient text-white font-bold gap-2 shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                إضافة للقائمة
-              </Button>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold">طريقة السداد لهذا الصنف</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["نقد", "دين", "جزئي"].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setCurrentItem({...currentItem, paymentType: type})}
+                      className={cn(
+                        "py-2.5 text-[11px] font-bold rounded-xl border transition-all",
+                        currentItem.paymentType === type 
+                          ? 'bg-primary text-white border-primary shadow-sm' 
+                          : 'bg-muted/30 text-muted-foreground border-border'
+                      )}
+                    >
+                      {type === "نقد" ? "نقد كاش" : (type === "دين" ? "على الحساب" : "دفع جزئي")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {currentItem.paymentType === "جزئي" && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                  <Label className="text-[10px] font-bold text-accent">المبلغ المسدد لهذا الصنف (ر.ي)</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="أدخل المبلغ المسدد..." 
+                    className="h-11 rounded-xl border-accent/30 text-accent font-black"
+                    value={currentItem.paidAmount}
+                    onChange={(e) => setCurrentItem({...currentItem, paidAmount: e.target.value})}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAddItem} 
+                  className={cn(
+                    "flex-1 h-12 rounded-xl font-bold gap-2 shadow-lg",
+                    editingId ? "bg-accent hover:bg-accent/90" : "lux-gradient"
+                  )}
+                >
+                  {editingId ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                  {editingId ? "حفظ التعديلات" : "إضافة للقائمة"}
+                </Button>
+                {editingId && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setEditingId(null)
+                      setCurrentItem({ fishType: "", quantity: "", pricePerKg: "", paymentType: "نقد", paidAmount: "" })
+                    }}
+                    className="h-12 w-12 rounded-xl"
+                  >
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
            </CardContent>
         </Card>
 
-        {/* Section 3: Added Items List */}
+        {/* Section 3: Added Items List (Table-like for Mobile) */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-2">
-            <h3 className="text-sm font-bold flex items-center gap-2">
+            <h3 className="text-sm font-black flex items-center gap-2">
               <TableIcon className="w-4 h-4 text-primary" />
               الأصناف المشتراة ({addedItems.length})
             </h3>
-            {addedItems.length > 0 && (
-              <span className="text-xs font-bold text-orange-600 tabular-nums">الإجمالي: {grandTotal.toLocaleString()} ر.ي</span>
-            )}
           </div>
           
           <div className="space-y-3">
-            {addedItems.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm animate-in slide-in-from-right-2">
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold">{item.fishType}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {item.quantity} كجم × {item.pricePerKg.toLocaleString()} ر.ي
-                  </span>
+            {addedItems.map((item) => (
+              <div key={item.tempId} className="bg-white rounded-[1.5rem] border border-border/50 shadow-sm overflow-hidden animate-in fade-in slide-in-from-right-2">
+                <div className="p-4 flex justify-between items-start">
+                  <div className="space-y-1">
+                    <span className="text-md font-black block">{item.fishType}</span>
+                    <div className="flex gap-3 text-[10px] font-bold text-muted-foreground">
+                      <span className="flex items-center gap-1"><Scale className="w-3 h-3" /> {item.quantity} كجم</span>
+                      <span className="flex items-center gap-1"><Coins className="w-3 h-3" /> {item.pricePerKg.toLocaleString()} ر.ي</span>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-black text-orange-600 block">{item.lineTotal.toLocaleString()} ر.ي</span>
+                    <span className={cn(
+                      "text-[9px] font-black px-2 py-0.5 rounded-full inline-block mt-1",
+                      item.paymentType === "نقد" ? "bg-green-100 text-green-700" : (item.paymentType === "دين" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")
+                    )}>
+                      {item.paymentType === "نقد" ? "نقد" : (item.paymentType === "دين" ? "دين" : `جزئي (${item.paidAmount.toLocaleString()})`)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-black tabular-nums">{item.lineTotal.toLocaleString()} ر.ي</span>
-                  <button onClick={() => removeItem(idx)} className="text-destructive p-2 hover:bg-destructive/10 rounded-full transition-colors">
-                    <Trash2 className="w-4 h-4" />
+                <div className="px-4 py-3 bg-muted/30 border-t border-dashed flex justify-end gap-4">
+                  <button onClick={() => handleEditItem(item)} className="text-accent text-[11px] font-black flex items-center gap-1">
+                    <Edit3 className="w-3.5 h-3.5" /> تعديل
                   </button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="text-destructive text-[11px] font-black flex items-center gap-1">
+                        <Trash2 className="w-3.5 h-3.5" /> حذف
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-3xl max-w-[90%]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-right">تأكيد حذف الصنف</AlertDialogTitle>
+                        <AlertDialogDescription className="text-right">
+                          هل أنت متأكد من رغبتك في حذف ({item.fishType}) من قائمة المشتريات؟
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter className="flex-row gap-2">
+                        <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleRemoveItem(item.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none">نعم، احذف</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             ))}
             
             {addedItems.length === 0 && (
-              <div className="text-center py-10 text-muted-foreground text-xs border-2 border-dashed rounded-2xl">
-                لم يتم إضافة أي أصناف بعد
+              <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem] bg-white/50">
+                لا توجد أصناف في القائمة حالياً
               </div>
             )}
           </div>
         </div>
 
-        {/* Section 4: Payment Options */}
+        {/* Summary & Save */}
         {addedItems.length > 0 && (
-          <Card className="border-none shadow-md rounded-[1.5rem] bg-secondary/10 overflow-hidden">
-            <CardHeader className="p-4 pb-2 bg-primary/5">
-               <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
-                  <Wallet className="w-4 h-4" />
-                  طريقة السداد للفاتورة
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "نقد", label: "نقد كاش" },
-                  { id: "دين", label: "على الحساب" },
-                  { id: "جزئي", label: "دفع جزئي" }
-                ].map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => setPaymentType(option.id)}
-                    className={cn(
-                      "py-3 text-xs font-bold rounded-xl border transition-all",
-                      paymentType === option.id 
-                        ? 'bg-primary text-white border-primary shadow-md' 
-                        : 'bg-white text-muted-foreground border-border'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              {paymentType === "جزئي" && (
-                <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <Label htmlFor="paid-amount" className="text-xs font-bold flex items-center gap-2">
-                    <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    المبلغ المسدد الآن (ر.ي)
-                  </Label>
-                  <Input 
-                    id="paid-amount"
-                    type="number" 
-                    placeholder="أدخل المبلغ المسدد..." 
-                    className="h-11 rounded-xl border-primary/30 text-lg font-black text-primary"
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
-                  />
-                  <div className="p-3 bg-white rounded-xl border border-dashed flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-[10px] text-muted-foreground font-bold">
-                       <span>إجمالي الفاتورة:</span>
-                       <span>{grandTotal.toLocaleString()} ر.ي</span>
+          <div className="space-y-4 animate-in slide-in-from-bottom-5">
+            <Card className="border-none shadow-lg rounded-[2rem] bg-primary text-white overflow-hidden">
+               <CardContent className="p-6">
+                  <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
+                    <span className="text-xs font-bold opacity-80">إجمالي الفاتورة:</span>
+                    <span className="text-xl font-black">{grandTotal.toLocaleString()} ر.ي</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold opacity-70 block uppercase">تم سداده</span>
+                      <span className="text-md font-black text-accent-foreground">{totalPaid.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-black text-orange-600">
-                       <span className="flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          المتبقي كدين:
-                       </span>
-                       <span>{ (grandTotal - (parseFloat(paidAmount) || 0)).toLocaleString() } ر.ي</span>
+                    <div className="space-y-1 border-r border-white/10">
+                      <span className="text-[10px] font-bold opacity-70 block uppercase">متبقي (دين)</span>
+                      <span className={cn("text-md font-black", totalDue > 0 ? "text-orange-400" : "text-white")}>
+                        {totalDue.toLocaleString()}
+                      </span>
                     </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+               </CardContent>
+            </Card>
 
-        {/* Footer Save Button */}
-        {addedItems.length > 0 && (
-          <div className="pt-4 sticky bottom-4">
             <Button 
-              className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl gap-2 bg-orange-600 hover:bg-orange-700" 
-              onClick={handleSave}
+              className="w-full h-14 rounded-2xl text-lg font-black shadow-xl gap-2 bg-orange-600 hover:bg-orange-700 transition-all active:scale-95" 
+              onClick={handleFinalSave}
               disabled={loading}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-              حفظ عملية الشراء ({grandTotal.toLocaleString()} ر.ي)
+              حفظ وتأكيد عملية الشراء
             </Button>
           </div>
         )}
@@ -473,4 +498,3 @@ export default function NewPurchasePage() {
     </div>
   )
 }
-
