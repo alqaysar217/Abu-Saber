@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,6 +22,7 @@ const expenseTypes = [
   { label: "عمال", icon: Users, value: "عمال" },
   { label: "ثلج", icon: Snowflake, value: "ثلج" },
   { label: "ملح", icon: Waves, value: "ملح" },
+  { label: "صيانة", icon: Car, value: "صيانة" },
   { label: "أكياس", icon: Package, value: "أكياس" },
   { label: "أكل", icon: Utensils, value: "أكل" },
   { label: "أخرى", icon: MoreHorizontal, value: "أخرى" },
