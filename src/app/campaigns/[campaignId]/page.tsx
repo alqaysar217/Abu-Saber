@@ -71,6 +71,7 @@ import { cn } from "@/lib/utils"
 
 function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, suppliers: any[], userId: string }) {
   const db = useFirestore()
+  const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const supplier = suppliers?.find(s => s.id === purchase.supplierId)
@@ -203,7 +204,11 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogContent>
               </AlertDialog>
               
-              <Button variant="outline" className="flex-1 rounded-xl h-12 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 font-bold" onClick={() => toast({ title: "ميزة التعديل قادمة قريباً" })}>
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-xl h-12 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 font-bold" 
+                onClick={() => router.push(`/purchases/${purchase.id}/edit`)}
+              >
                 <Edit3 className="w-4 h-4" />
                 تعديل البيانات
               </Button>
