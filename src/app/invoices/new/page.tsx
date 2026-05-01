@@ -30,7 +30,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebas
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { cn } from "@/lib/utils"
+import { cn } from "@/utils"
 
 interface InvoiceItem {
   fishType: string
@@ -162,7 +162,7 @@ export default function NewInvoicePage() {
                 <Ship className="w-3 h-3 text-primary" />
                 الحملة المرتبطة
               </Label>
-              <Select onValueChange={setCampaignId} value={campaignId}>
+              <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر الحملة" />
                 </SelectTrigger>
@@ -179,7 +179,7 @@ export default function NewInvoicePage() {
                 <User className="w-3 h-3 text-primary" />
                 العميل / المشتري
               </Label>
-              <Select onValueChange={setCustomerId} value={customerId}>
+              <Select onValueChange={setCustomerId} value={customerId} dir="rtl">
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر العميل" />
                 </SelectTrigger>

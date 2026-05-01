@@ -132,7 +132,7 @@ export default function NewPurchasePage() {
                 <Ship className="w-4 h-4 text-primary" />
                 الحملة <span className="text-destructive">*</span>
               </Label>
-              <Select onValueChange={setCampaignId}>
+              <Select onValueChange={setCampaignId} dir="rtl">
                 <SelectTrigger className="h-12 rounded-xl">
                   <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
                 </SelectTrigger>
@@ -151,7 +151,7 @@ export default function NewPurchasePage() {
               </Label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Select onValueChange={setSupplierId}>
+                  <Select onValueChange={setSupplierId} dir="rtl">
                     <SelectTrigger className="h-12 rounded-xl">
                       <SelectValue placeholder={loadingSuppliers ? "جاري التحميل..." : "اختر المورد"} />
                     </SelectTrigger>
@@ -226,7 +226,7 @@ export default function NewPurchasePage() {
                   <Wallet className="w-4 h-4 text-primary" />
                   طريقة الدفع
                 </Label>
-                <Select onValueChange={setPaymentType} defaultValue={paymentType}>
+                <Select onValueChange={setPaymentType} defaultValue={paymentType} dir="rtl">
                   <SelectTrigger className="h-12 rounded-xl">
                     <SelectValue />
                   </SelectTrigger>

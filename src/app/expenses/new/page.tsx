@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -112,8 +112,11 @@ export default function NewExpensePage() {
           </CardHeader>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label className="text-sm font-bold">اختيار الحملة <span className="text-destructive">*</span></Label>
-              <Select onValueChange={setCampaignId}>
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <LayoutList className="w-4 h-4 text-primary" />
+                اختيار الحملة <span className="text-destructive">*</span>
+              </Label>
+              <Select onValueChange={setCampaignId} dir="rtl">
                 <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
                   <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
                 </SelectTrigger>
@@ -126,7 +129,10 @@ export default function NewExpensePage() {
             </div>
 
             <div className="space-y-3">
-              <Label className="text-sm font-bold">نوع المصروف <span className="text-destructive">*</span></Label>
+              <Label className="text-sm font-bold flex items-center gap-2">
+                <MoreHorizontal className="w-4 h-4 text-primary" />
+                نوع المصروف <span className="text-destructive">*</span>
+              </Label>
               <div className="grid grid-cols-4 gap-2">
                 {expenseTypes.map((item) => (
                   <button
@@ -148,7 +154,10 @@ export default function NewExpensePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount" className="text-sm font-bold">المبلغ (ر.ي) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="amount" className="text-sm font-bold flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                المبلغ (ر.ي) <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 id="amount"
                 type="number"
@@ -161,8 +170,11 @@ export default function NewExpensePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-bold">طريقة الدفع</Label>
-                <Select onValueChange={setPaymentType} defaultValue={paymentType}>
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  طريقة الدفع
+                </Label>
+                <Select onValueChange={setPaymentType} defaultValue={paymentType} dir="rtl">
                   <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
                     <SelectValue placeholder="اختر الطريقة" />
                   </SelectTrigger>
@@ -174,7 +186,10 @@ export default function NewExpensePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expense-date" className="text-sm font-bold">التاريخ</Label>
+                <Label htmlFor="expense-date" className="text-sm font-bold flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-primary" />
+                  التاريخ
+                </Label>
                 <div className="relative">
                   <Input 
                     id="expense-date"
@@ -189,7 +204,10 @@ export default function NewExpensePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-bold">ملاحظات (اختياري)</Label>
+              <Label htmlFor="notes" className="text-sm font-bold flex items-center gap-2">
+                <MoreHorizontal className="w-4 h-4 text-primary" />
+                ملاحظات (اختياري)
+              </Label>
               <Textarea 
                 id="notes"
                 placeholder="تفاصيل إضافية..." 
