@@ -238,14 +238,14 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
-    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"), orderBy("createdAt", "desc"))
+    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
   }, [db, user, campaignId])
 
   const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId), orderBy("createdAt", "desc"))
+    if (!db || !user || !campaignId) return null
+    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId))
   }, [db, user, campaignId])
 
   const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
@@ -328,19 +328,17 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
-                  <AlertDialogDescription asChild>
-                    <div className="text-right text-sm">
-                      <p className="text-muted-foreground">هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟</p>
-                      <div className="mt-4">
-                        <span className="font-bold block text-xs">عند الأرشفة:</span>
-                        <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
-                          <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
-                          <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
-                          <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
-                        </ul>
-                      </div>
+                  <div className="text-right text-sm">
+                    <p className="text-muted-foreground">هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟</p>
+                    <div className="mt-4">
+                      <span className="font-bold block text-xs">عند الأرشفة:</span>
+                      <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
+                        <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
+                        <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
+                        <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
+                      </ul>
                     </div>
-                  </AlertDialogDescription>
+                  </div>
                 </div>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row gap-3 mt-4">
