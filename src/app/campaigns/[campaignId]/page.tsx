@@ -109,16 +109,16 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold">{supplier?.name || "مورد غير معروف"}</span>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
                 <Calendar className="w-3 h-3" />
-                {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy") : "No Date"}
+                {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
               </span>
             </div>
           </div>
           <div className="text-right">
             <span className="text-sm font-black text-orange-600 tabular-nums">{purchase.totalAmount?.toLocaleString('en-US')} ر.ي</span>
             <div className="flex items-center justify-end gap-1 mt-1">
-               <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none">
+               <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none font-bold">
                 {purchase.status || "N/A"}
                </Badge>
                <Eye className="w-3 h-3 text-muted-foreground" />
@@ -139,7 +139,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
           </div>
           <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
              <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> المورد: {supplier?.name}</p>
-             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy") : ""}</p>
+             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
           </div>
         </DialogHeader>
         
@@ -161,16 +161,16 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                     {items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
-                        <TableCell className="text-center text-xs tabular-nums">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums font-bold">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
                         <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal?.toLocaleString('en-US')}</TableCell>
-                        <TableCell className="text-center text-[10px]">{item.paymentType}</TableCell>
+                        <TableCell className="text-center text-[10px] font-bold">{item.paymentType}</TableCell>
                       </TableRow>
                     ))}
                  </TableBody>
                </Table>
              </div>
            ) : (
-             <div className="text-center py-10 text-muted-foreground text-xs">لا توجد أصناف مسجلة</div>
+             <div className="text-center py-10 text-muted-foreground text-xs font-bold">لا توجد أصناف مسجلة</div>
            )}
 
            <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 flex justify-between items-center">
@@ -181,29 +181,29 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
            <div className="flex gap-3 pt-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md">
+                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold">
                     <Trash2 className="w-4 h-4" />
                     حذف الفاتورة
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right text-destructive flex items-center justify-end gap-2">
+                    <AlertDialogTitle className="text-right text-destructive flex items-center justify-start gap-2 font-bold">
                       <AlertCircle className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-right">
+                    <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="flex-row gap-2 mt-4">
-                    <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeletePurchase} className="flex-1 rounded-xl bg-destructive text-white border-none">نعم، احذف</AlertDialogAction>
+                    <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeletePurchase} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
               
-              <Button variant="outline" className="flex-1 rounded-xl h-12 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50" onClick={() => toast({ title: "ميزة التعديل قادمة قريباً" })}>
+              <Button variant="outline" className="flex-1 rounded-xl h-12 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 font-bold" onClick={() => toast({ title: "ميزة التعديل قادمة قريباً" })}>
                 <Edit3 className="w-4 h-4" />
                 تعديل البيانات
               </Button>
@@ -294,7 +294,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
         <h2 className="text-xl font-bold mb-2">عذراً، لم يتم العثور على الحملة</h2>
-        <Button onClick={() => router.push("/campaigns")}>العودة لقائمة الحملات</Button>
+        <Button onClick={() => router.push("/campaigns")} className="font-bold">العودة لقائمة الحملات</Button>
       </div>
     )
   }
@@ -323,16 +323,16 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600">
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">
-                    <p className="text-muted-foreground">هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟</p>
+                    <p className="text-muted-foreground font-medium">هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟</p>
                     <div className="mt-4">
                       <span className="font-bold block text-xs">عند الأرشفة:</span>
-                      <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
+                      <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80 font-bold">
                         <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
                         <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
                         <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
@@ -342,10 +342,10 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                 </div>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row gap-3 mt-4">
-                <AlertDialogCancel className="flex-1 rounded-xl border-muted-foreground/20">تراجع</AlertDialogCancel>
+                <AlertDialogCancel className="flex-1 rounded-xl border-muted-foreground/20 font-bold">تراجع</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleArchiveCampaign}
-                  className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white border-none"
+                  className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white border-none font-bold"
                   disabled={archiving}
                 >
                   {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : "نعم، أرشفة"}
@@ -364,7 +364,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         {isCompleted && (
           <div className="p-4 bg-muted border-2 border-dashed rounded-2xl flex items-center gap-3 text-muted-foreground">
             <AlertCircle className="w-5 h-5" />
-            <p className="text-xs font-bold">هذه الحملة مؤرشفة. تم إغلاقها في {campaign.endDate ? format(new Date(campaign.endDate), "dd MMM yyyy") : ""}</p>
+            <p className="text-xs font-bold">هذه الحملة مؤرشفة. تم إغلاقها في {campaign.endDate ? format(new Date(campaign.endDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
           </div>
         )}
 
@@ -373,7 +373,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
             <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة النهائية</span>
             <span className="text-4xl font-black tabular-nums">{totalCost.toLocaleString('en-US')}</span>
-            <span className="text-xs opacity-70">ريال يمني</span>
+            <span className="text-xs opacity-70 font-bold">ريال يمني</span>
           </CardContent>
         </Card>
 
@@ -428,7 +428,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                     ملاحظات الحملة
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed">
+                <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed font-medium">
                   {campaign.notes}
                 </CardContent>
               </Card>
@@ -441,7 +441,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                 <PurchaseDetailRow key={p.id} purchase={p} suppliers={suppliers || []} userId={user.uid} />
               ))
             ) : (
-              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد عمليات شراء لهذه الحملة</div>
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl font-bold">لا توجد عمليات شراء لهذه الحملة</div>
             )}
           </TabsContent>
 
@@ -468,18 +468,18 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{e.type}</span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{e.notes || "لا يوجد ملاحظات"}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px] font-medium">{e.notes || "لا يوجد ملاحظات"}</span>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString('en-US')} ر.ي</span>
-                      <p className="text-[10px] text-muted-foreground font-bold">{e.date ? format(new Date(e.date), "dd MMM") : ""}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold">{e.date ? format(new Date(e.date), "dd MMM", { locale: ar }) : ""}</p>
                     </div>
                   </div>
                 )
               })
             ) : (
-              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد مصاريف لهذه الحملة</div>
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl font-bold">لا توجد مصاريف لهذه الحملة</div>
             )}
           </TabsContent>
         </Tabs>
