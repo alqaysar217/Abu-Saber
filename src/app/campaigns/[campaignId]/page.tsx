@@ -77,6 +77,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
     )
   }
 
+  // Active tab styling classes
+  const activeTabClass = "data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20">
       <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-10">
@@ -96,31 +99,31 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
       <main className="p-4 space-y-6">
         <Card className="border-none shadow-sm rounded-2xl lux-gradient text-white">
           <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة (مشتريات + مصاريف)</span>
+            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة</span>
             <span className="text-3xl font-black tabular-nums">{totalCost.toLocaleString()}</span>
             <span className="text-xs opacity-70">ريال يمني</span>
           </CardContent>
         </Card>
 
         <Tabs defaultValue="overview" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner">
+          <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>نظرة عامة</span>
             </TabsTrigger>
             <TabsTrigger 
               value="purchases" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
             >
               <ShoppingBag className="w-4 h-4" />
               <span>المشتريات</span>
             </TabsTrigger>
             <TabsTrigger 
               value="expenses" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+              className={`rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 ${activeTabClass}`}
             >
               <Receipt className="w-4 h-4" />
               <span>المصاريف</span>
