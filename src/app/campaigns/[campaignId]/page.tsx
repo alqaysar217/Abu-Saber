@@ -193,21 +193,21 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>نظرة عامة</span>
             </TabsTrigger>
             <TabsTrigger 
               value="purchases" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>المشتريات</span>
             </TabsTrigger>
             <TabsTrigger 
               value="expenses" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <Receipt className="w-4 h-4" />
               <span>المصاريف</span>
