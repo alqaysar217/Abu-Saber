@@ -29,6 +29,35 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["campaignId", "type", "amount", "paymentType", "date"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Details of fish suppliers",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Fish purchase records from suppliers",
+      "type": "object",
+      "properties": {
+        "campaignId": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "fishType": { "type": "string" },
+        "quantity": { "type": "number" },
+        "pricePerKg": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["نقد", "دين"] },
+        "date": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["campaignId", "supplierId", "fishType", "quantity", "pricePerKg", "paymentType"]
     }
   },
   "auth": {
@@ -42,6 +71,14 @@
     "/expenses/{expenseId}": {
       "schema": "#/backend/entities/Expense",
       "description": "Store operational expenses"
+    },
+    "/suppliers/{supplierId}": {
+      "schema": "#/backend/entities/Supplier",
+      "description": "Store supplier information"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "#/backend/entities/Purchase",
+      "description": "Store fish purchase records"
     }
   }
 }
