@@ -15,7 +15,10 @@ import {
   Utensils, 
   MoreHorizontal,
   Loader2,
-  Calendar
+  Calendar,
+  LayoutDashboard,
+  ShoppingBag,
+  Receipt
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,28 +103,31 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         </Card>
 
         <Tabs defaultValue="overview" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-3 h-12 rounded-2xl p-1 mb-6 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner">
             <TabsTrigger 
               value="overview" 
-              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
             >
-              نظرة عامة
+              <LayoutDashboard className="w-4 h-4" />
+              <span>نظرة عامة</span>
             </TabsTrigger>
             <TabsTrigger 
               value="purchases" 
-              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
             >
-              المشتريات
+              <ShoppingBag className="w-4 h-4" />
+              <span>المشتريات</span>
             </TabsTrigger>
             <TabsTrigger 
               value="expenses" 
-              className="rounded-xl text-xs font-bold data-[state=active]:lux-gradient data-[state=active]:text-white transition-all duration-300"
+              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
             >
-              المصاريف
+              <Receipt className="w-4 h-4" />
+              <span>المصاريف</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4 outline-none">
+          <TabsContent value="overview" className="space-y-4 outline-none animate-in fade-in duration-300">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-orange-50 rounded-2xl space-y-1">
                 <div className="flex items-center gap-2 text-orange-600 mb-1">
@@ -150,7 +156,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             )}
           </TabsContent>
 
-          <TabsContent value="purchases" className="space-y-3 outline-none">
+          <TabsContent value="purchases" className="space-y-3 outline-none animate-in fade-in duration-300">
             {purchases && purchases.length > 0 ? (
               purchases.map((p: any) => (
                 <div key={p.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
@@ -171,7 +177,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             )}
           </TabsContent>
 
-          <TabsContent value="expenses" className="space-y-3 outline-none">
+          <TabsContent value="expenses" className="space-y-3 outline-none animate-in fade-in duration-300">
              {expenses && expenses.length > 0 ? (
               expenses.map((e: any) => {
                 const typeIcon = {
