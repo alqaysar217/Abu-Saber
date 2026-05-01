@@ -16,7 +16,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   // منع أي رندر على السيرفر لتجنب Hydration errors
   if (!mounted) {
-    return null
+    return <div className="min-h-screen bg-background" />
   }
 
   if (isUserLoading) {
@@ -27,5 +27,9 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
     return <LoginPage />
   }
 
-  return <>{children}</>
+  return (
+    <div className="relative flex min-h-screen flex-col">
+      {children}
+    </div>
+  )
 }

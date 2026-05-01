@@ -28,7 +28,7 @@ export function SplashScreen() {
       <p className="text-white/70 text-sm font-bold mb-8">لتجارة الأسماك - إدارة متكاملة</p>
       <div className="flex flex-col items-center gap-2">
         <Loader2 className="w-6 h-6 animate-spin text-white/50" />
-        <span className="text-[10px] uppercase tracking-widest text-white/40">جاري التحميل</span>
+        <span className="text-[10px] uppercase tracking-widest text-white/40">جاري التجهيز</span>
       </div>
     </div>
   )

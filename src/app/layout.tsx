@@ -35,9 +35,7 @@ export default function RootLayout({
       <body className={`${cairo.variable} font-body antialiased bg-background min-h-screen overscroll-none`}>
         <FirebaseClientProvider>
           <AuthWrapper>
-            <div className="relative flex min-h-screen flex-col">
-              {children}
-            </div>
+            {children}
             <Toaster />
           </AuthWrapper>
         </FirebaseClientProvider>

@@ -30,8 +30,7 @@ export function LoginPage() {
     setLoading(true)
     setError("")
 
-    // Firebase password auth expects email format. 
-    // For simplicity, we'll append a domain to the phone number.
+    // Firebase password auth expects email format for simplicity in this demo
     const email = `${phone.trim()}@abosaber.com`
 
     try {
@@ -39,11 +38,11 @@ export function LoginPage() {
       toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بنجاح" })
     } catch (err: any) {
       console.error(err)
-      setError("فشل تسجيل الدخول. تأكد من البيانات.")
+      setError("رقم الهاتف أو كلمة السر غير صحيحة")
       toast({ 
         variant: "destructive", 
         title: "خطأ في الدخول", 
-        description: "رقم الهاتف أو كلمة السر غير صحيحة" 
+        description: "فشل التحقق من البيانات" 
       })
     } finally {
       setLoading(false)
@@ -55,7 +54,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
         <CardHeader className="lux-gradient text-white text-center pb-10 pt-10">
           <CardTitle className="text-2xl font-black">تسجيل الدخول</CardTitle>
-          <p className="text-white/60 text-xs mt-1">أهلاً بك في نظام أبو صابر</p>
+          <p className="text-white/60 text-xs mt-1">نظام أبو صابر لإدارة تجارة الأسماك</p>
         </CardHeader>
         <CardContent className="p-8 -mt-6 bg-white rounded-t-[2.5rem] space-y-6">
           {error && (
@@ -114,7 +113,7 @@ export function LoginPage() {
 
           <div className="text-center">
             <p className="text-[10px] text-muted-foreground">
-              هذا النظام مخصص لمستخدمي مؤسسة أبو صابر فقط.
+              بمجرد تسجيل الدخول، فإنك توافق على سياسات الخصوصية الخاصة بالمؤسسة.
             </p>
           </div>
         </CardContent>

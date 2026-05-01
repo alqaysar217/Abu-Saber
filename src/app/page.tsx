@@ -13,7 +13,7 @@ import { collection, query, limit, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 
 export default function Home() {
-  const { user, isUserLoading } = useUser()
+  const { user } = useUser()
   const auth = useAuth()
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
@@ -53,8 +53,7 @@ export default function Home() {
     if (auth) signOut(auth)
   }
 
-  // Hydration protection
-  if (!mounted) return null
+  if (!mounted) return <div className="min-h-screen bg-background" />
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
