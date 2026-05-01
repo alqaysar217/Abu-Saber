@@ -30,7 +30,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebas
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { cn } from "@/utils"
+import { cn } from "@/lib/utils"
 
 interface InvoiceItem {
   fishType: string
@@ -166,7 +166,7 @@ export default function NewInvoicePage() {
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر الحملة" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {openCampaigns?.map((camp) => (
                     <SelectItem key={camp.id} value={camp.id}>{camp.name}</SelectItem>
                   ))}
@@ -183,7 +183,7 @@ export default function NewInvoicePage() {
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر العميل" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {customers?.map((cust) => (
                     <SelectItem key={cust.id} value={cust.id}>{cust.name}</SelectItem>
                   ))}
