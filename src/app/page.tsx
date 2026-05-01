@@ -6,13 +6,15 @@ import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2 } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2, LogOut } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase"
 import { collection, query, limit, orderBy } from "firebase/firestore"
+import { signOut } from "firebase/auth"
 
 export default function Home() {
   const { user, isUserLoading } = useUser()
+  const auth = useAuth()
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
@@ -47,12 +49,12 @@ export default function Home() {
 
   const { data: recentInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
 
+  const handleLogout = () => {
+    if (auth) signOut(auth)
+  }
+
   if (!mounted || isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    )
+    return null // AuthWrapper handles splash
   }
 
   return (
@@ -69,12 +71,18 @@ export default function Home() {
                   width={48} 
                   height={48} 
                   className="object-cover"
-                  data-ai-hint={logo.imageHint}
+                  data-ai-hint="fish logo"
                 />
               )}
             </div>
             <h1 className="text-2xl font-black tracking-tight">أبو صابر</h1>
           </div>
+          <button 
+            onClick={handleLogout}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2">
