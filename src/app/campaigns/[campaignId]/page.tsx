@@ -142,22 +142,32 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         {!isCompleted ? (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-2 -ml-2 text-muted-foreground hover:text-primary transition-colors">
+              <button className="p-2 -ml-2 text-muted-foreground hover:text-orange-600 transition-colors">
                 <Archive className="w-5 h-5" />
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right">أرشفة الحملة؟</AlertDialogTitle>
-                <AlertDialogDescription className="text-right">
-                  سيتم تحويل حالة الحملة إلى "مكتملة". لن تتمكن من إضافة مصاريف أو مشتريات جديدة إليها لاحقاً بسهولة.
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600">
+                  <AlertCircle className="w-5 h-5" />
+                  تأكيد أرشفة الحملة
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-right text-sm leading-relaxed">
+                  هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟
+                  <br />
+                  <span className="font-bold block mt-2">عند الأرشفة:</span>
+                  <ul className="list-disc list-inside mt-1 space-y-1 text-xs opacity-80">
+                    <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
+                    <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
+                    <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
+                  </ul>
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="flex-row gap-3">
-                <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
+              <AlertDialogFooter className="flex-row gap-3 mt-4">
+                <AlertDialogCancel className="flex-1 rounded-xl border-muted-foreground/20">تراجع</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleArchiveCampaign}
-                  className="flex-1 rounded-xl lux-gradient text-white"
+                  className="flex-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white border-none"
                   disabled={archiving}
                 >
                   {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : "نعم، أرشفة"}
