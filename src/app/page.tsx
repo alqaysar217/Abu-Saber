@@ -27,6 +27,7 @@ export default function Home() {
     return visibility[key] ? amount : "*****"
   }
 
+  // نشاطات وهمية للعرض فقط حتى يتم ربطها لاحقاً
   const activities = [
     { id: "act1", title: "بيع تونة - حملة الحديدة", sub: "قبل ٢ ساعة", amount: "+ ٤٥,٠٠٠ ر.ي", type: "income" },
     { id: "act2", title: "مصاريف ديزل", sub: "قبل ٤ ساعات", amount: "- ١٢,٠٠٠ ر.ي", type: "expense" },
@@ -51,7 +52,7 @@ export default function Home() {
                 />
               )}
             </div>
-            <h1 className="text-2xl font-black font-headline tracking-tight">أبو صابر</h1>
+            <h1 className="text-2xl font-black tracking-tight">أبو صابر</h1>
           </div>
         </div>
         <div className="space-y-1 relative z-10">
