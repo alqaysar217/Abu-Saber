@@ -152,16 +152,19 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
-                <AlertDialogDescription className="text-right text-sm leading-relaxed">
-                  هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟
-                  <br />
-                  <span className="font-bold block mt-2">عند الأرشفة:</span>
-                  <ul className="list-disc list-inside mt-1 space-y-1 text-xs opacity-80">
-                    <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
-                    <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
-                    <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
-                  </ul>
-                </AlertDialogDescription>
+                <div className="text-right text-sm leading-relaxed space-y-3">
+                  <AlertDialogDescription className="text-right text-sm">
+                    هل أنت متأكد من رغبتك في أرشفة هذه الحملة؟
+                  </AlertDialogDescription>
+                  <div className="text-muted-foreground">
+                    <span className="font-bold block text-xs">عند الأرشفة:</span>
+                    <ul className="list-disc list-inside mt-1 space-y-1 text-[11px] opacity-80">
+                      <li>سيتم إغلاق الحملة وتغيير حالتها إلى "مكتملة".</li>
+                      <li>لن تتمكن من إضافة مشتريات أو مصاريف جديدة لها.</li>
+                      <li>ستبقى البيانات محفوظة للرجوع إليها لاحقاً.</li>
+                    </ul>
+                  </div>
+                </div>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row gap-3 mt-4">
                 <AlertDialogCancel className="flex-1 rounded-xl border-muted-foreground/20">تراجع</AlertDialogCancel>
