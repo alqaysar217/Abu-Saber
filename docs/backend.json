@@ -1,0 +1,47 @@
+
+{
+  "entities": {
+    "Campaign": {
+      "title": "Campaign",
+      "description": "A fish trading trip or campaign details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["open", "closed"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "startDate", "status"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Operational expenses related to a campaign",
+      "type": "object",
+      "properties": {
+        "campaignId": { "type": "string" },
+        "type": { "type": "string", "enum": ["ديزل", "عمال", "ثلج", "ملح", "أكياس", "أكل", "أخرى"] },
+        "amount": { "type": "number" },
+        "paymentType": { "type": "string", "enum": ["نقد", "دين"] },
+        "date": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["campaignId", "type", "amount", "paymentType", "date"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/campaigns/{campaignId}": {
+      "schema": "#/backend/entities/Campaign",
+      "description": "Store campaign details"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "#/backend/entities/Expense",
+      "description": "Store operational expenses"
+    }
+  }
+}
