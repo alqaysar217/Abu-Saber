@@ -1,88 +1,861 @@
-
 {
   "entities": {
-    "Campaign": {
-      "title": "Campaign",
-      "description": "A fish trading trip or campaign details",
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
       "type": "object",
+      "description": "Represents a customer of the fish trading business.",
       "properties": {
-        "name": { "type": "string" },
-        "startDate": { "type": "string", "format": "date-time" },
-        "endDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["open", "closed"] },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the customer (اسم)."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The primary phone number of the customer (رقم)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the customer."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the customer record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the customer record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["name", "startDate", "status"]
-    },
-    "Expense": {
-      "title": "Expense",
-      "description": "Operational expenses related to a campaign",
-      "type": "object",
-      "properties": {
-        "campaignId": { "type": "string" },
-        "type": { "type": "string", "enum": ["ديزل", "عمال", "ثلج", "ملح", "أكياس", "أكل", "أخرى"] },
-        "amount": { "type": "number" },
-        "paymentType": { "type": "string", "enum": ["نقد", "دين"] },
-        "date": { "type": "string", "format": "date-time" },
-        "notes": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["campaignId", "type", "amount", "paymentType", "date"]
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "createdAt"
+      ]
     },
     "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Supplier",
-      "description": "Details of fish suppliers or customers",
       "type": "object",
+      "description": "Represents a supplier from whom the business purchases fish or other goods.",
       "properties": {
-        "name": { "type": "string" },
-        "phone": { "type": "string" },
-        "balance": { "type": "number" },
-        "type": { "type": "string", "enum": ["supplier", "customer"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Supplier entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the supplier (اسم)."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The primary phone number of the supplier (رقم)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the supplier.",
+          "format": "email"
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the supplier."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the supplier record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the supplier record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["name"]
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "createdAt"
+      ]
+    },
+    "Campaign": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Campaign",
+      "type": "object",
+      "description": "Represents a sales campaign or 'رحلة بيع' which groups purchases, expenses, and sales for profit tracking.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Campaign entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the campaign (اسم الحملة)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the campaign (وصف)."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The starting date of the campaign.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The ending date of the campaign. Can be null if ongoing.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the campaign record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the campaign record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "startDate",
+        "createdAt"
+      ]
+    },
+    "FishType": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FishType",
+      "type": "object",
+      "description": "Defines different types of fish traded, used in invoices and purchases.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FishType entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the fish type (نوع السمك)."
+        },
+        "unitOfMeasure": {
+          "type": "string",
+          "description": "The standard unit of measure for this fish type (e.g., كيلو)."
+        },
+        "defaultUnitPrice": {
+          "type": "number",
+          "description": "An optional default unit price for this fish type in Yemeni Riyal (ر.ي)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the fish type record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the fish type record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "unitOfMeasure",
+        "createdAt"
+      ]
+    },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents a sales invoice issued to a customer (فاتورة بيع).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Invoice entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Customer who received this invoice. (Relationship: Customer 1:N Invoice)"
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Optional reference to the Campaign this invoice belongs to. (Relationship: Campaign 1:N Invoice)"
+        },
+        "invoiceDate": {
+          "type": "string",
+          "description": "The date the invoice was issued.",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The date by which the invoice is due. Can be null.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the invoice in Yemeni Riyal (ر.ي), auto-calculated from InvoiceItems."
+        },
+        "paidAmount": {
+          "type": "number",
+          "description": "The total amount paid towards this invoice in Yemeni Riyal (ر.ي), updated via PaymentAllocations."
+        },
+        "paymentType": {
+          "type": "string",
+          "description": "The initial payment type for this invoice (نقد, دين, جزئي)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current payment status of the invoice (مدفوعة, جزئي, دين), derived from totalAmount and paidAmount."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes for the invoice."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the invoice record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the invoice record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "invoiceDate",
+        "totalAmount",
+        "paidAmount",
+        "paymentType",
+        "status",
+        "createdAt"
+      ]
+    },
+    "InvoiceItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InvoiceItem",
+      "type": "object",
+      "description": "Represents a single line item within an Invoice, detailing a specific fish type and quantity sold.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InvoiceItem entity."
+        },
+        "invoiceId": {
+          "type": "string",
+          "description": "Reference to the Invoice this item belongs to. (Relationship: Invoice 1:N InvoiceItem)"
+        },
+        "fishTypeId": {
+          "type": "string",
+          "description": "Reference to the FishType being sold. (Relationship: FishType 1:N InvoiceItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of fish in kilograms (كيلو)."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price per kilogram (سعر الكيلو) in Yemeni Riyal (ر.ي)."
+        },
+        "lineTotal": {
+          "type": "number",
+          "description": "The total for this line item (quantity * unitPrice), auto-calculated."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes for the invoice item."
+        }
+      },
+      "required": [
+        "id",
+        "invoiceId",
+        "fishTypeId",
+        "quantity",
+        "unitPrice",
+        "lineTotal"
+      ]
     },
     "Purchase": {
-      "title": "Transaction",
-      "description": "Fish purchase or sales records",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase",
       "type": "object",
+      "description": "Represents a purchase record from a supplier (فاتورة شراء).",
       "properties": {
-        "campaignId": { "type": "string" },
-        "supplierId": { "type": "string" },
-        "customerId": { "type": "string" },
-        "fishType": { "type": "string" },
-        "quantity": { "type": "number" },
-        "pricePerKg": { "type": "number" },
-        "totalAmount": { "type": "number" },
-        "paymentType": { "type": "string", "enum": ["نقد", "دين"] },
-        "type": { "type": "string", "enum": ["purchase", "sale"] },
-        "items": { "type": "array" },
-        "date": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Purchase entity."
+        },
+        "supplierId": {
+          "type": "string",
+          "description": "Reference to the Supplier from whom the purchase was made. (Relationship: Supplier 1:N Purchase)"
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Optional reference to the Campaign this purchase belongs to. (Relationship: Campaign 1:N Purchase)"
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "The date the purchase was made.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the purchase in Yemeni Riyal (ر.ي), auto-calculated from PurchaseItems."
+        },
+        "paidAmount": {
+          "type": "number",
+          "description": "The total amount paid for this purchase in Yemeni Riyal (ر.ي), updated via PaymentAllocations."
+        },
+        "paymentType": {
+          "type": "string",
+          "description": "The initial payment type for this purchase (نقد, دين, جزئي)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current payment status of the purchase (مدفوعة, جزئي, دين), derived from totalAmount and paidAmount."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes for the purchase."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the purchase record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the purchase record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["campaignId", "date"]
+      "required": [
+        "id",
+        "supplierId",
+        "purchaseDate",
+        "totalAmount",
+        "paidAmount",
+        "paymentType",
+        "status",
+        "createdAt"
+      ]
+    },
+    "PurchaseItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchaseItem",
+      "type": "object",
+      "description": "Represents a single line item within a Purchase, detailing a specific fish type and quantity bought.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PurchaseItem entity."
+        },
+        "purchaseId": {
+          "type": "string",
+          "description": "Reference to the Purchase this item belongs to. (Relationship: Purchase 1:N PurchaseItem)"
+        },
+        "fishTypeId": {
+          "type": "string",
+          "description": "Reference to the FishType being purchased. (Relationship: FishType 1:N PurchaseItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of fish in kilograms (كيلو)."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price per kilogram (سعر الكيلو) in Yemeni Riyal (ر.ي)."
+        },
+        "lineTotal": {
+          "type": "number",
+          "description": "The total for this line item (quantity * unitPrice), auto-calculated."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes for the purchase item."
+        }
+      },
+      "required": [
+        "id",
+        "purchaseId",
+        "fishTypeId",
+        "quantity",
+        "unitPrice",
+        "lineTotal"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an operational expense of the business (مصروف).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
+        "campaignId": {
+          "type": "string",
+          "description": "Optional reference to the Campaign this expense is associated with. (Relationship: Campaign 1:N Expense)"
+        },
+        "expenseDate": {
+          "type": "string",
+          "description": "The date the expense was incurred.",
+          "format": "date-time"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the expense (e.g., ديزل, عمال, ثلج, أخرى)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the expense in Yemeni Riyal (ر.ي)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the expense."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the expense record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the expense record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "expenseDate",
+        "category",
+        "amount",
+        "description",
+        "createdAt"
+      ]
+    },
+    "PaymentTransaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentTransaction",
+      "type": "object",
+      "description": "Represents a single payment transaction, either received from a customer or made to a supplier (سجل سداد/استلام دفعة).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentTransaction entity."
+        },
+        "payerCustomerId": {
+          "type": "string",
+          "description": "Optional reference to the Customer who made this payment. (Relationship: Customer 1:N PaymentTransaction)"
+        },
+        "payeeSupplierId": {
+          "type": "string",
+          "description": "Optional reference to the Supplier who received this payment. (Relationship: Supplier 1:N PaymentTransaction)"
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "The date and time the payment transaction occurred.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The total amount of this payment transaction in Yemeni Riyal (ر.ي)."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of payment transaction (e.g., 'customer_payment', 'supplier_payment')."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes for the payment transaction."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the payment transaction record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the payment transaction record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "transactionDate",
+        "amount",
+        "type",
+        "createdAt"
+      ]
+    },
+    "InvoicePaymentAllocation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InvoicePaymentAllocation",
+      "type": "object",
+      "description": "Links a PaymentTransaction to an Invoice, specifying how much of the payment was applied to that invoice.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InvoicePaymentAllocation entity."
+        },
+        "paymentTransactionId": {
+          "type": "string",
+          "description": "Reference to the PaymentTransaction that made this allocation. (Relationship: PaymentTransaction 1:N InvoicePaymentAllocation)"
+        },
+        "invoiceId": {
+          "type": "string",
+          "description": "Reference to the Invoice this payment was allocated to. (Relationship: Invoice 1:N InvoicePaymentAllocation)"
+        },
+        "allocatedAmount": {
+          "type": "number",
+          "description": "The amount in Yemeni Riyal (ر.ي) from the PaymentTransaction that was applied to this specific Invoice."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the payment allocation record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the payment allocation record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "paymentTransactionId",
+        "invoiceId",
+        "allocatedAmount",
+        "createdAt"
+      ]
+    },
+    "PurchasePaymentAllocation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchasePaymentAllocation",
+      "type": "object",
+      "description": "Links a PaymentTransaction to a Purchase, specifying how much of the payment was applied to that purchase.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PurchasePaymentAllocation entity."
+        },
+        "paymentTransactionId": {
+          "type": "string",
+          "description": "Reference to the PaymentTransaction that made this allocation. (Relationship: PaymentTransaction 1:N PurchasePaymentAllocation)"
+        },
+        "purchaseId": {
+          "type": "string",
+          "description": "Reference to the Purchase this payment was allocated to. (Relationship: Purchase 1:N PurchasePaymentAllocation)"
+        },
+        "allocatedAmount": {
+          "type": "number",
+          "description": "The amount in Yemeni Riyal (ر.ي) from the PaymentTransaction that was applied to this specific Purchase."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the payment allocation record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the payment allocation record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "paymentTransactionId",
+        "purchaseId",
+        "allocatedAmount",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/campaigns/{campaignId}": {
-      "schema": "#/backend/entities/Campaign",
-      "description": "Store campaign details"
-    },
-    "/expenses/{expenseId}": {
-      "schema": "#/backend/entities/Expense",
-      "description": "Store operational expenses"
-    },
-    "/suppliers/{supplierId}": {
-      "schema": "#/backend/entities/Supplier",
-      "description": "Store supplier/customer information"
-    },
-    "/purchases/{purchaseId}": {
-      "schema": "#/backend/entities/Purchase",
-      "description": "Store fish purchase/sales records"
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores individual customer records, accessible only by the owner user specified in the path. This collection provides all customers associated with a specific user's business. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "customerId",
+              "description": "The unique identifier for a specific customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": {
+            "$ref": "#/backend/entities/Supplier"
+          },
+          "description": "Stores individual supplier records, accessible only by the owner user specified in the path. This collection provides all suppliers associated with a specific user's business. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "supplierId",
+              "description": "The unique identifier for a specific supplier."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/fishTypes/{fishTypeId}",
+        "definition": {
+          "entityName": "FishType",
+          "schema": {
+            "$ref": "#/backend/entities/FishType"
+          },
+          "description": "Stores different types of fish traded by the business, accessible only by the owner user specified in the path. This serves as a master list for fish types for a specific user's business. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "fishTypeId",
+              "description": "The unique identifier for a specific fish type."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/campaigns/{campaignId}",
+        "definition": {
+          "entityName": "Campaign",
+          "schema": {
+            "$ref": "#/backend/entities/Campaign"
+          },
+          "description": "Stores sales campaigns ('رحلات بيع'), accessible only by the owner user specified in the path. Each campaign can group purchases, expenses, and sales. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "campaignId",
+              "description": "The unique identifier for a specific campaign."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/campaigns/{campaignId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores individual operational expenses, nested under their respective campaign for direct association and easily accessible for profit calculations. Access is implicitly controlled by the parent 'userId'. Includes denormalized 'campaignId' and 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "campaignId",
+              "description": "The unique identifier of the parent campaign."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier for a specific expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores sales invoices issued to customers, accessible only by the owner user specified in the path. Invoices can optionally be linked to a campaign. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier for a specific invoice."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/invoices/{invoiceId}/items/{invoiceItemId}",
+        "definition": {
+          "entityName": "InvoiceItem",
+          "schema": {
+            "$ref": "#/backend/entities/InvoiceItem"
+          },
+          "description": "Stores line items for a specific invoice, detailing fish type, quantity, and price. Nested under the parent invoice for strong relational integrity. Access is implicitly controlled by the parent 'userId'. Includes denormalized 'invoiceId' and 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier of the parent invoice."
+            },
+            {
+              "name": "invoiceItemId",
+              "description": "The unique identifier for a specific invoice item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/purchases/{purchaseId}",
+        "definition": {
+          "entityName": "Purchase",
+          "schema": {
+            "$ref": "#/backend/entities/Purchase"
+          },
+          "description": "Stores purchase records from suppliers, accessible only by the owner user specified in the path. Purchases can optionally be linked to a campaign. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "purchaseId",
+              "description": "The unique identifier for a specific purchase."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/purchases/{purchaseId}/items/{purchaseItemId}",
+        "definition": {
+          "entityName": "PurchaseItem",
+          "schema": {
+            "$ref": "#/backend/entities/PurchaseItem"
+          },
+          "description": "Stores line items for a specific purchase, detailing fish type, quantity, and price. Nested under the parent purchase for strong relational integrity. Access is implicitly controlled by the parent 'userId'. Includes denormalized 'purchaseId' and 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "purchaseId",
+              "description": "The unique identifier of the parent purchase."
+            },
+            {
+              "name": "purchaseItemId",
+              "description": "The unique identifier for a specific purchase item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/paymentTransactions/{paymentTransactionId}",
+        "definition": {
+          "entityName": "PaymentTransaction",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentTransaction"
+          },
+          "description": "Stores records of payments, either received from customers or made to suppliers, accessible only by the owner user specified in the path. Includes denormalized 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "paymentTransactionId",
+              "description": "The unique identifier for a specific payment transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/paymentTransactions/{paymentTransactionId}/invoiceAllocations/{allocationId}",
+        "definition": {
+          "entityName": "InvoicePaymentAllocation",
+          "schema": {
+            "$ref": "#/backend/entities/InvoicePaymentAllocation"
+          },
+          "description": "Links a payment transaction to a specific invoice, specifying the allocated amount. Nested under the parent payment transaction. Access is implicitly controlled by the parent 'userId'. Includes denormalized 'paymentTransactionId', 'invoiceId', and 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "paymentTransactionId",
+              "description": "The unique identifier of the parent payment transaction."
+            },
+            {
+              "name": "allocationId",
+              "description": "The unique identifier for a specific invoice payment allocation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/paymentTransactions/{paymentTransactionId}/purchaseAllocations/{allocationId}",
+        "definition": {
+          "entityName": "PurchasePaymentAllocation",
+          "schema": {
+            "$ref": "#/backend/entities/PurchasePaymentAllocation"
+          },
+          "description": "Links a payment transaction to a specific purchase, specifying the allocated amount. Nested under the parent payment transaction. Access is implicitly controlled by the parent 'userId'. Includes denormalized 'paymentTransactionId', 'purchaseId', and 'userId' from path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the business owner user."
+            },
+            {
+              "name": "paymentTransactionId",
+              "description": "The unique identifier of the parent payment transaction."
+            },
+            {
+              "name": "allocationId",
+              "description": "The unique identifier for a specific purchase payment allocation."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed with a strong emphasis on authorization independence, security, and query efficiency, adhering to the core design principles and mandates. The central strategy is to scope all business data under a specific authenticated user's ID, which forms the root of all primary collections.\n\n**Authorization Independence:** Every core business entity (Customers, Suppliers, Campaigns, Invoices, Purchases, FishTypes, PaymentTransactions) is structured as a top-level collection nested directly under `/users/{userId}`. This path-based ownership means that the `userId` parameter in the Firestore path is always the `request.auth.uid` of the authenticated user. This eliminates the need for `get()` calls in security rules to determine ownership or permissions, as the owner's UID is inherently part of every document's path. For subcollections (like `InvoiceItem` under `Invoice`, `PurchaseItem` under `Purchase`, `Expense` under `Campaign`, and payment allocations under `PaymentTransaction`), their parent's ownership is already established by the `userId` in the higher-level path. This radical path-based ownership ensures atomic operations (transactions/batches) are never broken by authorization checks and simplifies debugging.\n\n**QAPs (Queries as Authorization Policies):** By segregating all data under `/users/{userId}/`, the structure inherently supports Query as Authorization Policies. When an authenticated user (`request.auth.uid`) queries any collection (e.g., `/users/{request.auth.uid}/invoices`), they will only ever receive data that belongs to them. No additional filtering logic is required in security rules beyond `allow read, write: if request.auth.uid == userId;`. This is a highly efficient and secure way to handle data access for single-owner business applications.\n\n**Structural Segregation:** All documents within a given collection (e.g., `/users/{userId}/customers`) share the same security posture: they are private to the `userId`. There is no mixing of public and private data, or data with different access levels, within the same collection. This simplifies security rules and makes their intent explicit.\n\n**Access Modeling:** The design exclusively uses Path-Based Ownership for private data (`/users/{userId}/<collection>/<docId>`). For nested `1:N` relationships, the hierarchy continues with subcollections (e.g., `/users/{userId}/invoices/{invoiceId}/items/{invoiceItemId}`). This pattern is consistent and highly secure, making ownership-based rules trivial.\n\n**Data Clarity and Denormalization:** While the `ownerId` is implicitly handled by the `userId` in the path, for clarity, critical foreign keys such as `customerId`, `supplierId`, `campaignId`, `fishTypeId` are included in the relevant documents. This allows for efficient querying and data linking without requiring complex joins. The `status` field in `Invoice` and `Purchase` explicitly models their payment state, adhering to predictable schema principles."
   }
 }

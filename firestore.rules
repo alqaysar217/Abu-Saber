@@ -1,0 +1,242 @@
+/**
+ * Firestore Security Rules for Fish Trading Management System
+ * 
+ * CORE PHILOSOPHY:
+ * This ruleset implements a strict User-Ownership model using path-based authorization.
+ * The system is designed for individual fish traders to manage their own business data
+ * (customers, suppliers, invoices, expenses) in complete isolation.
+ * 
+ * DATA STRUCTURE:
+ * All application data is strictly hierarchical, nested under the root path:
+ * /users/{userId}/...
+ * This ensures that a user's UID is part of every document's path, allowing for
+ * high-performance authorization without the need for additional database lookups (get() calls).
+ * 
+ * KEY SECURITY DECISIONS:
+ * 1. Path-Based Authorization: All access is controlled by comparing the {userId} in the 
+ *    Firestore path directly against the request.auth.uid.
+ * 2. Relational Integrity: On document creation, the rules enforce that the internal 
+ *    denormalized 'userId' field matches the path segment to ensure data consistency.
+ * 3. Immutable Ownership: Once a document is created, the 'userId' field is marked 
+ *    immutable to prevent data from being "transferred" between users.
+ * 4. Private by Default: No data is publicly readable or writable. Users can only 
+ *    access their own specific business data tree.
+ * 
+ * DENORMALIZATION FOR AUTHORIZATION:
+ * Following the architectural mandate, all documents include a denormalized 'userId' 
+ * field. This allows for simple, performant rules and ensures that queries naturally 
+ * align with security boundaries (Queries as Authorization Policies).
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId from the path.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Combined check for ownership and ensuring the document exists for update/delete.
+     */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /**
+     * @description Validates that the data being written contains the correct userId to maintain relational integrity.
+     */
+    function isValidRelationalOwner(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * @description Ensures the userId field cannot be changed during an update.
+     */
+    function isRelationalImmutable() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for the root User document.
+     * @path /users/{userId}
+     * @allow (get, list, create, update) if the authenticated user matches the document ID.
+     * @deny (delete) always, to preserve account records.
+     * @principle Self-creation and ownership.
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if false;
+
+      /**
+       * @description Rules for Customers associated with a specific business owner.
+       * @path /users/{userId}/customers/{customerId}
+       * @allow (create) if the user is the owner and provides a matching userId in the data.
+       * @deny (update) if attempting to change the ownership field.
+       * @principle Path-based ownership and relational integrity.
+       */
+      match /customers/{customerId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for Suppliers associated with a specific business owner.
+       * @path /users/{userId}/suppliers/{supplierId}
+       * @allow (get, list) if the user is the owner of this path.
+       * @deny (write) if the auth UID does not match the userId in the path.
+       * @principle Strict path-based access control.
+       */
+      match /suppliers/{supplierId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for FishTypes (Master Data) specific to a user's business.
+       * @path /users/{userId}/fishTypes/{fishTypeId}
+       * @allow (create) if the user is authenticated and the path matches their UID.
+       * @deny (list) if the user is not the owner of this business branch.
+       * @principle Resource scoping per user.
+       */
+      match /fishTypes/{fishTypeId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for Campaigns (رحلات بيع) and nested Expenses.
+       * @path /users/{userId}/campaigns/{campaignId}
+       * @allow (update) only if the user owns the campaign.
+       * @principle Hierarchy-based security.
+       */
+      match /campaigns/{campaignId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for Expenses nested under a Campaign.
+         * @path /users/{userId}/campaigns/{campaignId}/expenses/{expenseId}
+         * @allow (create) if path userId matches auth UID and denormalized fields match.
+         * @principle Nested relational consistency.
+         */
+        match /expenses/{expenseId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRelationalOwner(userId) && request.resource.data.campaignId == campaignId;
+          allow update: if isExistingOwner(userId) && isRelationalImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description Rules for Sales Invoices and nested Invoice Items.
+       * @path /users/{userId}/invoices/{invoiceId}
+       * @allow (list) only the user's own invoices.
+       * @principle Query security via path scoping.
+       */
+      match /invoices/{invoiceId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for line items within an Invoice.
+         * @path /users/{userId}/invoices/{invoiceId}/items/{invoiceItemId}
+         * @allow (create) if the item is linked to the correct parent invoice and user.
+         * @principle Relational constraint validation.
+         */
+        match /items/{invoiceItemId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRelationalOwner(userId) && request.resource.data.invoiceId == invoiceId;
+          allow update: if isExistingOwner(userId) && isRelationalImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description Rules for Purchases from suppliers and nested Purchase Items.
+       * @path /users/{userId}/purchases/{purchaseId}
+       * @allow (delete) if the user is the authenticated owner.
+       * @principle Owner-only data modification.
+       */
+      match /purchases/{purchaseId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for line items within a Purchase.
+         * @path /users/{userId}/purchases/{purchaseId}/items/{purchaseItemId}
+         * @principle Parent-child relationship integrity.
+         */
+        match /items/{purchaseItemId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRelationalOwner(userId) && request.resource.data.purchaseId == purchaseId;
+          allow update: if isExistingOwner(userId) && isRelationalImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description Rules for Payment Transactions and Allocations.
+       * @path /users/{userId}/paymentTransactions/{paymentTransactionId}
+       * @allow (create) for recorded payments received or made.
+       * @principle Financial record ownership.
+       */
+      match /paymentTransactions/{paymentTransactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
+        allow update: if isExistingOwner(userId) && isRelationalImmutable();
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for linking payments to specific Invoices.
+         * @path /users/{userId}/paymentTransactions/{paymentTransactionId}/invoiceAllocations/{allocationId}
+         */
+        match /invoiceAllocations/{allocationId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRelationalOwner(userId) && request.resource.data.paymentTransactionId == paymentTransactionId;
+          allow update: if isExistingOwner(userId) && isRelationalImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for linking payments to specific Purchases.
+         * @path /users/{userId}/paymentTransactions/{paymentTransactionId}/purchaseAllocations/{allocationId}
+         */
+        match /purchaseAllocations/{allocationId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidRelationalOwner(userId) && request.resource.data.paymentTransactionId == paymentTransactionId;
+          allow update: if isExistingOwner(userId) && isRelationalImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+    }
+  }
+}
