@@ -15,25 +15,19 @@ import {
   Utensils, 
   MoreHorizontal,
   Loader2,
-  Lock,
   Calendar
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { doc, collection, query, where, updateDoc, serverTimestamp } from "firebase/firestore"
+import { doc, collection, query, where } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
-import { useToast } from "@/hooks/use-toast"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import { BottomNav } from "@/components/layout/BottomNav"
 
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
-  const { toast } = useToast()
   const { campaignId } = use(params)
   const db = useFirestore()
   const { user } = useUser()
@@ -62,27 +56,6 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const totalExpenses = expenses?.reduce((acc, curr) => acc + curr.amount, 0) || 0
   const totalPurchases = purchases?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0
   const totalCost = totalExpenses + totalPurchases
-
-  const handleCloseCampaign = async () => {
-    if (!campaignRef) return
-    if (confirm("هل أنت متأكد من إغلاق هذه الحملة؟")) {
-      updateDoc(campaignRef, { 
-        status: "closed",
-        endDate: serverTimestamp() 
-      })
-      .then(() => {
-        toast({ title: "تم إغلاق الحملة بنجاح" })
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: campaignRef.path,
-          operation: 'update',
-          requestResourceData: { status: "closed" },
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-    }
-  }
 
   if (loadingCampaign || loadingExpenses || loadingPurchases) {
     return (
@@ -118,32 +91,13 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
       </header>
 
       <main className="p-4 space-y-6">
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="border-none shadow-sm rounded-2xl bg-primary text-white">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <span className="text-[10px] font-bold opacity-80 uppercase">إجمالي التكلفة</span>
-              <span className="text-lg font-black tabular-nums">{totalCost.toLocaleString()}</span>
-              <span className="text-[10px] opacity-70">ريال يمني</span>
-            </CardContent>
-          </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-white border border-border/50">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">الحالة</span>
-              <Badge variant={campaign.status === 'open' ? 'default' : 'secondary'} className="w-fit">
-                {campaign.status === 'open' ? 'مفتوحة' : 'مغلقة'}
-              </Badge>
-              {campaign.status === 'open' && (
-                <button 
-                  onClick={handleCloseCampaign}
-                  className="text-[10px] text-destructive font-bold mt-1 text-right flex items-center gap-1"
-                >
-                  <Lock className="w-3 h-3" />
-                  إغلاق الآن
-                </button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-none shadow-sm rounded-2xl lux-gradient text-white">
+          <CardContent className="p-6 flex flex-col items-center text-center gap-2">
+            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة (مشتريات + مصاريف)</span>
+            <span className="text-3xl font-black tabular-nums">{totalCost.toLocaleString()}</span>
+            <span className="text-xs opacity-70">ريال يمني</span>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-3 h-12 rounded-2xl p-1 mb-6">
