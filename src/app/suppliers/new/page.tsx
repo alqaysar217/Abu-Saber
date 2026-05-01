@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, User } from "lucide-react"
+import { ChevronLeft, Save, Loader2, User, Phone, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -78,29 +78,35 @@ export default function NewSupplierPage() {
         <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
             <CardTitle className="text-md font-bold text-primary flex items-center gap-2">
-              <User className="w-5 h-5" />
+              <UserPlus className="w-5 h-5" />
               بيانات المورد
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="supplier-name" className="text-sm font-bold">اسم المورد <span className="text-destructive">*</span></Label>
+              <Label htmlFor="supplier-name" className="text-sm font-bold flex items-center gap-2">
+                <User className="w-4 h-4 text-primary" />
+                اسم المورد <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 id="supplier-name"
                 placeholder="مثال: شركة الأسماك الطازجة" 
-                className="h-12 rounded-xl"
+                className="h-12 rounded-xl focus:ring-primary border-muted-foreground/20"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="supplier-phone" className="text-sm font-bold">رقم الهاتف</Label>
+              <Label htmlFor="supplier-phone" className="text-sm font-bold flex items-center gap-2">
+                <Phone className="w-4 h-4 text-primary" />
+                رقم الهاتف
+              </Label>
               <Input 
                 id="supplier-phone"
                 type="tel"
                 placeholder="777 000 000" 
-                className="h-12 rounded-xl text-left"
+                className="h-12 rounded-xl text-left font-mono focus:ring-primary border-muted-foreground/20"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -110,7 +116,7 @@ export default function NewSupplierPage() {
 
         <div className="flex flex-col gap-3">
           <Button 
-            className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg gap-2" 
+            className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg gap-2 lux-gradient" 
             onClick={handleSave}
             disabled={loading}
           >
@@ -121,6 +127,7 @@ export default function NewSupplierPage() {
             variant="ghost" 
             className="w-full h-12 rounded-xl text-muted-foreground font-bold"
             onClick={() => router.back()}
+            disabled={loading}
           >
             إلغاء
           </Button>
