@@ -6,11 +6,15 @@ import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, query, where, limit, orderBy } from "firebase/firestore"
 
 export default function Home() {
+  const { user, isUserLoading } = useUser()
+  const db = useFirestore()
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     profit: false,
     debtsToMe: false,
@@ -23,19 +27,32 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const formatAmount = (key: string, amount: string) => {
-    return visibility[key] ? amount : "*****"
+  const formatAmount = (key: string, amount: number) => {
+    return visibility[key] ? amount.toLocaleString() : "*****"
   }
 
-  // نشاطات وهمية للعرض فقط حتى يتم ربطها لاحقاً
-  const activities = [
-    { id: "act1", title: "بيع تونة - حملة الحديدة", sub: "قبل ٢ ساعة", amount: "+ ٤٥,٠٠٠ ر.ي", type: "income" },
-    { id: "act2", title: "مصاريف ديزل", sub: "قبل ٤ ساعات", amount: "- ١٢,٠٠٠ ر.ي", type: "expense" },
-    { id: "act3", title: "شراء ثلج", sub: "أمس", amount: "- ٥,٥٠٠ ر.ي", type: "expense" },
-  ]
+  // Get recent activities (Invoices and Purchases)
+  const invoicesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "users", user.uid, "invoices"),
+      orderBy("createdAt", "desc"),
+      limit(3)
+    )
+  }, [db, user])
+
+  const { data: recentInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
+
+  if (isUserLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-20">
+    <div className="flex flex-col min-h-screen bg-background pb-24">
       <header className="p-6 lux-gradient text-white rounded-b-[2.5rem] shadow-2xl mb-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
         <div className="flex justify-between items-center mb-8 relative z-10">
@@ -57,7 +74,7 @@ export default function Home() {
         </div>
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2">
-            <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح</p>
+            <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح التقديرية</p>
             <button 
               onClick={() => toggleVisibility('profit')}
               className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -66,7 +83,7 @@ export default function Home() {
             </button>
           </div>
           <p className="text-4xl font-black tabular-nums tracking-tighter">
-            {formatAmount("profit", "2,450,000")} <span className="text-lg font-normal opacity-80">ر.ي</span>
+            {formatAmount("profit", 2450000)} <span className="text-lg font-normal opacity-80">ر.ي</span>
           </p>
         </div>
       </header>
@@ -88,8 +105,8 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون لك</p>
-                <p className="text-xl font-black text-green-700">
-                  {formatAmount("debtsToMe", "840,000")} <span className="text-xs font-normal">ر.ي</span>
+                <p className="text-xl font-black text-green-700 tabular-nums">
+                  {formatAmount("debtsToMe", 840000)} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
@@ -109,8 +126,8 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون عليك</p>
-                <p className="text-xl font-black text-red-700">
-                  {formatAmount("debtsByMe", "320,000")} <span className="text-xs font-normal">ر.ي</span>
+                <p className="text-xl font-black text-red-700 tabular-nums">
+                  {formatAmount("debtsByMe", 320000)} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
@@ -127,7 +144,7 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
-                <p className="text-2xl font-black">
+                <p className="text-2xl font-black tabular-nums">
                   1,215,000 <span className="text-sm font-normal opacity-70">ر.ي</span>
                 </p>
               </div>
@@ -143,24 +160,33 @@ export default function Home() {
 
       <section className="px-4 mb-8">
         <div className="flex justify-between items-center mb-5 px-2">
-          <h2 className="text-lg font-black">آخر النشاطات</h2>
+          <h2 className="text-lg font-black">آخر الفواتير</h2>
           <button className="text-sm text-primary font-bold hover:underline">عرض الكل</button>
         </div>
         <div className="space-y-4">
-          {activities.map((item) => (
-            <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
-              <div className="flex flex-col gap-0.5">
-                <span className="font-bold text-sm">{item.title}</span>
-                <span className="text-[10px] text-muted-foreground font-medium uppercase">{item.sub}</span>
-              </div>
-              <span className={cn(
-                "font-black text-sm tabular-nums",
-                item.type === "income" ? "text-green-600" : "text-red-500"
-              )}>
-                {item.amount}
-              </span>
+          {loadingInvoices ? (
+            <div className="flex justify-center p-4">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ))}
+          ) : recentInvoices && recentInvoices.length > 0 ? (
+            recentInvoices.map((item: any) => (
+              <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-sm">فاتورة مبيعات #{item.id.substring(0, 5)}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase">
+                    {item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString('ar-YE') : 'بدون تاريخ'}
+                  </span>
+                </div>
+                <span className="font-black text-sm tabular-nums text-green-600">
+                  + {item.totalAmount?.toLocaleString()} ر.ي
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-6 text-muted-foreground text-xs bg-white rounded-3xl border border-dashed">
+              لا توجد نشاطات مسجلة حالياً
+            </div>
+          )}
         </div>
       </section>
 
