@@ -5,28 +5,28 @@
 
 @layer base {
   :root {
-    --background: 132 24% 97%;
-    --foreground: 131 58% 10%;
+    --background: 160 20% 98%;
+    --foreground: 162 47% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 131 58% 10%;
+    --card-foreground: 162 47% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 131 58% 10%;
-    --primary: 131 58% 38%;
+    --popover-foreground: 162 47% 10%;
+    --primary: 162 47% 24%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 131 30% 90%;
-    --secondary-foreground: 131 58% 20%;
-    --muted: 131 20% 92%;
-    --muted-foreground: 131 10% 40%;
-    --accent: 171 71% 51%;
-    --accent-foreground: 171 71% 10%;
+    --secondary: 162 20% 90%;
+    --secondary-foreground: 162 47% 15%;
+    --muted: 162 10% 95%;
+    --muted-foreground: 162 10% 40%;
+    --accent: 153 60% 35%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 131 20% 88%;
-    --input: 131 20% 88%;
-    --ring: 131 58% 38%;
-    --radius: 1rem;
-    --chart-1: 131 58% 38%;
-    --chart-2: 171 71% 51%;
+    --border: 162 20% 88%;
+    --input: 162 20% 88%;
+    --ring: 162 47% 24%;
+    --radius: 1.25rem;
+    --chart-1: 162 47% 24%;
+    --chart-2: 153 60% 35%;
     --chart-3: 45 93% 47%;
     --chart-4: 0 84% 60%;
     --chart-5: 200 80% 50%;
@@ -43,10 +43,18 @@
   }
 }
 
+.lux-gradient {
+  @apply bg-gradient-to-br from-[#123524] via-[#1a4d36] to-[#236045];
+}
+
 .bottom-nav-active {
   @apply text-primary font-bold;
 }
 
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.card-shadow {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
 }

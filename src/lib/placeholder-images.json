@@ -11,6 +11,12 @@
       "description": "A sample handwritten invoice for testing AI extraction",
       "imageUrl": "https://picsum.photos/seed/invoice/600/800",
       "imageHint": "handwritten invoice"
+    },
+    {
+      "id": "app-logo",
+      "description": "Luxurious logo for Abu Saber Fish Trading",
+      "imageUrl": "https://picsum.photos/seed/fishlogo/200/200",
+      "imageHint": "fish logo"
     }
   ]
 }
