@@ -34,7 +34,7 @@ export default function Home() {
   }
 
   // دالة لتنسيق المبالغ مع التعامل مع القيمة 0
-  const formatAmount = (key: string, amount: number) => {
+  const formatAmount = (key: string, amount: number = 0) => {
     if (!mounted) return "*****"
     return visibility[key] ? amount.toLocaleString('ar-YE') : "*****"
   }

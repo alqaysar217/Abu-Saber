@@ -1,10 +1,10 @@
 
+import { Cairo } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase/client-provider"
 import { AuthWrapper } from "@/components/AuthWrapper"
 import './globals.css'
 import { Metadata, Viewport } from "next"
-import { Cairo } from 'next/font/google'
 
 const cairo = Cairo({
   subsets: ['arabic'],
@@ -37,8 +37,8 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthWrapper>
             {children}
-            <Toaster />
           </AuthWrapper>
+          <Toaster />
         </FirebaseClientProvider>
       </body>
     </html>
