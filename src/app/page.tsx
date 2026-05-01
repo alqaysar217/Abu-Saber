@@ -11,14 +11,29 @@ import { cn } from "@/lib/utils"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 
 export default function Home() {
-  const [showAmounts, setShowAmounts] = useState(false)
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({
+    profit: false,
+    debtsToMe: false,
+    debtsByMe: false,
+    liquidity: false,
+    activities: false,
+  })
+
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo')
 
-  const togglePrivacy = () => setShowAmounts(!showAmounts)
-
-  const formatAmount = (amount: string) => {
-    return showAmounts ? amount : "*****"
+  const toggleVisibility = (key: string) => {
+    setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
+
+  const formatAmount = (key: string, amount: string) => {
+    return visibility[key] ? amount : "*****"
+  }
+
+  const activities = [
+    { id: "act1", title: "بيع تونة - حملة الحديدة", sub: "قبل ٢ ساعة", amount: "+ ٤٥,٠٠٠ ر.ي", type: "income" },
+    { id: "act2", title: "مصاريف ديزل", sub: "قبل ٤ ساعات", amount: "- ١٢,٠٠٠ ر.ي", type: "expense" },
+    { id: "act3", title: "شراء ثلج", sub: "أمس", amount: "- ٥,٥٠٠ ر.ي", type: "expense" },
+  ]
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20">
@@ -40,17 +55,19 @@ export default function Home() {
             </div>
             <h1 className="text-2xl font-black font-headline tracking-tight">أبو صابر</h1>
           </div>
-          <button 
-            onClick={togglePrivacy}
-            className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
-          >
-            {showAmounts ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
-          </button>
         </div>
         <div className="space-y-1 relative z-10">
-          <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح</p>
+          <div className="flex items-center gap-2">
+            <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح</p>
+            <button 
+              onClick={() => toggleVisibility('profit')}
+              className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              {visibility['profit'] ? <EyeOff className="w-3 h-3 text-white" /> : <Eye className="w-3 h-3 text-white" />}
+            </button>
+          </div>
           <p className="text-4xl font-black tabular-nums tracking-tighter">
-            {formatAmount("2,450,000")} <span className="text-lg font-normal opacity-80">ر.ي</span>
+            {formatAmount("profit", "2,450,000")} <span className="text-lg font-normal opacity-80">ر.ي</span>
           </p>
         </div>
       </header>
@@ -59,30 +76,42 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
             <CardContent className="p-5 flex flex-col gap-3">
-              <div className="p-2.5 bg-green-50 text-green-700 rounded-2xl w-fit">
-                <ArrowUpRight className="w-5 h-5" />
+              <div className="flex justify-between items-start">
+                <div className="p-2.5 bg-green-50 text-green-700 rounded-2xl w-fit">
+                  <ArrowUpRight className="w-5 h-5" />
+                </div>
+                <button 
+                  onClick={() => toggleVisibility('debtsToMe')}
+                  className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  {visibility['debtsToMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                </button>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</p>
-                </div>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون لك</p>
                 <p className="text-xl font-black text-green-700">
-                  {formatAmount("840,000")} <span className="text-xs font-normal">ر.ي</span>
+                  {formatAmount("debtsToMe", "840,000")} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
           </Card>
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
             <CardContent className="p-5 flex flex-col gap-3">
-              <div className="p-2.5 bg-red-50 text-red-700 rounded-2xl w-fit">
-                <ArrowDownRight className="w-5 h-5" />
+              <div className="flex justify-between items-start">
+                <div className="p-2.5 bg-red-50 text-red-700 rounded-2xl w-fit">
+                  <ArrowDownRight className="w-5 h-5" />
+                </div>
+                <button 
+                  onClick={() => toggleVisibility('debtsByMe')}
+                  className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  {visibility['debtsByMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                </button>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</p>
-                </div>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون عليك</p>
                 <p className="text-xl font-black text-red-700">
-                  {formatAmount("320,000")} <span className="text-xs font-normal">ر.ي</span>
+                  {formatAmount("debtsByMe", "320,000")} <span className="text-xs font-normal">ر.ي</span>
                 </p>
               </div>
             </CardContent>
@@ -92,16 +121,24 @@ export default function Home() {
 
       <section className="px-4 mb-8">
         <Card className="border-none shadow-lg rounded-[2rem] bg-gradient-to-r from-accent/20 to-transparent border-r-4 border-accent">
-          <CardContent className="p-5 flex items-center gap-5">
-            <div className="p-3.5 bg-white shadow-sm text-accent rounded-2xl">
-              <Wallet className="w-6 h-6" />
+          <CardContent className="p-5 flex items-center justify-between">
+            <div className="flex items-center gap-5">
+              <div className="p-3.5 bg-white shadow-sm text-accent rounded-2xl">
+                <Wallet className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
+                <p className="text-2xl font-black">
+                  {formatAmount("liquidity", "1,215,000")} <span className="text-sm font-normal opacity-70">ر.ي</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
-              <p className="text-2xl font-black">
-                {formatAmount("1,215,000")} <span className="text-sm font-normal opacity-70">ر.ي</span>
-              </p>
-            </div>
+            <button 
+              onClick={() => toggleVisibility('liquidity')}
+              className="p-2 rounded-full bg-white/50 hover:bg-white transition-colors"
+            >
+              {visibility['liquidity'] ? <EyeOff className="w-5 h-5 text-accent" /> : <Eye className="w-5 h-5 text-accent" />}
+            </button>
           </CardContent>
         </Card>
       </section>
@@ -113,16 +150,20 @@ export default function Home() {
 
       <section className="px-4 mb-8">
         <div className="flex justify-between items-center mb-5 px-2">
-          <h2 className="text-lg font-black">آخر النشاطات</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-black">آخر النشاطات</h2>
+            <button 
+              onClick={() => toggleVisibility('activities')}
+              className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+            >
+              {visibility['activities'] ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+          </div>
           <button className="text-sm text-primary font-bold hover:underline">عرض الكل</button>
         </div>
         <div className="space-y-4">
-          {[
-            { title: "بيع تونة - حملة الحديدة", sub: "قبل ٢ ساعة", amount: "+ ٤٥,٠٠٠ ر.ي", type: "income" },
-            { title: "مصاريف ديزل", sub: "قبل ٤ ساعات", amount: "- ١٢,٠٠٠ ر.ي", type: "expense" },
-            { title: "شراء ثلج", sub: "أمس", amount: "- ٥,٥٠٠ ر.ي", type: "expense" },
-          ].map((item, idx) => (
-            <div key={idx} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+          {activities.map((item) => (
+            <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
               <div className="flex flex-col gap-0.5">
                 <span className="font-bold text-sm">{item.title}</span>
                 <span className="text-[10px] text-muted-foreground font-medium uppercase">{item.sub}</span>
@@ -131,7 +172,7 @@ export default function Home() {
                 "font-black text-sm tabular-nums",
                 item.type === "income" ? "text-green-600" : "text-red-500"
               )}>
-                {showAmounts ? item.amount : "*****"}
+                {visibility['activities'] ? item.amount : "*****"}
               </span>
             </div>
           ))}
