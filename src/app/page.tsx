@@ -15,8 +15,6 @@ export default function Home() {
     profit: false,
     debtsToMe: false,
     debtsByMe: false,
-    liquidity: false,
-    activities: false,
   })
 
   const logo = PlaceHolderImages.find(img => img.id === 'app-logo')
@@ -129,16 +127,10 @@ export default function Home() {
               <div>
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
                 <p className="text-2xl font-black">
-                  {formatAmount("liquidity", "1,215,000")} <span className="text-sm font-normal opacity-70">ر.ي</span>
+                  1,215,000 <span className="text-sm font-normal opacity-70">ر.ي</span>
                 </p>
               </div>
             </div>
-            <button 
-              onClick={() => toggleVisibility('liquidity')}
-              className="p-2 rounded-full bg-white/50 hover:bg-white transition-colors"
-            >
-              {visibility['liquidity'] ? <EyeOff className="w-5 h-5 text-accent" /> : <Eye className="w-5 h-5 text-accent" />}
-            </button>
           </CardContent>
         </Card>
       </section>
@@ -150,15 +142,7 @@ export default function Home() {
 
       <section className="px-4 mb-8">
         <div className="flex justify-between items-center mb-5 px-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-black">آخر النشاطات</h2>
-            <button 
-              onClick={() => toggleVisibility('activities')}
-              className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-            >
-              {visibility['activities'] ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-            </button>
-          </div>
+          <h2 className="text-lg font-black">آخر النشاطات</h2>
           <button className="text-sm text-primary font-bold hover:underline">عرض الكل</button>
         </div>
         <div className="space-y-4">
@@ -172,7 +156,7 @@ export default function Home() {
                 "font-black text-sm tabular-nums",
                 item.type === "income" ? "text-green-600" : "text-red-500"
               )}>
-                {visibility['activities'] ? item.amount : "*****"}
+                {item.amount}
               </span>
             </div>
           ))}
