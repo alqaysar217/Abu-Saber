@@ -5,7 +5,6 @@ import { use } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
-  TrendingUp, 
   ArrowDownRight, 
   ArrowUpRight, 
   Package, 
@@ -23,28 +22,42 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { useFirestore, useDoc, useCollection } from "@/firebase"
+import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { doc, collection, query, where, updateDoc, serverTimestamp } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { BottomNav } from "@/components/layout/BottomNav"
 
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
   const { toast } = useToast()
   const { campaignId } = use(params)
   const db = useFirestore()
+  const { user } = useUser()
 
-  const campaignRef = db ? doc(db, "campaigns", campaignId) : null
-  const { data: campaign, loading: loadingCampaign } = useDoc(campaignRef)
+  const campaignRef = useMemoFirebase(() => {
+    if (!db || !user || !campaignId) return null
+    return doc(db, "users", user.uid, "campaigns", campaignId)
+  }, [db, user, campaignId])
 
-  const expensesQuery = db ? query(collection(db, "expenses"), where("campaignId", "==", campaignId)) : null
-  const { data: expenses, loading: loadingExpenses } = useCollection(expensesQuery)
+  const { data: campaign, isLoading: loadingCampaign } = useDoc(campaignRef)
 
-  const purchasesQuery = db ? query(collection(db, "purchases"), where("campaignId", "==", campaignId)) : null
-  const { data: purchases, loading: loadingPurchases } = useCollection(purchasesQuery)
+  const expensesQuery = useMemoFirebase(() => {
+    if (!db || !user || !campaignId) return null
+    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
+  }, [db, user, campaignId])
+
+  const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
+
+  const purchasesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId))
+  }, [db, user, campaignId])
+
+  const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
 
   const totalExpenses = expenses?.reduce((acc, curr) => acc + curr.amount, 0) || 0
   const totalPurchases = purchases?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0
@@ -52,7 +65,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const handleCloseCampaign = async () => {
     if (!campaignRef) return
-    if (confirm("هل أنت متأكد من إغلاق هذه الحملة؟ لا يمكن إضافة مصاريف أو مشتريات جديدة إليها بعد الإغلاق.")) {
+    if (confirm("هل أنت متأكد من إغلاق هذه الحملة؟")) {
       updateDoc(campaignRef, { 
         status: "closed",
         endDate: serverTimestamp() 
@@ -98,7 +111,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <h1 className="text-lg font-bold truncate px-4">{campaign.name}</h1>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
             <Calendar className="w-3 h-3" />
-            {format(new Date(campaign.startDate), "PPP", { locale: ar })}
+            {campaign.startDate ? format(new Date(campaign.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
           </p>
         </div>
         <div className="w-6" />
@@ -156,7 +169,6 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                 <p className="text-xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString()}</p>
               </div>
             </div>
-
             {campaign.notes && (
               <Card className="border-none shadow-sm rounded-2xl">
                 <CardHeader className="p-4 pb-0">
@@ -176,12 +188,12 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   <div className="flex flex-col">
                     <span className="text-sm font-bold">{p.fishType}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      {p.quantity} كجم × {p.pricePerKg.toLocaleString()} ر.ي
+                      {p.quantity} كجم × {p.pricePerKg?.toLocaleString()} ر.ي
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-black text-orange-600 tabular-nums">{p.totalAmount.toLocaleString()} ر.ي</span>
-                    <p className="text-[10px] text-muted-foreground">{format(new Date(p.date), "dd MMM")}</p>
+                    <span className="text-sm font-black text-orange-600 tabular-nums">{p.totalAmount?.toLocaleString()} ر.ي</span>
+                    <p className="text-[10px] text-muted-foreground">{p.date ? format(new Date(p.date), "dd MMM") : ""}</p>
                   </div>
                 </div>
               ))
@@ -203,11 +215,13 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   "أخرى": MoreHorizontal
                 }[e.type as string] || MoreHorizontal
 
+                const Icon = typeIcon;
+
                 return (
                   <div key={e.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-accent/10 text-accent rounded-lg">
-                        {<typeIcon className="w-4 h-4" />}
+                        <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold">{e.type}</span>
@@ -215,8 +229,8 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-black text-accent tabular-nums">{e.amount.toLocaleString()} ر.ي</span>
-                      <p className="text-[10px] text-muted-foreground">{format(new Date(e.date), "dd MMM")}</p>
+                      <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString()} ر.ي</span>
+                      <p className="text-[10px] text-muted-foreground">{e.date ? format(new Date(e.date), "dd MMM") : ""}</p>
                     </div>
                   </div>
                 )

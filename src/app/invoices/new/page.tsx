@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { AIInvoiceParser } from "@/components/invoice/AIInvoiceParser"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
+import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -27,6 +27,7 @@ export default function NewInvoicePage() {
   const router = useRouter()
   const { toast } = useToast()
   const db = useFirestore()
+  const { user } = useUser()
   
   const [useAI, setUseAI] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -37,11 +38,24 @@ export default function NewInvoicePage() {
   const [currentItem, setCurrentItem] = useState({ fishType: "", quantity: "", pricePerKg: "" })
   const [addedItems, setAddedItems] = useState<InvoiceItem[]>([])
 
-  // Fetch open campaigns and customers (using suppliers for now as customers if not defined)
-  const campaignsQuery = db ? query(collection(db, "campaigns"), where("status", "==", "open")) : null
+  // Fetch open campaigns
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "users", user.uid, "campaigns"),
+      where("status", "==", "open")
+    )
+  }, [db, user])
+
   const { data: openCampaigns } = useCollection(campaignsQuery)
   
-  const { data: suppliers } = useCollection(db ? collection(db, "suppliers") : null)
+  // Using suppliers as customers for now
+  const customersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "suppliers"))
+  }, [db, user])
+
+  const { data: customers } = useCollection(customersQuery)
 
   const handleAddItem = () => {
     const qty = parseFloat(currentItem.quantity)
@@ -64,9 +78,8 @@ export default function NewInvoicePage() {
     }
 
     setAddedItems([newItem, ...addedItems])
-    setCurrentItem({ fishType: "", quantity: "", pricePerKg: "" }) // Reset for next entry
+    setCurrentItem({ fishType: "", quantity: "", pricePerKg: "" })
     
-    // Auto-focus back to fish type (UX enhancement)
     const fishTypeInput = document.getElementById("fish-type-input")
     if (fishTypeInput) fishTypeInput.focus()
   }
@@ -78,7 +91,7 @@ export default function NewInvoicePage() {
   const grandTotal = addedItems.reduce((acc, item) => acc + item.total, 0)
 
   const handleFinalSave = async () => {
-    if (!db) return
+    if (!db || !user) return
     if (!campaignId || !customerId || addedItems.length === 0) {
       toast({
         variant: "destructive",
@@ -94,19 +107,22 @@ export default function NewInvoicePage() {
       customerId,
       items: addedItems,
       totalAmount: grandTotal,
-      date: new Date().toISOString(),
+      paidAmount: 0,
+      paymentType: "نقد",
+      status: "دين",
+      invoiceDate: new Date().toISOString(),
+      userId: user.uid,
       createdAt: serverTimestamp(),
-      type: "sale"
     }
 
-    addDoc(collection(db, "purchases"), invoiceData) // Reusing purchases or a dedicated 'sales' collection
+    addDoc(collection(db, "users", user.uid, "invoices"), invoiceData)
       .then(() => {
         toast({ title: "تم حفظ الفاتورة بنجاح" })
         router.push("/")
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: 'purchases',
+          path: `users/${user.uid}/invoices`,
           operation: 'create',
           requestResourceData: invoiceData,
         })
@@ -126,7 +142,6 @@ export default function NewInvoicePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Step 1: Selection */}
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
@@ -150,8 +165,8 @@ export default function NewInvoicePage() {
                   <SelectValue placeholder="اختر العميل" />
                 </SelectTrigger>
                 <SelectContent>
-                  {suppliers?.map((sup) => (
-                    <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
+                  {customers?.map((cust) => (
+                    <SelectItem key={cust.id} value={cust.id}>{cust.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -159,7 +174,6 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        {/* Mode Toggle */}
         <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-xl">
           <button
             onClick={() => setUseAI(false)}
@@ -186,11 +200,10 @@ export default function NewInvoicePage() {
               <AIInvoiceParser onSave={() => router.push("/")} />
             ) : (
               <div className="space-y-6">
-                {/* Fast Entry Inputs */}
                 <Card className="border-2 border-primary/10 shadow-md rounded-2xl bg-white sticky top-20 z-10">
                   <CardContent className="p-4 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fish-type-input" className="text-xs font-bold">نوع السمك</lebel>
+                      <Label htmlFor="fish-type-input" className="text-xs font-bold">نوع السمك</Label>
                       <Input 
                         id="fish-type-input"
                         placeholder="مثال: تونة، بياض..." 
@@ -231,7 +244,6 @@ export default function NewInvoicePage() {
                   </CardContent>
                 </Card>
 
-                {/* List of Added Items */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-2">
                     <h3 className="text-sm font-bold flex items-center gap-2">
@@ -269,7 +281,6 @@ export default function NewInvoicePage() {
                   </div>
                 </div>
 
-                {/* Final Actions */}
                 {addedItems.length > 0 && (
                   <div className="pt-4 sticky bottom-4">
                     <Button 

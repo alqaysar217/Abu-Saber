@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
+import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -19,17 +19,25 @@ export default function NewPurchasePage() {
   const router = useRouter()
   const { toast } = useToast()
   const db = useFirestore()
+  const { user } = useUser()
   const [loading, setLoading] = useState(false)
 
-  // Fetch open campaigns
-  const campaignsQuery = query(
-    collection(db || ({} as any), "campaigns"),
-    where("status", "==", "open")
-  )
-  const { data: openCampaigns, loading: loadingCampaigns } = useCollection(db ? campaignsQuery : null)
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "users", user.uid, "campaigns"),
+      where("status", "==", "open")
+    )
+  }, [db, user])
 
-  // Fetch suppliers
-  const { data: suppliers, loading: loadingSuppliers } = useCollection(db ? collection(db, "suppliers") : null)
+  const { data: openCampaigns, isLoading: loadingCampaigns } = useCollection(campaignsQuery)
+
+  const suppliersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "suppliers"))
+  }, [db, user])
+
+  const { data: suppliers, isLoading: loadingSuppliers } = useCollection(suppliersQuery)
 
   const [campaignId, setCampaignId] = useState("")
   const [supplierId, setSupplierId] = useState("")
@@ -42,7 +50,7 @@ export default function NewPurchasePage() {
   const totalAmount = (parseFloat(quantity) || 0) * (parseFloat(pricePerKg) || 0)
 
   const handleSave = async () => {
-    if (!db) return
+    if (!db || !user) return
     if (!campaignId || !supplierId || !fishType || !quantity || !pricePerKg) {
       toast({
         variant: "destructive",
@@ -62,10 +70,11 @@ export default function NewPurchasePage() {
       totalAmount,
       paymentType,
       date: new Date(date).toISOString(),
+      userId: user.uid,
       createdAt: serverTimestamp(),
     }
 
-    addDoc(collection(db, "purchases"), purchaseData)
+    addDoc(collection(db, "users", user.uid, "purchases"), purchaseData)
       .then(() => {
         toast({
           title: "تم بنجاح",
@@ -75,7 +84,7 @@ export default function NewPurchasePage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: 'purchases',
+          path: `users/${user.uid}/purchases`,
           operation: 'create',
           requestResourceData: purchaseData,
         })
@@ -195,12 +204,15 @@ export default function NewPurchasePage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-bold">التاريخ</Label>
-                <Input 
-                  type="date" 
-                  className="h-12 rounded-xl text-right" 
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
+                <div className="relative">
+                  <Input 
+                    type="date" 
+                    className="h-12 rounded-xl text-right pr-10" 
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
               </div>
             </div>
           </CardContent>

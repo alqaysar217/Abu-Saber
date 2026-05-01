@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -18,13 +18,14 @@ export default function NewSupplierPage() {
   const router = useRouter()
   const { toast } = useToast()
   const db = useFirestore()
+  const { user } = useUser()
   const [loading, setLoading] = useState(false)
   
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
 
   const handleSave = async () => {
-    if (!db) return
+    if (!db || !user) return
     if (!name) {
       toast({
         variant: "destructive",
@@ -38,11 +39,11 @@ export default function NewSupplierPage() {
     const supplierData = {
       name,
       phone,
-      balance: 0,
+      userId: user.uid,
       createdAt: serverTimestamp(),
     }
 
-    addDoc(collection(db, "suppliers"), supplierData)
+    addDoc(collection(db, "users", user.uid, "suppliers"), supplierData)
       .then(() => {
         toast({
           title: "تم بنجاح",
@@ -52,7 +53,7 @@ export default function NewSupplierPage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: 'suppliers',
+          path: `users/${user.uid}/suppliers`,
           operation: 'create',
           requestResourceData: supplierData,
         })
