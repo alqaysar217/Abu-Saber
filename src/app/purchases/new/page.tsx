@@ -16,7 +16,7 @@ import {
   Coins, 
   Wallet,
   ClipboardList,
-  Plus,
+  Plus, 
   Trash2,
   Table as TableIcon,
   CreditCard,
@@ -321,7 +321,7 @@ export default function NewPurchasePage() {
                     placeholder="0.00" 
                     className="h-11 rounded-xl border-primary/20"
                     value={currentItem.quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    onChange={(e) => setCurrentItem({...currentItem, quantity: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
@@ -334,7 +334,7 @@ export default function NewPurchasePage() {
                     placeholder="0" 
                     className="h-11 rounded-xl border-primary/20"
                     value={currentItem.pricePerKg}
-                    onChange={(e) => setPricePerKg(e.target.value)}
+                    onChange={(e) => setCurrentItem({...currentItem, pricePerKg: e.target.value})}
                   />
                 </div>
               </div>
