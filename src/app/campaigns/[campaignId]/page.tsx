@@ -1,7 +1,7 @@
 
 "use client"
 
-import { use, useState } from "react"
+import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
@@ -21,13 +21,19 @@ import {
   Receipt,
   Archive,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Trash2,
+  Edit3,
+  Table as TableIcon,
+  X,
+  User
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { doc, collection, query, where, updateDoc } from "firebase/firestore"
+import { doc, collection, query, where, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { BottomNav } from "@/components/layout/BottomNav"
@@ -45,6 +51,168 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+
+function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, suppliers: any[], userId: string }) {
+  const db = useFirestore()
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const supplier = suppliers?.find(s => s.id === purchase.supplierId)
+
+  const itemsQuery = useMemoFirebase(() => {
+    if (!db || !userId || !purchase.id) return null
+    return query(collection(db, "users", userId, "purchases", purchase.id, "items"))
+  }, [db, userId, purchase.id])
+
+  const { data: items, isLoading: loadingItems } = useCollection(itemsQuery)
+
+  const handleDeletePurchase = async () => {
+    if (!db || !userId) return
+    const purchaseRef = doc(db, "users", userId, "purchases", purchase.id)
+    
+    deleteDoc(purchaseRef)
+      .then(() => {
+        toast({ title: "تم حذف عملية الشراء بنجاح" })
+        setOpen(false)
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: purchaseRef.path,
+          operation: 'delete'
+        }))
+      })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <div className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-50 text-orange-600 rounded-xl">
+              <User className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold">{supplier?.name || "مورد غير معروف"}</span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy") : "No Date"}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-sm font-black text-orange-600 tabular-nums">{purchase.totalAmount?.toLocaleString('en-US')} ر.ي</span>
+            <div className="flex items-center justify-end gap-1 mt-1">
+               <Badge className="text-[8px] px-1.5 py-0 bg-muted text-muted-foreground border-none">
+                {purchase.status || "N/A"}
+               </Badge>
+               <Eye className="w-3 h-3 text-muted-foreground" />
+            </div>
+          </div>
+        </div>
+      </DialogTrigger>
+      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-6 bg-orange-600 text-white">
+          <div className="flex justify-between items-center">
+             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2">
+               <TableIcon className="w-5 h-5" />
+               تفاصيل فاتورة المشتريات
+             </DialogTitle>
+             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full">
+               <X className="w-5 h-5" />
+             </button>
+          </div>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
+             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> المورد: {supplier?.name}</p>
+             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy") : ""}</p>
+          </div>
+        </DialogHeader>
+        
+        <div className="p-4 space-y-4">
+           {loadingItems ? (
+             <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-orange-600" /></div>
+           ) : items && items.length > 0 ? (
+             <div className="border rounded-2xl overflow-hidden shadow-inner">
+               <Table dir="rtl">
+                 <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-right font-bold text-[10px]">النوع</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">الدفع</TableHead>
+                    </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                    {items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
+                        <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal?.toLocaleString('en-US')}</TableCell>
+                        <TableCell className="text-center text-[10px]">{item.paymentType}</TableCell>
+                      </TableRow>
+                    ))}
+                 </TableBody>
+               </Table>
+             </div>
+           ) : (
+             <div className="text-center py-10 text-muted-foreground text-xs">لا توجد أصناف مسجلة</div>
+           )}
+
+           <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 flex justify-between items-center">
+              <span className="text-xs font-bold text-orange-800">إجمالي الفاتورة النهائية</span>
+              <span className="text-xl font-black text-orange-600 tabular-nums">{purchase.totalAmount?.toLocaleString('en-US')} ر.ي</span>
+           </div>
+
+           <div className="flex gap-3 pt-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md">
+                    <Trash2 className="w-4 h-4" />
+                    حذف الفاتورة
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-right text-destructive flex items-center justify-end gap-2">
+                      <AlertCircle className="w-5 h-5" />
+                      حذف عملية الشراء؟
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-right">
+                      هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-row gap-2 mt-4">
+                    <AlertDialogCancel className="flex-1 rounded-xl">إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeletePurchase} className="flex-1 rounded-xl bg-destructive text-white border-none">نعم، احذف</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <Button variant="outline" className="flex-1 rounded-xl h-12 gap-2 border-orange-200 text-orange-600 hover:bg-orange-50" onClick={() => toast({ title: "ميزة التعديل قادمة قريباً" })}>
+                <Edit3 className="w-4 h-4" />
+                تعديل البيانات
+              </Button>
+           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
@@ -61,16 +229,23 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const { data: campaign, isLoading: loadingCampaign } = useDoc(campaignRef)
 
+  const suppliersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "suppliers"))
+  }, [db, user])
+
+  const { data: suppliers } = useCollection(suppliersQuery)
+
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
-    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
+    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"), orderBy("createdAt", "desc"))
   }, [db, user, campaignId])
 
   const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId))
+    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId), orderBy("createdAt", "desc"))
   }, [db, user, campaignId])
 
   const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
@@ -103,8 +278,8 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
       .finally(() => setArchiving(false))
   }
 
-  const totalExpenses = expenses?.reduce((acc, curr) => acc + curr.amount, 0) || 0
-  const totalPurchases = purchases?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0
+  const totalExpenses = expenses?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0
+  const totalPurchases = purchases?.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) || 0
   const totalCost = totalExpenses + totalPurchases
 
   if (loadingCampaign || loadingExpenses || loadingPurchases) {
@@ -134,9 +309,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         </button>
         <div className="text-center flex-1">
           <h1 className="text-lg font-bold truncate px-4">{campaign.name}</h1>
-          <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+          <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1 font-bold">
             <Calendar className="w-3 h-3 text-primary" />
-            {campaign.startDate ? format(new Date(campaign.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
+            {campaign.startDate ? format(new Date(campaign.startDate), "PPP", { locale: ar }) : "No Date"}
           </p>
         </div>
         {!isCompleted ? (
@@ -148,7 +323,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600">
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
@@ -191,7 +366,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         {isCompleted && (
           <div className="p-4 bg-muted border-2 border-dashed rounded-2xl flex items-center gap-3 text-muted-foreground">
             <AlertCircle className="w-5 h-5" />
-            <p className="text-xs font-bold">هذه الحملة مؤرشفة. تم إغلاقها في {campaign.endDate ? format(new Date(campaign.endDate), "PPP", { locale: ar }) : ""}</p>
+            <p className="text-xs font-bold">هذه الحملة مؤرشفة. تم إغلاقها في {campaign.endDate ? format(new Date(campaign.endDate), "dd MMM yyyy") : ""}</p>
           </div>
         )}
 
@@ -265,21 +440,10 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           <TabsContent value="purchases" className="space-y-3 outline-none animate-in fade-in duration-300">
             {purchases && purchases.length > 0 ? (
               purchases.map((p: any) => (
-                <div key={p.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold">{p.fishType}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {p.quantity} kg × {p.pricePerKg?.toLocaleString('en-US')} ر.ي
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-orange-600 tabular-nums">{p.totalAmount?.toLocaleString('en-US')} ر.ي</span>
-                    <p className="text-[10px] text-muted-foreground">{p.date ? format(new Date(p.date), "dd MMM") : ""}</p>
-                  </div>
-                </div>
+                <PurchaseDetailRow key={p.id} purchase={p} suppliers={suppliers || []} userId={user.uid} />
               ))
             ) : (
-              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد مشتريات لهذه الحملة</div>
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl">لا توجد عمليات شراء لهذه الحملة</div>
             )}
           </TabsContent>
 
@@ -311,7 +475,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString('en-US')} ر.ي</span>
-                      <p className="text-[10px] text-muted-foreground">{e.date ? format(new Date(e.date), "dd MMM") : ""}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold">{e.date ? format(new Date(e.date), "dd MMM") : ""}</p>
                     </div>
                   </div>
                 )
