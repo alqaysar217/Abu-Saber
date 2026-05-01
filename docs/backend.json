@@ -32,32 +32,36 @@
     },
     "Supplier": {
       "title": "Supplier",
-      "description": "Details of fish suppliers",
+      "description": "Details of fish suppliers or customers",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "balance": { "type": "number" },
+        "type": { "type": "string", "enum": ["supplier", "customer"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]
     },
     "Purchase": {
-      "title": "Purchase",
-      "description": "Fish purchase records from suppliers",
+      "title": "Transaction",
+      "description": "Fish purchase or sales records",
       "type": "object",
       "properties": {
         "campaignId": { "type": "string" },
         "supplierId": { "type": "string" },
+        "customerId": { "type": "string" },
         "fishType": { "type": "string" },
         "quantity": { "type": "number" },
         "pricePerKg": { "type": "number" },
         "totalAmount": { "type": "number" },
         "paymentType": { "type": "string", "enum": ["نقد", "دين"] },
+        "type": { "type": "string", "enum": ["purchase", "sale"] },
+        "items": { "type": "array" },
         "date": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["campaignId", "supplierId", "fishType", "quantity", "pricePerKg", "paymentType"]
+      "required": ["campaignId", "date"]
     }
   },
   "auth": {
@@ -74,11 +78,11 @@
     },
     "/suppliers/{supplierId}": {
       "schema": "#/backend/entities/Supplier",
-      "description": "Store supplier information"
+      "description": "Store supplier/customer information"
     },
     "/purchases/{purchaseId}": {
       "schema": "#/backend/entities/Purchase",
-      "description": "Store fish purchase records"
+      "description": "Store fish purchase/sales records"
     }
   }
 }
