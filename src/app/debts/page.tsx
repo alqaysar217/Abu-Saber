@@ -19,7 +19,8 @@ import {
   ShoppingBag,
   Info,
   Fish,
-  ExternalLink
+  ExternalLink,
+  ChevronRight
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -312,11 +313,11 @@ export default function DebtsPage() {
       </div>
 
       <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-[3rem] p-0 overflow-hidden border-none shadow-2xl">
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-[3rem] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
           <SheetHeader className="p-6 bg-primary text-white relative">
             <button 
               onClick={() => setSelectedEntity(null)}
-              className="absolute left-6 top-6 p-2 bg-white/10 rounded-full"
+              className="absolute left-6 top-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-white" />
             </button>
@@ -326,7 +327,7 @@ export default function DebtsPage() {
             </div>
           </SheetHeader>
 
-          <div className="h-full overflow-y-auto p-4 space-y-4 pb-20 bg-muted/20">
+          <div className="h-full overflow-y-auto p-4 space-y-4 pb-20 bg-muted/20" dir="rtl">
             {entityTransactions.length > 0 ? (
               entityTransactions.map((tr: any) => {
                 const campaign = campaigns?.find(c => c.id === tr.campaignId)
@@ -342,16 +343,16 @@ export default function DebtsPage() {
                     className="p-5 bg-white rounded-[2rem] border border-border/50 shadow-sm space-y-4 active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30 group"
                   >
                     <div className="flex justify-between items-start border-b border-border/40 pb-3">
-                      <div className="flex flex-col gap-1 items-end">
+                      <div className="flex flex-col gap-1 items-start">
                         <div className="flex items-center gap-1.5 text-primary">
-                          <span className="text-xs font-black">{campaign?.name || "حملة غير معروفة"}</span>
                           <Ship className="w-3.5 h-3.5" />
+                          <span className="text-xs font-black">{campaign?.name || "حملة غير معروفة"}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
                           <span className="text-[10px] font-bold">
                             {date ? format(new Date(date), "dd MMM yyyy", { locale: ar }) : "بدون تاريخ"}
                           </span>
-                          <Calendar className="w-3 h-3" />
                         </div>
                       </div>
                       <Badge className={cn(
@@ -370,11 +371,11 @@ export default function DebtsPage() {
 
                     {(tr.items && tr.items.length > 0) && (
                       <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-end">
-                          الأصناف المسجلة
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-start">
                           <Fish className="w-3 h-3" />
+                          الأصناف المسجلة
                         </p>
-                        <div className="flex flex-wrap gap-2 justify-end">
+                        <div className="flex flex-wrap gap-2 justify-start">
                           {tr.items.map((item: any, idx: number) => (
                             <div key={idx} className="bg-muted/50 px-2.5 py-1 rounded-lg border border-border/40">
                               <span className="text-[10px] font-bold">{item.fishType} ({item.quantity} كجم)</span>
@@ -403,16 +404,16 @@ export default function DebtsPage() {
                       "p-4 rounded-2xl flex justify-between items-center shadow-inner",
                       selectedEntity?.type === 'customer' ? "bg-green-50/50" : "bg-red-50/50"
                     )}>
-                      <div className="flex items-center gap-2">
-                         <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
-                         <ExternalLink className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
                       <span className={cn(
                         "text-[11px] font-black",
                         selectedEntity?.type === 'customer' ? "text-green-700" : "text-red-700"
                       )}>المبلغ المتبقي</span>
+                      <div className="flex items-center gap-2">
+                         <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
+                         <ChevronLeft className="w-4 h-4 text-primary" />
+                      </div>
                     </div>
-                    <p className="text-[9px] text-center font-bold text-primary/60 opacity-0 group-hover:opacity-100">اضغط للانتقال لتفاصيل الحملة</p>
+                    <p className="text-[9px] text-center font-bold text-primary/60 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للانتقال لتفاصيل الحملة</p>
                   </div>
                 )
               })
