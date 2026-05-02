@@ -16,12 +16,10 @@ import {
   Loader2, 
   Menu, 
   Copy, 
-  RefreshCw, 
-  Sparkles
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, query, orderBy } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
@@ -29,7 +27,6 @@ export default function Home() {
   const db = useFirestore()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const [migrating, setMigrating] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     debtsToMe: false,
@@ -88,45 +85,6 @@ export default function Home() {
     return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
 
-  const setupDemoData = async () => {
-    if (!db || !user) return
-    setMigrating(true)
-    try {
-      const campRef = await addDoc(collection(db, "users", user.uid, "campaigns"), {
-        name: "حملة تجريبية (المكلا - عدن)",
-        startDate: new Date().toISOString(),
-        status: "open",
-        notes: "بيانات تجريبية لاختبار النظام",
-        createdAt: serverTimestamp()
-      })
-      
-      const custRef = await addDoc(collection(db, "users", user.uid, "customers"), {
-        name: "مطعم السعيدة (تجريبي)",
-        phone: "777000000",
-        createdAt: serverTimestamp()
-      })
-
-      await addDoc(collection(db, "users", user.uid, "invoices"), {
-        campaignId: campRef.id,
-        customerId: custRef.id,
-        totalAmount: 1500000,
-        paidAmount: 1000000,
-        remainingAmount: 500000,
-        status: "جزئي",
-        paymentType: "جزئي",
-        invoiceDate: new Date().toISOString(),
-        userId: user.uid,
-        createdAt: serverTimestamp()
-      })
-
-      toast({ title: "تم تجهيز البيانات التجريبية بنجاح" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "فشل تجهيز البيانات" })
-    } finally {
-      setMigrating(false)
-    }
-  }
-
   const copyUid = () => {
     if (user?.uid) {
       navigator.clipboard.writeText(user.uid)
@@ -136,8 +94,7 @@ export default function Home() {
 
   if (!mounted) return null
 
-  const isDataEmpty = (allInvoices?.length === 0 && allPurchases?.length === 0)
-  const recentInvoices = allInvoices?.slice(0, 3) || []
+  const recentInvoices = allInvoices?.slice(0, 5) || []
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -231,30 +188,6 @@ export default function Home() {
         </Card>
       </section>
 
-      {isDataEmpty && !loadingInvoices && (
-        <section className="px-4 mb-8">
-          <div className="p-6 bg-primary/5 border-2 border-dashed border-primary/20 rounded-[2.5rem] flex flex-col items-center text-center gap-4 animate-in fade-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-black text-primary">أهلاً بك في نظامك الجديد</h3>
-              <p className="text-xs text-muted-foreground font-bold leading-relaxed">
-                يبدو أن حسابك فارغ حالياً. يمكنك البدء بإضافة فواتيرك، أو الضغط بالأسفل لتحميل بيانات "مؤقتة" لتجربة شكل النظام.
-              </p>
-            </div>
-            <button 
-              onClick={setupDemoData}
-              disabled={migrating}
-              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all"
-            >
-              {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              تحميل بيانات تجريبية (مؤقتة)
-            </button>
-          </div>
-        </section>
-      )}
-
       <section className="mb-8">
         <h2 className="px-6 text-lg font-black mb-4">روابط سريعة</h2>
         <QuickActions />
@@ -284,8 +217,8 @@ export default function Home() {
               </div>
             ))
           ) : (
-            <div className="text-center py-10 text-muted-foreground text-xs bg-white rounded-[1.5rem] border border-dashed">
-              لا توجد فواتير حقيقية مسجلة بعد.
+            <div className="text-center py-12 text-muted-foreground text-xs bg-white rounded-[1.5rem] border border-dashed font-bold opacity-60">
+              لا توجد فواتير مسجلة حالياً
             </div>
           )}
         </div>
