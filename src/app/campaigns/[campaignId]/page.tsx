@@ -190,9 +190,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right text-destructive flex items-center justify-start gap-2 font-bold">
-                      <AlertCircle className="w-5 h-5" />
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       حذف عملية الشراء؟
+                      <AlertCircle className="w-5 h-5" />
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
@@ -303,9 +303,9 @@ function ExpenseDetailRow({ expense, campaignId, userId }: { expense: any, campa
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-right text-destructive flex items-center justify-start gap-2 font-bold">
-                <AlertCircle className="w-5 h-5" />
+              <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                 حذف المصروف؟
+                <AlertCircle className="w-5 h-5" />
               </AlertDialogTitle>
               <AlertDialogDescription className="text-right font-medium">
                 هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
@@ -362,16 +362,23 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
 
+  // Simplified query to avoid index errors and focus on permission fixes
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
     return query(
       collection(db, "users", user.uid, "purchases"), 
-      where("campaignId", "==", campaignId),
-      orderBy("purchaseDate", "desc")
+      where("campaignId", "==", campaignId)
     )
   }, [db, user, campaignId])
 
-  const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
+  const { data: rawPurchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
+
+  // Sort purchases in memory if they were fetched
+  const purchases = rawPurchases ? [...rawPurchases].sort((a: any, b: any) => {
+    const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0
+    const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0
+    return dateB - dateA
+  }) : []
 
   const handleArchiveCampaign = async () => {
     if (!campaignRef || !user) return
@@ -446,9 +453,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
-                  <AlertCircle className="w-5 h-5" />
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
                   تأكيد أرشفة الحملة
+                  <AlertCircle className="w-5 h-5" />
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">
