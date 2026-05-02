@@ -243,8 +243,8 @@ export default function NewExpensePage() {
         paidAmount: exp.paidAmount,
         remainingAmount: exp.remainingAmount,
         payeeId: exp.payeeId,
-        payeeName: exp.payeeName,
-        notes: exp.notes,
+        payeeName: exp.payeeName || null,
+        notes: exp.notes || null,
         campaignId: campaignId,
         userId: user.uid,
         createdAt: serverTimestamp(),
@@ -252,7 +252,6 @@ export default function NewExpensePage() {
       })
     })
 
-    // Perform non-blocking commit
     batch.commit()
       .then(() => {
         toast({
@@ -263,7 +262,7 @@ export default function NewExpensePage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: `users/${user.uid}/campaigns/${campaignId}/expenses/${addedExpenses[0]?.tempId || 'bulk'}`,
+          path: `users/${user.uid}/campaigns/${campaignId}/expenses/bulk-save`,
           operation: 'write',
         })
         errorEmitter.emit('permission-error', permissionError)
@@ -515,12 +514,11 @@ export default function NewExpensePage() {
                 <Table dir="rtl">
                   <TableHeader className="bg-muted/50">
                     <TableRow>
-                      <TableHead className="text-right text-[10px] font-bold">نوع المصروف</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
                       <TableHead className="text-center text-[10px] font-bold">المبلغ</TableHead>
                       <TableHead className="text-center text-[10px] font-bold">الدفع</TableHead>
-                      <TableHead className="text-center text-[10px] font-bold">التاريخ</TableHead>
-                      <TableHead className="text-right text-[10px] font-bold">الملاحظات/المورد</TableHead>
-                      <TableHead className="text-left text-[10px] font-bold">إجراء</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold">المورد</TableHead>
+                      <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -536,14 +534,8 @@ export default function NewExpensePage() {
                             {exp.paymentType}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center text-[10px] tabular-nums">
-                          {format(new Date(exp.date), "dd/MM", { locale: ar })}
-                        </TableCell>
-                        <TableCell className="text-right text-[10px] max-w-[150px] truncate">
-                          <div className="flex flex-col gap-0.5">
-                            {exp.payeeName && <span className="font-bold text-primary">{exp.payeeName}</span>}
-                            <span className="text-muted-foreground italic">{exp.notes || "-"}</span>
-                          </div>
+                        <TableCell className="text-right text-[10px] font-bold text-primary truncate">
+                          {exp.payeeName || "-"}
                         </TableCell>
                         <TableCell className="text-left">
                           <div className="flex items-center gap-2">
@@ -558,9 +550,10 @@ export default function NewExpensePage() {
                               </AlertDialogTrigger>
                               <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-right flex items-center justify-end gap-2 font-bold">
-                                    حذف المصروف <Trash2 className="w-5 h-5 text-destructive" />
-                                  </AlertDialogTitle>
+                                  <div className="flex items-center justify-start gap-2">
+                                    <Trash2 className="w-5 h-5 text-destructive" />
+                                    <AlertDialogTitle className="text-right font-bold text-destructive">حذف المصروف</AlertDialogTitle>
+                                  </div>
                                   <AlertDialogDescription className="text-right font-medium">
                                     هل أنت متأكد من حذف هذا المصروف من القائمة؟
                                   </AlertDialogDescription>
