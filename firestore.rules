@@ -2,8 +2,8 @@
  * Firestore Security Rules for Fish Trading Management System
  * 
  * CORE PHILOSOPHY:
- * This ruleset implements a robust User-Ownership model.
- * Everything under the path /users/{userId}/ is private to that user.
+ * Robust Path-Based Ownership.
+ * Everything under /users/{userId}/ belongs exclusively to that user.
  */
 
 rules_version = '2';
@@ -15,16 +15,11 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Match any document under the /users/{userId} hierarchy
-    match /users/{userId} {
-      // Allow the owner to manage their own user document
+    // Simplest and most robust ownership rule:
+    // Any document or subcollection under /users/{userId} is accessible only by that userId.
+    // Triggering a redeployment with this comment.
+    match /users/{userId}/{allPaths=**} {
       allow read, write: if isOwner(userId);
-
-      // Recursive match for ALL subcollections under the user's path
-      // This covers customers, suppliers, campaigns, invoices, purchases, expenses, etc.
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
-      }
     }
     
     // Default deny for everything else

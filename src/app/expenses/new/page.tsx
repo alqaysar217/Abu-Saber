@@ -220,20 +220,11 @@ export default function NewExpensePage() {
   }
 
   const handleFinalSave = async () => {
-    if (!db || !user) return
-    if (!campaignId) {
+    if (!db || !user || !campaignId) {
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "يرجى اختيار الحملة أولاً",
-      })
-      return
-    }
-    if (addedExpenses.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "قائمة فارغة",
-        description: "يرجى إضافة مصروف واحد على الأقل للقائمة",
+        description: "يرجى التأكد من اختيار الحملة وإضافة مصروفات",
       })
       return
     }
@@ -243,8 +234,10 @@ export default function NewExpensePage() {
     
     try {
       addedExpenses.forEach((exp) => {
-        const expenseRef = doc(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
-        // Map TempExpense to final document, ensuring userId is set
+        // Correctly referencing the collection path: /users/{userId}/campaigns/{campaignId}/expenses
+        const expenseCollectionRef = collection(db, "users", user.uid, "campaigns", campaignId, "expenses")
+        const expenseRef = doc(expenseCollectionRef)
+        
         batch.set(expenseRef, {
           id: expenseRef.id,
           type: exp.type,
@@ -255,7 +248,7 @@ export default function NewExpensePage() {
           payeeId: exp.payeeId,
           payeeName: exp.payeeName,
           notes: exp.notes,
-          campaignId,
+          campaignId: campaignId,
           userId: user.uid,
           createdAt: serverTimestamp(),
           expenseDate: new Date(exp.date).toISOString()
@@ -265,13 +258,14 @@ export default function NewExpensePage() {
       await batch.commit()
       toast({
         title: "تم الحفظ بنجاح",
-        description: `تم تسجيل ${addedExpenses.length} مصاريف في الحملة`,
+        description: `تم تسجيل ${addedExpenses.length} مصاريف بنجاح`,
       })
       router.push(`/campaigns/${campaignId}`)
     } catch (error: any) {
+      // Better error context
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `users/${user.uid}/campaigns/${campaignId}/expenses`,
-        operation: 'create'
+        operation: 'write'
       }))
     } finally {
       setLoading(false)
