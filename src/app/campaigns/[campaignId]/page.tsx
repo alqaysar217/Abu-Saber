@@ -394,8 +394,8 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
   const { toast } = useToast()
 
   const handleDelete = async () => {
-    if (!db || !userId || !campaignId) return
-    const expenseRef = doc(db, "users", userId, "campaigns", campaignId, "expenses", expense.id)
+    if (!db || !userId) return
+    const expenseRef = doc(db, "users", userId, "expenses", expense.id)
     
     deleteDoc(expenseRef)
       .then(() => {
@@ -512,12 +512,17 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
     return query(
-      collection(db, "users", user.uid, "campaigns", campaignId, "expenses"),
-      orderBy("createdAt", "desc")
+      collection(db, "users", user.uid, "expenses"),
+      where("campaignId", "==", campaignId)
     )
   }, [db, user, campaignId])
 
-  const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
+  const { data: rawExpenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
+  const expenses = rawExpenses ? [...rawExpenses].sort((a, b) => {
+    const da = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+    const db = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+    return db - da;
+  }) : []
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null

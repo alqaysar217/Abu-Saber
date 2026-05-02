@@ -25,7 +25,7 @@ import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, query, collectionGroup, where } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import {
   Sheet,
@@ -44,7 +44,6 @@ export default function DebtsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedEntity, setSelectedEntity] = useState<{ id: string, name: string, type: 'customer' | 'supplier' } | null>(null)
 
-  // Fetch all relevant collections
   const customersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "customers"))
@@ -75,10 +74,9 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: purchases } = useCollection(purchasesQuery)
 
-  // Fetch all expenses to find debts to suppliers
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collectionGroup(db, "expenses"), where("userId", "==", user.uid))
+    return query(collection(db, "users", user.uid, "expenses"))
   }, [db, user])
   const { data: expenses } = useCollection(expensesQuery)
 
@@ -106,13 +104,12 @@ export default function DebtsPage() {
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
   }, [invoices, customers, searchTerm])
 
-  // Calculate Supplier Debts (Money I owe - includes purchases and debts in expenses)
+  // Calculate Supplier Debts (Money I owe)
   const supplierDebts = useMemo(() => {
     if (!purchases || !suppliers || !expenses) return []
     
     const debtsMap = new Map()
     
-    // Add from purchases
     purchases.forEach(p => {
       const remaining = (p.totalAmount || 0) - (p.paidAmount || 0)
       if (remaining > 0 && p.supplierId) {
@@ -121,7 +118,6 @@ export default function DebtsPage() {
       }
     })
 
-    // Add from expenses (some expenses are recorded as debt to a supplier/payee)
     expenses.forEach(e => {
       const remaining = e.remainingAmount || 0
       if (remaining > 0 && e.payeeId) {
@@ -158,19 +154,17 @@ export default function DebtsPage() {
     } else {
       const trs = []
       
-      // Add purchases
       const relevantPurchases = (purchases || [])
         .filter(p => p.supplierId === selectedEntity.id && ((p.totalAmount || 0) - (p.paidAmount || 0)) > 0)
         .map(tr => ({ ...tr, trType: 'purchase' }))
       trs.push(...relevantPurchases)
 
-      // Add expenses
       const relevantExpenses = (expenses || [])
         .filter(e => e.payeeId === selectedEntity.id && (e.remainingAmount || 0) > 0)
         .map(tr => ({ ...tr, trType: 'expense' }))
       trs.push(...relevantExpenses)
 
-      return trs.sort((a, b) => new Date(b.purchaseDate || b.expenseDate || 0).getTime() - new Date(a.purchaseDate || a.expenseDate || 0).getTime())
+      return trs.sort((a, b) => new Date(b.purchaseDate || b.expenseDate || b.createdAt || 0).getTime() - new Date(a.purchaseDate || a.expenseDate || a.createdAt || 0).getTime())
     }
   }, [selectedEntity, invoices, purchases, expenses])
 
@@ -317,7 +311,6 @@ export default function DebtsPage() {
         )}
       </div>
 
-      {/* Details Sheet */}
       <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
         <SheetContent side="bottom" className="h-[85vh] rounded-t-[3rem] p-0 overflow-hidden border-none shadow-2xl">
           <SheetHeader className="p-6 bg-primary text-white relative">
@@ -337,7 +330,7 @@ export default function DebtsPage() {
             {entityTransactions.length > 0 ? (
               entityTransactions.map((tr: any) => {
                 const campaign = campaigns?.find(c => c.id === tr.campaignId)
-                const date = tr.invoiceDate || tr.purchaseDate || tr.expenseDate || tr.createdAt
+                const date = tr.invoiceDate || tr.purchaseDate || tr.expenseDate || (tr.createdAt?.toDate ? tr.createdAt.toDate() : tr.createdAt)
                 const remaining = (tr.trType === 'sale' || tr.trType === 'expense')
                   ? tr.remainingAmount 
                   : (tr.totalAmount - tr.paidAmount)
@@ -375,7 +368,6 @@ export default function DebtsPage() {
                       </Badge>
                     </div>
 
-                    {/* Items List for Invoices and Purchases */}
                     {(tr.items && tr.items.length > 0) && (
                       <div className="space-y-2">
                         <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-end">
@@ -392,7 +384,6 @@ export default function DebtsPage() {
                       </div>
                     )}
 
-                    {/* Notes for Expenses */}
                     {tr.trType === 'expense' && tr.notes && (
                       <p className="text-[10px] text-muted-foreground text-right italic">"{tr.notes}"</p>
                     )}

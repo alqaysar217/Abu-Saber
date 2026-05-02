@@ -54,9 +54,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
   const [saving, setSaving] = useState(false)
 
   const expenseRef = useMemoFirebase(() => {
-    if (!db || !user || !campaignId || !expenseId) return null
-    return doc(db, "users", user.uid, "campaigns", campaignId, "expenses", expenseId)
-  }, [db, user, campaignId, expenseId])
+    if (!db || !user || !expenseId) return null
+    return doc(db, "users", user.uid, "expenses", expenseId)
+  }, [db, user, expenseId])
 
   const { data: expense, isLoading: loadingExpense } = useDoc(expenseRef)
 
@@ -83,7 +83,6 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
       setPaidAmount(expense.paidAmount?.toString() || "")
       setPayeeId(expense.payeeId || "")
       
-      // Prepopulate date correctly from database
       const savedDate = expense.expenseDate || expense.date;
       if (savedDate) {
         try {

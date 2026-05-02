@@ -49,17 +49,6 @@ import { collection, doc, serverTimestamp, query, where, writeBatch } from "fire
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import Link from "next/link"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 const expenseTypes = [
   { label: "ديزل", icon: Fuel, value: "ديزل" },
@@ -216,9 +205,9 @@ function NewExpenseContent() {
 
     setLoading(true)
     const batch = writeBatch(db)
+    const expenseCollectionRef = collection(db, "users", user.uid, "expenses")
     
     addedExpenses.forEach((exp) => {
-      const expenseCollectionRef = collection(db, "users", user.uid, "campaigns", campaignId, "expenses")
       const expenseRef = doc(expenseCollectionRef)
       
       batch.set(expenseRef, {
@@ -245,7 +234,7 @@ function NewExpenseContent() {
       })
       .catch((error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `users/${user.uid}/campaigns/${campaignId}/expenses/bulk`,
+          path: `users/${user.uid}/expenses/bulk`,
           operation: 'write'
         }))
       })
