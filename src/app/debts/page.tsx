@@ -24,7 +24,10 @@ import {
   Plus,
   History,
   FileText,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown,
+  Filter,
+  Check
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -48,6 +51,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
@@ -55,12 +67,21 @@ import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
+type SortOption = 'amount_desc' | 'amount_asc' | 'date_desc' | 'date_asc'
+
 export default function DebtsPage() {
   const router = useRouter()
   const db = useFirestore()
   const { user } = useUser()
   const { toast } = useToast()
+  
+  // Filtering & Sorting State
+  const [activeTab, setActiveTab] = useState("customers")
   const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState<SortOption>('amount_desc')
+  const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [recipientSearch, setRecipientSearch] = useState("")
+  
   const [selectedEntity, setSelectedEntity] = useState<{ id: string, name: string, type: 'customer' | 'supplier' } | null>(null)
   
   // Repayment State
@@ -113,49 +134,103 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // Calculate Customer Debts
-  const customerDebts = useMemo(() => {
+  // Apply Sorting Helper
+  const sortData = (data: any[], option: SortOption) => {
+    return [...data].sort((a, b) => {
+      switch (option) {
+        case 'amount_desc': return b.amount - a.amount;
+        case 'amount_asc': return a.amount - b.amount;
+        case 'date_desc': return new Date(b.date || b.transactionDate || 0).getTime() - new Date(a.date || a.transactionDate || 0).getTime();
+        case 'date_asc': return new Date(a.date || a.transactionDate || 0).getTime() - new Date(b.date || b.transactionDate || 0).getTime();
+        default: return 0;
+      }
+    });
+  }
+
+  // Calculate Customer Debts with filtering and sorting
+  const filteredCustomerDebts = useMemo(() => {
     if (!invoices || !customers) return []
     const debtsMap = new Map()
     invoices.forEach(inv => {
       const remaining = inv.remainingAmount || 0
       if (remaining > 0) {
-        const current = debtsMap.get(inv.customerId) || 0
-        debtsMap.set(inv.customerId, current + remaining)
+        const current = debtsMap.get(inv.customerId) || { amount: 0, date: 0 }
+        const invDate = new Date(inv.invoiceDate || 0).getTime()
+        debtsMap.set(inv.customerId, { 
+          amount: current.amount + remaining,
+          date: Math.max(current.date, invDate)
+        })
       }
     })
-    return Array.from(debtsMap.entries()).map(([id, amount]) => {
+    
+    const results = Array.from(debtsMap.entries()).map(([id, info]) => {
       const c = customers.find(x => x.id === id)
-      return { id, name: c?.name || "عميل غير معروف", phone: c?.phone || "", amount }
+      return { id, name: c?.name || "عميل غير معروف", phone: c?.phone || "", amount: info.amount, date: info.date }
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  }, [invoices, customers, searchTerm])
 
-  // Calculate Supplier Debts
-  const supplierDebts = useMemo(() => {
+    return sortData(results, sortBy)
+  }, [invoices, customers, searchTerm, sortBy])
+
+  // Calculate Supplier Debts with filtering and sorting
+  const filteredSupplierDebts = useMemo(() => {
     if (!purchases || !suppliers || !expenses) return []
     const debtsMap = new Map()
     purchases.forEach(p => {
       const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
       if (remaining > 0 && p.supplierId) {
-        const current = debtsMap.get(p.supplierId) || 0
-        debtsMap.set(p.supplierId, current + remaining)
+        const current = debtsMap.get(p.supplierId) || { amount: 0, date: 0 }
+        const pDate = new Date(p.purchaseDate || 0).getTime()
+        debtsMap.set(p.supplierId, { 
+          amount: current.amount + remaining,
+          date: Math.max(current.date, pDate)
+        })
       }
     })
     expenses.forEach(e => {
       const remaining = e.remainingAmount || 0
       if (remaining > 0 && e.payeeId) {
-        const current = debtsMap.get(e.payeeId) || 0
-        debtsMap.set(e.payeeId, current + remaining)
+        const current = debtsMap.get(e.payeeId) || { amount: 0, date: 0 }
+        const eDate = new Date(e.expenseDate || 0).getTime()
+        debtsMap.set(e.payeeId, { 
+          amount: current.amount + remaining,
+          date: Math.max(current.date, eDate)
+        })
       }
     })
-    return Array.from(debtsMap.entries()).map(([id, amount]) => {
+    
+    const results = Array.from(debtsMap.entries()).map(([id, info]) => {
       const s = suppliers.find(x => x.id === id)
-      return { id, name: s?.name || "مورد غير معروف", phone: s?.phone || "", amount }
+      return { id, name: s?.name || "مورد غير معروف", phone: s?.phone || "", amount: info.amount, date: info.date }
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  }, [purchases, suppliers, expenses, searchTerm])
 
-  const totalCustomerDebts = customerDebts.reduce((acc, curr) => acc + curr.amount, 0)
-  const totalSupplierDebts = supplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
+    return sortData(results, sortBy)
+  }, [purchases, suppliers, expenses, searchTerm, sortBy])
+
+  // Filtered History Transactions
+  const filteredHistory = useMemo(() => {
+    if (!historyTransactions) return []
+    let results = [...historyTransactions]
+
+    // Status Filter
+    if (filterStatus !== "all") {
+      results = results.filter(tr => tr.type === filterStatus)
+    }
+
+    // Name Filter (Entity Name)
+    if (searchTerm) {
+      results = results.filter(tr => tr.entityName?.toLowerCase().includes(searchTerm.toLowerCase()))
+    }
+
+    // Recipient Search
+    if (recipientSearch) {
+      results = results.filter(tr => tr.notes?.toLowerCase().includes(recipientSearch.toLowerCase()))
+    }
+
+    return sortData(results, sortBy)
+  }, [historyTransactions, filterStatus, searchTerm, recipientSearch, sortBy])
+
+  const totalCustomerDebts = filteredCustomerDebts.reduce((acc, curr) => acc + curr.amount, 0)
+  const totalSupplierDebts = filteredSupplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
 
   const entityTransactions = useMemo(() => {
     if (!selectedEntity) return []
@@ -248,17 +323,69 @@ export default function DebtsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
-      <header className="p-6 bg-white border-b sticky top-0 z-30 shadow-sm">
-        <h1 className="text-2xl font-black text-primary mb-4 text-right">إدارة الديون والوصولات</h1>
-        <div className="relative group" dir="rtl">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input 
-            placeholder="بحث عن اسم عميل أو مورد..." 
-            className="pr-11 h-12 rounded-2xl bg-muted/50 border-none focus-visible:ring-primary focus-visible:bg-white transition-all shadow-inner text-right" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <header className="p-6 bg-white border-b sticky top-0 z-30 shadow-sm space-y-4">
+        <h1 className="text-2xl font-black text-primary text-right">إدارة الديون والوصولات</h1>
+        
+        <div className="flex gap-2" dir="rtl">
+          <div className="relative flex-1 group">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              placeholder={activeTab === "history" ? "بحث بالجهة..." : "بحث بالاسم..."}
+              className="pr-11 h-12 rounded-2xl bg-muted/50 border-none focus-visible:ring-primary focus-visible:bg-white transition-all shadow-inner text-right" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-none bg-muted/50 text-primary">
+                <ArrowUpDown className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+              <DropdownMenuLabel className="text-right">ترتيب حسب</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <DropdownMenuRadioItem value="amount_desc" className="flex justify-end gap-2">المبلغ (الأكبر أولاً)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="amount_asc" className="flex justify-end gap-2">المبلغ (الأصغر أولاً)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date_desc" className="flex justify-end gap-2">التاريخ (الأحدث أولاً)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="date_asc" className="flex justify-end gap-2">التاريخ (الأقدم أولاً)</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {activeTab === "history" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className={cn("h-12 w-12 rounded-2xl border-none bg-muted/50", filterStatus !== 'all' ? 'text-orange-600' : 'text-primary')}>
+                  <Filter className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+                <DropdownMenuLabel className="text-right">تصفية حسب الحالة</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={filterStatus} onValueChange={setFilterStatus}>
+                  <DropdownMenuRadioItem value="all" className="flex justify-end gap-2">الكل</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="customer_payment" className="flex justify-end gap-2">استلام دفعة (من عميل)</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="supplier_payment" className="flex justify-end gap-2">صرف دفعة (لمورد)</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
+
+        {activeTab === "history" && (
+          <div className="relative group" dir="rtl">
+            <User className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              placeholder="فلترة حسب المستلم..." 
+              className="pr-11 h-10 rounded-xl bg-muted/30 border-none focus-visible:ring-orange-400 transition-all text-right text-xs" 
+              value={recipientSearch}
+              onChange={(e) => setRecipientSearch(e.target.value)}
+            />
+          </div>
+        )}
       </header>
 
       <div className="p-4">
@@ -268,14 +395,14 @@ export default function DebtsPage() {
             <p className="text-xs font-bold text-muted-foreground">جاري تحميل البيانات...</p>
           </div>
         ) : (
-          <Tabs defaultValue="customers" className="w-full" dir="rtl">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
             <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1 mb-6 bg-muted/50 border border-border/50 shadow-inner">
               <TabsTrigger value="customers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون لك</TabsTrigger>
               <TabsTrigger value="suppliers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون عليك</TabsTrigger>
               <TabsTrigger value="history" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">سجل الوصولات</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="customers" className="space-y-4 outline-none">
+            <TabsContent value="customers" className="space-y-4 outline-none animate-in fade-in duration-300">
               <div className="p-6 bg-green-50 text-green-700 rounded-[2rem] border border-green-100 flex items-center justify-between shadow-sm">
                 <div className="space-y-1 text-right">
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">إجمالي مستحقاتك لدى العملاء</p>
@@ -286,26 +413,30 @@ export default function DebtsPage() {
                 </div>
               </div>
 
-              {customerDebts.map((c) => (
-                <div key={c.id} onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                  <div className="flex gap-4 items-center text-right">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                      <User className="w-6 h-6" />
+              {filteredCustomerDebts.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
+              ) : (
+                filteredCustomerDebts.map((c) => (
+                  <div key={c.id} onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+                    <div className="flex gap-4 items-center text-right">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                        <User className="w-6 h-6" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-black text-sm">{c.name}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-black text-sm">{c.name}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
+                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
-                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </TabsContent>
 
-            <TabsContent value="suppliers" className="space-y-4 outline-none">
+            <TabsContent value="suppliers" className="space-y-4 outline-none animate-in fade-in duration-300">
               <div className="p-6 bg-red-50 text-red-700 rounded-[2rem] border border-red-100 flex items-center justify-between shadow-sm">
                 <div className="space-y-1 text-right">
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">إجمالي مديونياتك للموردين</p>
@@ -316,33 +447,37 @@ export default function DebtsPage() {
                 </div>
               </div>
 
-              {supplierDebts.map((s) => (
-                <div key={s.id} onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                  <div className="flex gap-4 items-center text-right">
-                    <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
-                      <Wallet className="w-6 h-6" />
+              {filteredSupplierDebts.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
+              ) : (
+                filteredSupplierDebts.map((s) => (
+                  <div key={s.id} onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+                    <div className="flex gap-4 items-center text-right">
+                      <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
+                        <Wallet className="w-6 h-6" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-black text-sm">{s.name}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-black text-sm">{s.name}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
+                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
-                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-4 outline-none">
-              {historyTransactions?.length === 0 ? (
+            <TabsContent value="history" className="space-y-4 outline-none animate-in fade-in duration-300">
+              {filteredHistory?.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-[3rem]">
                   <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p className="font-black">لا توجد عمليات سداد مسجلة</p>
+                  <p className="font-black">لا توجد عمليات سداد مطابقة للبحث</p>
                 </div>
               ) : (
-                historyTransactions?.map((tr: any) => (
+                filteredHistory?.map((tr: any) => (
                   <div 
                     key={tr.id} 
                     className={cn(
@@ -352,16 +487,16 @@ export default function DebtsPage() {
                         : 'bg-gradient-to-br from-orange-50/60 to-white border-orange-100'
                     )}
                   >
-                    {/* Row 1: Status and Date */}
+                    {/* Row 1: Status (Badge) and Date */}
                     <div className="flex justify-between items-center">
-                      <span className={cn(
-                        "text-[10px] font-black px-2 py-0.5 rounded-lg", 
+                      <Badge className={cn(
+                        "text-[10px] font-black px-2.5 py-0.5 rounded-lg border-none shadow-sm", 
                         tr.type === 'customer_payment' 
-                          ? 'text-green-700 bg-green-100' 
-                          : 'text-orange-700 bg-orange-100'
+                          ? 'text-white bg-green-600' 
+                          : 'text-white bg-orange-600'
                       )}>
                         {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
-                      </span>
+                      </Badge>
                       <span className="text-[10px] font-bold text-muted-foreground/70 tabular-nums">
                         {tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}
                       </span>
@@ -379,7 +514,7 @@ export default function DebtsPage() {
                         <span className="text-sm font-black text-foreground/90">{tr.entityName}</span>
                       </div>
                       {tr.notes && (
-                        <span className="text-[10px] text-muted-foreground font-bold truncate max-w-[40%] text-left" dir="rtl">
+                        <span className="text-[10px] text-muted-foreground font-bold truncate max-w-[40%] text-left bg-white/50 px-2 py-0.5 rounded-md" dir="rtl">
                           المستلم: {tr.notes}
                         </span>
                       )}
@@ -428,7 +563,6 @@ export default function DebtsPage() {
                     {isPaid && <div className="absolute top-0 right-0 p-1 bg-green-500 text-white rounded-bl-xl z-10"><CheckCircle2 className="w-4 h-4" /></div>}
                     
                     <div className="flex justify-between items-start">
-                      {/* Right Side: Campaign and Items */}
                       <div className="flex flex-col gap-1 text-right">
                         <div className="flex items-center gap-1.5 text-primary">
                           <Ship className="w-3.5 h-3.5" />
@@ -447,7 +581,6 @@ export default function DebtsPage() {
                         </div>
                       </div>
 
-                      {/* Left Side: Type and Date */}
                       <div className="flex flex-col items-end gap-1.5">
                         <Badge className={cn("rounded-lg px-2 py-0.5 text-[8px] font-bold border-none", tr.trType === 'sale' ? "bg-green-50 text-green-600" : (tr.trType === 'purchase' ? "bg-orange-50 text-orange-600" : "bg-accent/10 text-accent"))}>
                           {tr.trType === 'sale' ? "مبيعات" : tr.trType === 'purchase' ? "مشتريات" : "مصروف"}
@@ -466,7 +599,7 @@ export default function DebtsPage() {
                        </div>
                        <div className="flex flex-col border-x border-border/30 px-1">
                           <span className="text-[8px] text-muted-foreground font-bold">المدفوع</span>
-                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString('en-US')}</span>
+                          <span className={cn("text-[11px] font-black tabular-nums text-green-600")}>{tr.paidAmount?.toLocaleString('en-US')}</span>
                        </div>
                        <div className="flex flex-col">
                           <span className="text-[8px] text-muted-foreground font-bold">الإجمالي</span>
@@ -524,14 +657,14 @@ export default function DebtsPage() {
             </div>
 
             <div className="space-y-2 text-right">
-              <Label className="text-xs font-black mr-1">ملاحظات إضافية (اختياري)</Label>
-              <Textarea placeholder="مثال: تم تسليم المبلغ لفلان..." className="rounded-2xl resize-none text-right" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
+              <Label className="text-xs font-black mr-1">ملاحظات إضافية / المستلم (اختياري)</Label>
+              <Textarea placeholder="مثال: تم تسليم المبلغ لفلان..." className="rounded-2xl resize-none text-right h-24" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
             </div>
           </div>
           <DialogFooter className="p-6 bg-muted/20 border-t flex flex-row gap-3">
             <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold border-muted-foreground/20" onClick={() => setPaymentTarget(null)} disabled={submittingPayment}>إلغاء</Button>
             <Button className="flex-1 rounded-xl h-12 font-black lux-gradient gap-2" onClick={handleSettleDebt} disabled={submittingPayment || !paymentAmount || parseFloat(paymentAmount) > (paymentTarget?.remainingAmount || 0)}>
-              {submittingPayment ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />} تأكيد السداد
+              {submittingPayment ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />} تأكيد السداد
             </Button>
           </DialogFooter>
         </DialogContent>
