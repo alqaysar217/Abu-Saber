@@ -30,7 +30,8 @@ import {
   User,
   Car,
   TrendingUp,
-  Banknote
+  Banknote,
+  DollarSign
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -71,6 +72,150 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+
+function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, customers: any[], userId: string }) {
+  const db = useFirestore()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const customer = customers?.find(c => c.id === invoice.customerId)
+
+  const handleDeleteInvoice = async () => {
+    if (!db || !userId) return
+    const invoiceRef = doc(db, "users", userId, "invoices", invoice.id)
+    
+    deleteDoc(invoiceRef)
+      .then(() => {
+        toast({ title: "تم حذف الفاتورة بنجاح" })
+        setOpen(false)
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: invoiceRef.path,
+          operation: 'delete'
+        }))
+      })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <div className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-50 text-green-600 rounded-xl">
+              <User className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold">{customer?.name || "عميل غير معروف"}</span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
+                <Calendar className="w-3 h-3" />
+                {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-sm font-black text-green-600 tabular-nums">{invoice.totalAmount?.toLocaleString('en-US')} ر.ي</span>
+            <div className="flex items-center justify-end gap-1 mt-1">
+               <Badge className={cn(
+                 "text-[8px] px-1.5 py-0 border-none font-bold",
+                 invoice.status === "مدفوعة" ? "bg-green-50 text-green-600" : (invoice.status === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+               )}>
+                {invoice.status || "N/A"}
+               </Badge>
+               <Eye className="w-3 h-3 text-muted-foreground" />
+            </div>
+          </div>
+        </div>
+      </DialogTrigger>
+      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-6 bg-green-600 text-white">
+          <div className="flex justify-between items-center">
+             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2">
+               <TableIcon className="w-5 h-5" />
+               تفاصيل فاتورة المبيعات
+             </DialogTitle>
+             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full">
+               <X className="w-5 h-5" />
+             </button>
+          </div>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
+             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> العميل: {customer?.name}</p>
+             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
+          </div>
+        </DialogHeader>
+        
+        <div className="p-4 space-y-4">
+           {invoice.items && invoice.items.length > 0 ? (
+             <div className="border rounded-2xl overflow-hidden shadow-inner">
+               <Table dir="rtl">
+                 <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-right font-bold text-[10px]">النوع</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">سعر الكيلو</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
+                    </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                    {invoice.items.map((item: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums font-bold">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums font-bold">{item.pricePerKg?.toLocaleString('en-US')}</TableCell>
+                        <TableCell className="text-center text-xs font-black text-green-600 tabular-nums">{(item.quantity * item.pricePerKg)?.toLocaleString('en-US')}</TableCell>
+                      </TableRow>
+                    ))}
+                 </TableBody>
+               </Table>
+             </div>
+           ) : (
+             <div className="text-center py-10 text-muted-foreground text-xs font-bold">لا توجد أصناف مسجلة</div>
+           )}
+
+           <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex justify-between items-center">
+              <span className="text-xs font-bold text-green-800">إجمالي قيمة الفاتورة</span>
+              <span className="text-xl font-black text-green-600 tabular-nums">{invoice.totalAmount?.toLocaleString('en-US')} ر.ي</span>
+           </div>
+
+           <div className="flex gap-3 pt-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold">
+                    <Trash2 className="w-4 h-4" />
+                    حذف الفاتورة
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                      <Trash2 className="w-5 h-5" />
+                      حذف فاتورة المبيعات؟
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-right font-medium">
+                      هل أنت متأكد من حذف هذه الفاتورة؟ سيؤثر ذلك على تقارير الأرباح.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-row gap-2 mt-4">
+                    <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteInvoice} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <Button 
+                variant="outline" 
+                className="flex-1 rounded-xl h-12 gap-2 border-green-200 text-green-600 hover:bg-green-50 font-bold" 
+                onClick={() => router.push(`/invoices/${invoice.id}/edit`)}
+              >
+                <Edit3 className="w-4 h-4" />
+                تعديل البيانات
+              </Button>
+           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, suppliers: any[], userId: string }) {
   const db = useFirestore()
@@ -192,7 +337,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
@@ -325,6 +470,13 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const { data: suppliers } = useCollection(suppliersQuery)
 
+  const customersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "customers"))
+  }, [db, user])
+
+  const { data: customers } = useCollection(customersQuery)
+
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
     return query(
@@ -354,6 +506,12 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   }, [db, user, campaignId])
 
   const { data: invoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
+
+  const sortedInvoices = invoices ? [...invoices].sort((a: any, b: any) => {
+    const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0
+    const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0
+    return dateB - dateA
+  }) : []
 
   const purchases = rawPurchases ? [...rawPurchases].sort((a: any, b: any) => {
     const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0
@@ -494,24 +652,31 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
         </Card>
 
         <Tabs defaultValue="overview" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
+          <TabsList className="grid w-full grid-cols-4 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[10px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>نظرة عامة</span>
             </TabsTrigger>
             <TabsTrigger 
+              value="sales" 
+              className="rounded-xl text-[10px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+            >
+              <DollarSign className="w-4 h-4" />
+              <span>المبيعات</span>
+            </TabsTrigger>
+            <TabsTrigger 
               value="purchases" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[10px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>المشتريات</span>
             </TabsTrigger>
             <TabsTrigger 
               value="expenses" 
-              className="rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+              className="rounded-xl text-[10px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
             >
               <Receipt className="w-4 h-4" />
               <span>المصاريف</span>
@@ -563,6 +728,16 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                   {campaign.notes}
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="sales" className="space-y-3 outline-none animate-in fade-in duration-300">
+            {sortedInvoices && sortedInvoices.length > 0 ? (
+              sortedInvoices.map((inv: any) => (
+                <InvoiceDetailRow key={inv.id} invoice={inv} customers={customers || []} userId={user.uid} />
+              ))
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl font-bold">لا توجد مبيعات مسجلة لهذه الحملة</div>
             )}
           </TabsContent>
 
