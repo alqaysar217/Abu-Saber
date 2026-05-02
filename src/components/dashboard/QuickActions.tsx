@@ -26,7 +26,8 @@ export function QuickActions() {
               </div>
               <span className="text-sm font-bold text-foreground">{action.label}</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            {/* تم عكس اتجاه السهم باستخدام rotate-180 ليشير لجهة اليسار في الواجهة العربية */}
+            <ChevronRight className="w-4 h-4 text-muted-foreground rotate-180" />
           </Button>
         </Link>
       ))}
