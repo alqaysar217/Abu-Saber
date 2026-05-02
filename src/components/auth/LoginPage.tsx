@@ -3,18 +3,17 @@
 
 import { useState } from "react"
 import { useAuth } from "@/firebase"
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
+import { signInWithEmailAndPassword } from "firebase/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Phone, Lock, LogIn, Loader2, AlertCircle, UserPlus } from "lucide-react"
+import { Phone, Lock, LogIn, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function LoginPage() {
   const auth = useAuth()
   const { toast } = useToast()
-  const [isLogin, setIsLogin] = useState(true)
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -35,26 +34,15 @@ export function LoginPage() {
     const email = `${phone.trim()}@abosaber.com`
 
     try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password)
-        toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بنجاح" })
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password)
-        toast({ title: "تم إنشاء الحساب", description: "مرحباً بك في نظام أبو صابر" })
-      }
+      await signInWithEmailAndPassword(auth, email, password)
+      toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بنجاح" })
     } catch (err: any) {
       console.error(err)
-      if (err.code === 'auth/email-already-in-use') {
-        setError("هذا الرقم مسجل مسبقاً، يرجى تسجيل الدخول")
-      } else if (err.code === 'auth/weak-password') {
-        setError("كلمة السر يجب أن تكون 6 أرقام أو حروف على الأقل")
-      } else {
-        setError(isLogin ? "رقم الهاتف أو كلمة السر غير صحيحة" : "فشل إنشاء الحساب، يرجى المحاولة لاحقاً")
-      }
+      setError("رقم الهاتف أو كلمة السر غير صحيحة")
       toast({ 
         variant: "destructive", 
-        title: "خطأ", 
-        description: "فشل الإجراء المطلوب" 
+        title: "خطأ في الدخول", 
+        description: "تأكد من البيانات المدخلة" 
       })
     } finally {
       setLoading(false)
@@ -65,7 +53,7 @@ export function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
         <CardHeader className="lux-gradient text-white text-center pb-10 pt-10">
-          <CardTitle className="text-2xl font-black">{isLogin ? "تسجيل الدخول" : "إنشاء حساب جديد"}</CardTitle>
+          <CardTitle className="text-2xl font-black">تسجيل الدخول</CardTitle>
           <p className="text-white/60 text-xs mt-1">نظام أبو صابر لإدارة تجارة الأسماك</p>
         </CardHeader>
         <CardContent className="p-8 -mt-6 bg-white rounded-t-[2.5rem] space-y-6">
@@ -116,22 +104,16 @@ export function LoginPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  {isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-                  {isLogin ? "دخول للنظام" : "تسجيل مستخدم جديد"}
+                  <LogIn className="w-5 h-5" />
+                  دخول للنظام
                 </>
               )}
             </Button>
           </form>
 
           <div className="text-center space-y-4">
-            <button 
-              onClick={() => { setIsLogin(!isLogin); setError(""); }}
-              className="text-xs font-bold text-primary hover:underline"
-            >
-              {isLogin ? "ليس لديك حساب؟ إنشاء حساب جديد" : "لديك حساب بالفعل؟ سجل دخولك"}
-            </button>
-            <p className="text-[10px] text-muted-foreground">
-              بمجرد تسجيل الدخول، فإنك توافق على سياسات الخصوصية الخاصة بالمؤسسة.
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              هذا النظام مخصص لموظفي مؤسسة أبو صابر فقط. إذا واجهت مشكلة في الدخول يرجى التواصل مع الإدارة.
             </p>
           </div>
         </CardContent>
