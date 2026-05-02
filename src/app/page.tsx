@@ -17,13 +17,11 @@ import {
   LogOut, 
   Copy, 
   RefreshCw, 
-  History,
-  AlertTriangle,
-  CheckCircle2
+  History
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase"
-import { collection, query, limit, orderBy, getDocs, setDoc, doc } from "firebase/firestore"
+import { collection, query, orderBy, getDocs, setDoc, doc } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 
@@ -36,7 +34,6 @@ export default function Home() {
   const [migrating, setMigrating] = useState(false)
   const [migrationDone, setMigrationDone] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
-    profit: false,
     debtsToMe: false,
     debtsByMe: false,
     liquidity: false,
@@ -88,10 +85,9 @@ export default function Home() {
     const totalExpPaid = allExpenses?.reduce((acc, e) => acc + (e.paidAmount || 0), 0) || 0
     
     const debtsByMe = (totalPurCost - totalPurPaid) + (totalExpCost - totalExpPaid)
-    const estimatedProfit = totalRev - (totalPurCost + totalExpCost)
     const liquidity = totalRevPaid - (totalPurPaid + totalExpPaid)
     
-    return { estimatedProfit, debtsToMe, debtsByMe, liquidity }
+    return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
 
   const handleLogout = () => {
@@ -161,9 +157,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
-      <header className="p-6 lux-gradient text-white rounded-b-[2.5rem] shadow-2xl mb-8 relative overflow-hidden">
+      <header className="p-6 pb-20 lux-gradient text-white rounded-b-[2.5rem] shadow-2xl mb-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
-        <div className="flex justify-between items-center mb-8 relative z-10">
+        <div className="flex justify-between items-center relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner overflow-hidden">
               {logo && (
@@ -186,31 +182,16 @@ export default function Home() {
             <LogOut className="w-5 h-5" />
           </button>
         </div>
-        <div className="space-y-1 relative z-10">
-          <div className="flex items-center gap-2">
-            <p className="text-white/70 text-xs font-medium uppercase tracking-wider">إجمالي الأرباح التقديرية</p>
-            <button 
-              onClick={() => toggleVisibility('profit')}
-              className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              {visibility['profit'] ? <EyeOff className="w-3 h-3 text-white" /> : <Eye className="w-3 h-3 text-white" />}
-            </button>
-          </div>
-          <p className="text-4xl font-black tabular-nums tracking-tighter">
-            {formatAmountValue("profit", stats.estimatedProfit)} <span className="text-lg font-normal opacity-80">ر.ي</span>
-          </p>
-        </div>
       </header>
 
       <section className="px-4 -mt-14 mb-8 relative z-20">
         <div className="grid grid-cols-2 gap-4">
+          {/* ديون لك */}
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
-            <CardContent className="p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-green-50 text-green-700 rounded-xl">
-                  <ArrowUpRight className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</span>
+            <CardContent className="p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-green-700">
+                <ArrowUpRight className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wide">ديون لك</span>
               </div>
               <div className="flex justify-between items-center">
                 <button 
@@ -225,13 +206,13 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ديون عليك */}
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
-            <CardContent className="p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-red-50 text-red-700 rounded-xl">
-                  <ArrowDownRight className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</span>
+            <CardContent className="p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-red-700">
+                <ArrowDownRight className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wide">ديون عليك</span>
               </div>
               <div className="flex justify-between items-center">
                 <button 
