@@ -130,18 +130,24 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="p-6 bg-green-600 text-white">
-          <div className="flex justify-between items-center flex-row-reverse">
-             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2 flex-row-reverse">
+          <div className="flex justify-between items-center">
+             <DialogTitle className="text-lg font-bold flex items-center gap-2">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
              </DialogTitle>
-             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full">
+             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
                <X className="w-5 h-5" />
              </button>
           </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90 text-right">
-             <p className="font-bold flex items-center justify-end gap-2">العميل: {customer?.name} <User className="w-3 h-3" /></p>
-             <p className="flex items-center justify-end gap-2">التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""} <Calendar className="w-3 h-3" /></p>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
+             <p className="font-bold flex items-center gap-2">
+               <User className="w-3 h-3" />
+               <span>العميل: {customer?.name}</span>
+             </p>
+             <p className="flex items-center gap-2">
+               <Calendar className="w-3 h-3" />
+               <span>التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+             </p>
           </div>
         </DialogHeader>
         
@@ -188,7 +194,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold flex-row-reverse">
+                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف فاتورة المبيعات؟
                     </AlertDialogTitle>
@@ -278,18 +284,24 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="p-6 bg-orange-600 text-white">
-          <div className="flex justify-between items-center flex-row-reverse">
-             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2 flex-row-reverse">
+          <div className="flex justify-between items-center">
+             <DialogTitle className="text-lg font-bold flex items-center gap-2">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
              </DialogTitle>
-             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full">
+             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
                <X className="w-5 h-5" />
              </button>
           </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90 text-right">
-             <p className="font-bold flex items-center justify-end gap-2">المورد: {supplier?.name} <User className="w-3 h-3" /></p>
-             <p className="flex items-center justify-end gap-2">التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""} <Calendar className="w-3 h-3" /></p>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
+             <p className="font-bold flex items-center gap-2">
+               <User className="w-3 h-3" />
+               <span>المورد: {supplier?.name}</span>
+             </p>
+             <p className="flex items-center gap-2">
+               <Calendar className="w-3 h-3" />
+               <span>التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+             </p>
           </div>
         </DialogHeader>
         
@@ -338,7 +350,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold flex-row-reverse">
+                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
@@ -429,7 +441,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold flex-row-reverse">
+                <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
                   حذف المصروف؟
                 </AlertDialogTitle>
@@ -595,7 +607,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold flex-row-reverse">
+                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
