@@ -208,13 +208,13 @@ export default function DebtsPage() {
             <TabsList className="grid w-full grid-cols-2 h-16 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
               <TabsTrigger 
                 value="customers" 
-                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg mx-1"
               >
                 ديون لك (عملاء)
               </TabsTrigger>
               <TabsTrigger 
                 value="suppliers" 
-                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg mx-1"
               >
                 ديون عليك (موردين)
               </TabsTrigger>
@@ -318,17 +318,17 @@ export default function DebtsPage() {
 
       <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
         <SheetContent side="bottom" className="h-[85vh] rounded-t-[3rem] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
-          <SheetHeader className="p-6 bg-primary text-white relative">
-            <button 
-              onClick={() => setSelectedEntity(null)}
-              className="absolute left-6 top-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
-            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full">
+          <SheetHeader className="p-6 bg-primary text-white relative flex flex-row items-center justify-between">
+            <div className="flex flex-col gap-1 text-right">
               <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
               <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
             </div>
+            <button 
+              onClick={() => setSelectedEntity(null)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
           </SheetHeader>
 
           <div className="h-full overflow-y-auto p-4 space-y-3 pb-20 bg-muted/20" dir="rtl">
@@ -344,8 +344,12 @@ export default function DebtsPage() {
                     onClick={() => handleTransactionClick(tr)}
                     className="p-4 bg-white rounded-2xl border border-border/60 shadow-sm space-y-3 active:scale-[0.98] transition-all cursor-pointer hover:border-primary/40 group relative overflow-hidden"
                   >
-                    {/* Header Row: Type & Campaign */}
+                    {/* Header Row: Campaign (Right) & Type (Left) */}
                     <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5 text-primary">
+                        <Ship className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-black max-w-[150px] truncate">{campaign?.name || "حملة غير معروفة"}</span>
+                      </div>
                       <Badge className={cn(
                         "rounded-lg px-2 py-0.5 text-[8px] font-bold border-none",
                         tr.trType === 'sale' ? "bg-green-50 text-green-600" : (tr.trType === 'purchase' ? "bg-orange-50 text-orange-600" : "bg-accent/10 text-accent")
@@ -358,48 +362,36 @@ export default function DebtsPage() {
                           <span className="flex items-center gap-1">مصروف: {tr.type}</span>
                         )}
                       </Badge>
-                      <div className="flex items-center gap-1.5 text-primary">
-                        <span className="text-[10px] font-black max-w-[120px] truncate">{campaign?.name || "حملة غير معروفة"}</span>
-                        <Ship className="w-3 h-3" />
-                      </div>
                     </div>
 
-                    {/* Info Row: Date and Small Item List */}
+                    {/* Info Row: Items (Right) and Date (Left) */}
                     <div className="flex justify-between items-end">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="w-2.5 h-2.5" />
-                        <span className="text-[9px] font-medium">
-                          {date ? format(new Date(date), "dd/MM/yyyy", { locale: ar }) : "-"}
-                        </span>
-                      </div>
-                      
-                      {(tr.items && tr.items.length > 0) && (
-                        <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
-                          {tr.items.slice(0, 2).map((item: any, idx: number) => (
+                      <div className="flex flex-wrap gap-1 justify-start max-w-[65%]">
+                        {(tr.items && tr.items.length > 0) ? (
+                          tr.items.slice(0, 2).map((item: any, idx: number) => (
                             <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-muted rounded font-bold text-muted-foreground whitespace-nowrap">
                               {item.fishType}
                             </span>
-                          ))}
-                          {tr.items.length > 2 && <span className="text-[8px] font-bold text-muted-foreground">+ {tr.items.length - 2}</span>}
-                        </div>
-                      )}
+                          ))
+                        ) : (
+                          tr.trType === 'expense' && tr.notes && (
+                            <p className="text-[9px] text-muted-foreground truncate italic">"{tr.notes}"</p>
+                          )
+                        )}
+                        {(tr.items && tr.items.length > 2) && <span className="text-[8px] font-bold text-muted-foreground">+ {tr.items.length - 2}</span>}
+                      </div>
 
-                      {tr.trType === 'expense' && tr.notes && (
-                        <p className="text-[9px] text-muted-foreground truncate max-w-[50%] italic">"{tr.notes}"</p>
-                      )}
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <span className="text-[9px] font-bold">
+                          {date ? format(new Date(date), "dd/MM/yyyy", { locale: ar }) : "-"}
+                        </span>
+                        <Calendar className="w-2.5 h-2.5" />
+                      </div>
                     </div>
 
-                    {/* Finance Row: Compact Stats */}
+                    {/* Finance Row: Remaining (Right), Paid (Middle), Total (Left) */}
                     <div className="grid grid-cols-3 gap-2 py-2 border-t border-dashed border-border mt-1">
                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[8px] text-muted-foreground font-bold">إجمالي القيمة</span>
-                          <span className="text-[11px] font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
-                       </div>
-                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
-                          <span className="text-[8px] text-muted-foreground font-bold">المبلغ المدفوع</span>
-                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString()}</span>
-                       </div>
-                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
                           <span className="text-[8px] text-muted-foreground font-bold">المبلغ المتبقي</span>
                           <span className={cn(
                             "text-[11px] font-black tabular-nums",
@@ -408,12 +400,20 @@ export default function DebtsPage() {
                             {remaining.toLocaleString()}
                           </span>
                        </div>
+                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
+                          <span className="text-[8px] text-muted-foreground font-bold">المبلغ المدفوع</span>
+                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString()}</span>
+                       </div>
+                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
+                          <span className="text-[8px] text-muted-foreground font-bold">إجمالي القيمة</span>
+                          <span className="text-[11px] font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
+                       </div>
                     </div>
                     
                     <div className="flex justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity absolute inset-0 bg-primary/5 pointer-events-none">
                        <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                         اضغط للتفاصيل في الحملة
-                         <ChevronLeft className="w-3 h-3" />
+                         <ChevronRight className="w-3 h-3" />
+                         التفاصيل في الحملة
                        </span>
                     </div>
                   </div>
