@@ -187,7 +187,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف فاتورة المبيعات؟
                     </AlertDialogTitle>
@@ -337,7 +337,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
@@ -428,7 +428,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
                   حذف المصروف؟
                 </AlertDialogTitle>
@@ -594,7 +594,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
+                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
