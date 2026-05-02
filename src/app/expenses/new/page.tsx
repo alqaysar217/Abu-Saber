@@ -31,7 +31,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
@@ -61,6 +60,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { format } from "date-fns"
+import { ar } from "date-fns/locale"
 
 const expenseTypes = [
   { label: "ديزل", icon: Fuel, value: "ديزل" },
@@ -81,6 +82,7 @@ interface TempExpense {
   paidAmount: number;
   remainingAmount: number;
   payeeId: string | null;
+  payeeName?: string;
   date: string;
   notes: string;
 }
@@ -169,6 +171,8 @@ export default function NewExpensePage() {
       return
     }
 
+    const selectedSupplier = suppliers?.find(s => s.id === payeeId)
+
     const newExpense: TempExpense = {
       tempId: editingId || Math.random().toString(36).substr(2, 9),
       type,
@@ -177,6 +181,7 @@ export default function NewExpensePage() {
       paidAmount: numPaidAmount,
       remainingAmount,
       payeeId: (paymentType !== "نقد") ? payeeId : null,
+      payeeName: (paymentType !== "نقد") ? selectedSupplier?.name : undefined,
       date,
       notes
     }
@@ -278,7 +283,7 @@ export default function NewExpensePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Campaign Selection - Global for the session */}
+        {/* Campaign Selection */}
         <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
           <CardHeader className="bg-primary/5 border-b p-4">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -503,60 +508,73 @@ export default function NewExpensePage() {
 
           {addedExpenses.length > 0 ? (
             <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-              <Table dir="rtl">
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold">المبلغ</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold">الدفع</TableHead>
-                    <TableHead className="text-left text-[10px] font-bold">إجراء</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {addedExpenses.map((exp) => (
-                    <TableRow key={exp.tempId} className="animate-in slide-in-from-right-2">
-                      <TableCell className="text-right text-xs font-bold">{exp.type}</TableCell>
-                      <TableCell className="text-center text-xs font-black text-accent tabular-nums">{exp.amount.toLocaleString('en-US')}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className={cn(
-                          "text-[8px] px-1.5 py-0 border-none",
-                          exp.paymentType === "نقد" ? "bg-green-50 text-green-600" : (exp.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
-                        )}>
-                          {exp.paymentType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleEdit(exp)} className="p-1 text-accent">
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button className="p-1 text-destructive">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 font-bold">
-                                  حذف المصروف <Trash2 className="w-5 h-5 text-destructive" />
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-right font-medium">
-                                  هل أنت متأكد من حذف هذا المصروف من القائمة؟
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter className="flex-row gap-2 mt-4">
-                                <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleRemove(exp.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">حذف</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table dir="rtl">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-right text-[10px] font-bold">نوع المصروف</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold">المبلغ</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold">الدفع</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold">التاريخ</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold">الملاحظات/المورد</TableHead>
+                      <TableHead className="text-left text-[10px] font-bold">إجراء</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {addedExpenses.map((exp) => (
+                      <TableRow key={exp.tempId} className="animate-in slide-in-from-right-2">
+                        <TableCell className="text-right text-xs font-bold">{exp.type}</TableCell>
+                        <TableCell className="text-center text-xs font-black text-accent tabular-nums">{exp.amount.toLocaleString('en-US')}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className={cn(
+                            "text-[8px] px-1.5 py-0 border-none",
+                            exp.paymentType === "نقد" ? "bg-green-50 text-green-600" : (exp.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+                          )}>
+                            {exp.paymentType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-[10px] tabular-nums">
+                          {format(new Date(exp.date), "dd/MM", { locale: ar })}
+                        </TableCell>
+                        <TableCell className="text-right text-[10px] max-w-[150px] truncate">
+                          <div className="flex flex-col gap-0.5">
+                            {exp.payeeName && <span className="font-bold text-primary">{exp.payeeName}</span>}
+                            <span className="text-muted-foreground italic">{exp.notes || "-"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-left">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleEdit(exp)} className="p-1 text-accent">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="p-1 text-destructive">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-right flex items-center justify-end gap-2 font-bold">
+                                    حذف المصروف <Trash2 className="w-5 h-5 text-destructive" />
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-right font-medium">
+                                    هل أنت متأكد من حذف هذا المصروف من القائمة؟
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-row gap-2 mt-4">
+                                  <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleRemove(exp.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">حذف</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           ) : (
             <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem] bg-white/50">
@@ -592,3 +610,4 @@ export default function NewExpensePage() {
     </div>
   )
 }
+
