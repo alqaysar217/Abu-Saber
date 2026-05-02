@@ -200,7 +200,7 @@ export default function Home() {
                 >
                   {visibility['debtsToMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
-                <p className="text-xl font-black text-green-700 tabular-nums">
+                <p className="text-lg font-black text-green-700 tabular-nums">
                   {formatAmountValue("debtsToMe", stats.debtsToMe)}
                 </p>
               </div>
@@ -221,7 +221,7 @@ export default function Home() {
                 >
                   {visibility['debtsByMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
-                <p className="text-xl font-black text-red-700 tabular-nums">
+                <p className="text-lg font-black text-red-700 tabular-nums">
                   {formatAmountValue("debtsByMe", stats.debtsByMe)}
                 </p>
               </div>
