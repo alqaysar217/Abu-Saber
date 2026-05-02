@@ -2,18 +2,45 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, User, Phone, Wallet, ArrowDownToLine, ArrowUpFromLine, Loader2, MessageCircle } from "lucide-react"
+import { 
+  Search, 
+  User, 
+  Phone, 
+  Wallet, 
+  ArrowDownToLine, 
+  ArrowUpFromLine, 
+  Loader2, 
+  MessageCircle, 
+  ChevronLeft, 
+  X, 
+  Calendar, 
+  Ship, 
+  Receipt, 
+  ShoppingBag,
+  Info,
+  Fish
+} from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, query } from "firebase/firestore"
 import { cn } from "@/lib/utils"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
+import { ar } from "date-fns/locale"
 
 export default function DebtsPage() {
   const db = useFirestore()
   const { user } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedEntity, setSelectedEntity] = useState<{ id: string, name: string, type: 'customer' | 'supplier' } | null>(null)
 
   // Fetch all relevant collections
   const customersQuery = useMemoFirebase(() => {
@@ -27,6 +54,12 @@ export default function DebtsPage() {
     return query(collection(db, "users", user.uid, "suppliers"))
   }, [db, user])
   const { data: suppliers } = useCollection(suppliersQuery)
+
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "campaigns"))
+  }, [db, user])
+  const { data: campaigns } = useCollection(campaignsQuery)
 
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -91,7 +124,22 @@ export default function DebtsPage() {
   const totalCustomerDebts = customerDebts.reduce((acc, curr) => acc + curr.amount, 0)
   const totalSupplierDebts = supplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
 
-  const isLoading = !invoices || !purchases
+  const isLoading = !invoices || !purchases || !campaigns
+
+  // Filter specific transactions for the selected person
+  const entityTransactions = useMemo(() => {
+    if (!selectedEntity) return []
+
+    if (selectedEntity.type === 'customer') {
+      return (invoices || [])
+        .filter(inv => inv.customerId === selectedEntity.id && (inv.remainingAmount || 0) > 0)
+        .sort((a, b) => new Date(b.invoiceDate || 0).getTime() - new Date(a.invoiceDate || 0).getTime())
+    } else {
+      return (purchases || [])
+        .filter(p => p.supplierId === selectedEntity.id && ((p.totalAmount || 0) - (p.paidAmount || 0)) > 0)
+        .sort((a, b) => new Date(b.purchaseDate || 0).getTime() - new Date(a.purchaseDate || 0).getTime())
+    }
+  }, [selectedEntity, invoices, purchases])
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -144,8 +192,11 @@ export default function DebtsPage() {
 
               {customerDebts.length > 0 ? (
                 customerDebts.map((c) => (
-                  <div key={c.id} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group">
-                    {/* جهة اليمين: الاسم والأيقونة */}
+                  <div 
+                    key={c.id} 
+                    onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })}
+                    className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group cursor-pointer"
+                  >
                     <div className="flex gap-4 items-center">
                       <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
                         <User className="w-6 h-6" />
@@ -159,16 +210,12 @@ export default function DebtsPage() {
                       </div>
                     </div>
 
-                    {/* جهة اليسار: المبلغ والاتصال */}
                     <div className="flex flex-col items-end gap-1">
                       <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
-                      <button 
-                        onClick={() => window.open(`tel:${c.phone}`, '_self')}
-                        className="text-[10px] text-primary font-black flex items-center gap-1 hover:underline transition-all"
-                      >
-                        اتصال الآن
-                        <MessageCircle className="w-3 h-3" />
-                      </button>
+                      <div className="text-[9px] text-primary font-black flex items-center gap-1">
+                        عرض التفاصيل
+                        <ChevronLeft className="w-3 h-3" />
+                      </div>
                     </div>
                   </div>
                 ))
@@ -193,8 +240,11 @@ export default function DebtsPage() {
 
               {supplierDebts.length > 0 ? (
                 supplierDebts.map((s) => (
-                  <div key={s.id} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group">
-                    {/* جهة اليمين: الاسم والأيقونة */}
+                  <div 
+                    key={s.id} 
+                    onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })}
+                    className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group cursor-pointer"
+                  >
                     <div className="flex gap-4 items-center">
                       <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
                         <Wallet className="w-6 h-6" />
@@ -205,10 +255,12 @@ export default function DebtsPage() {
                       </div>
                     </div>
 
-                    {/* جهة اليسار: المبلغ والوصف */}
                     <div className="flex flex-col items-end gap-1">
                       <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
-                      <span className="text-[10px] text-muted-foreground font-bold italic">باقي حساب مشتريات</span>
+                      <div className="text-[9px] text-primary font-black flex items-center gap-1">
+                        عرض التفاصيل
+                        <ChevronLeft className="w-3 h-3" />
+                      </div>
                     </div>
                   </div>
                 ))
@@ -222,6 +274,110 @@ export default function DebtsPage() {
           </Tabs>
         )}
       </div>
+
+      {/* Details Sheet */}
+      <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-[3rem] p-0 overflow-hidden border-none shadow-2xl">
+          <SheetHeader className="p-6 bg-primary text-white relative">
+            <button 
+              onClick={() => setSelectedEntity(null)}
+              className="absolute left-6 top-6 p-2 bg-white/10 rounded-full"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+            <div className="flex flex-col gap-1 items-end mt-4">
+              <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
+              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
+            </div>
+          </SheetHeader>
+
+          <div className="h-full overflow-y-auto p-4 space-y-4 pb-20 bg-muted/20">
+            {entityTransactions.length > 0 ? (
+              entityTransactions.map((tr: any) => {
+                const campaign = campaigns?.find(c => c.id === tr.campaignId)
+                const date = tr.invoiceDate || tr.purchaseDate || tr.createdAt
+                const remaining = selectedEntity?.type === 'customer' 
+                  ? tr.remainingAmount 
+                  : (tr.totalAmount - tr.paidAmount)
+
+                return (
+                  <div key={tr.id} className="p-5 bg-white rounded-[2rem] border border-border/50 shadow-sm space-y-4">
+                    <div className="flex justify-between items-start border-b border-border/40 pb-3">
+                      <div className="flex flex-col gap-1 items-end">
+                        <div className="flex items-center gap-1.5 text-primary">
+                          <span className="text-xs font-black">{campaign?.name || "حملة غير معروفة"}</span>
+                          <Ship className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className="text-[10px] font-bold">
+                            {date ? format(new Date(date), "dd MMM yyyy", { locale: ar }) : "بدون تاريخ"}
+                          </span>
+                          <Calendar className="w-3 h-3" />
+                        </div>
+                      </div>
+                      <Badge className={cn(
+                        "rounded-xl px-2 py-0.5 text-[9px] font-black border-none",
+                        selectedEntity?.type === 'customer' ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"
+                      )}>
+                        {selectedEntity?.type === 'customer' ? (
+                          <span className="flex items-center gap-1"><Receipt className="w-3 h-3" /> مبيعات</span>
+                        ) : (
+                          <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> مشتريات</span>
+                        )}
+                      </Badge>
+                    </div>
+
+                    {/* Items List */}
+                    {tr.items && tr.items.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-end">
+                          الأصناف المسجلة
+                          <Fish className="w-3 h-3" />
+                        </p>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          {tr.items.map((item: any, idx: number) => (
+                            <div key={idx} className="bg-muted/50 px-2.5 py-1 rounded-lg border border-border/40">
+                              <span className="text-[10px] font-bold">{item.fishType} ({item.quantity} كجم)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                       <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
+                          <span className="text-[9px] font-bold text-muted-foreground">المبلغ المدفوع</span>
+                          <span className="text-sm font-black tabular-nums">{tr.paidAmount?.toLocaleString()}</span>
+                       </div>
+                       <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
+                          <span className="text-[9px] font-bold text-muted-foreground">إجمالي القيمة</span>
+                          <span className="text-sm font-black tabular-nums">{tr.totalAmount?.toLocaleString()}</span>
+                       </div>
+                    </div>
+
+                    <div className={cn(
+                      "p-4 rounded-2xl flex justify-between items-center shadow-inner",
+                      selectedEntity?.type === 'customer' ? "bg-green-50/50" : "bg-red-50/50"
+                    )}>
+                      <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
+                      <span className={cn(
+                        "text-[11px] font-black",
+                        selectedEntity?.type === 'customer' ? "text-green-700" : "text-red-700"
+                      )}>المبلغ المتبقي</span>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 opacity-40">
+                <Info className="w-12 h-12" />
+                <p className="text-sm font-bold">لا توجد تفاصيل متاحة لهذه المديونية</p>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <BottomNav />
     </div>
   )
