@@ -592,10 +592,19 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const netProfit = totalRevenue - totalCost
 
   const chartData = [
-    { name: 'المشتريات', value: totalPurchases, fill: 'hsl(var(--chart-4))' },
-    { name: 'المصاريف', value: totalExpenses, fill: 'hsl(var(--chart-3))' },
-    { name: 'المبيعات', value: totalRevenue, fill: 'hsl(var(--chart-2))' },
-    { name: 'الأرباح', value: netProfit, fill: 'hsl(var(--chart-1))' },
+    { 
+      name: 'التكاليف', 
+      purchases: totalPurchases, 
+      expenses: totalExpenses 
+    },
+    { 
+      name: 'المبيعات', 
+      revenue: totalRevenue 
+    },
+    { 
+      name: 'الأرباح', 
+      profit: netProfit 
+    },
   ]
 
   if (loadingCampaign || loadingExpenses || loadingPurchases || loadingInvoices) {
@@ -787,13 +796,20 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                     <Tooltip 
                       cursor={{ fill: '#f5f5f5' }}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
-                      formatter={(value: number) => [value.toLocaleString() + " ر.ي", "القيمة"]}
+                      formatter={(value: number, name: string) => {
+                        const labels: Record<string, string> = {
+                          purchases: 'المشتريات',
+                          expenses: 'المصاريف',
+                          revenue: 'المبيعات',
+                          profit: 'الأرباح'
+                        }
+                        return [value.toLocaleString() + " ر.ي", labels[name] || name]
+                      }}
                     />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={35}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
+                    <Bar dataKey="purchases" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} barSize={25} />
+                    <Bar dataKey="expenses" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} barSize={25} />
+                    <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[6, 6, 0, 0]} barSize={35} />
+                    <Bar dataKey="profit" fill="hsl(var(--chart-1))" radius={[6, 6, 0, 0]} barSize={35} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
