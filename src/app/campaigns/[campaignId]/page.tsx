@@ -28,7 +28,9 @@ import {
   Table as TableIcon,
   X,
   User,
-  Car
+  Car,
+  TrendingUp,
+  Banknote
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -157,7 +159,6 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                       <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">سعر الكيلو</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
-                      <TableHead className="text-center font-bold text-[10px]">الدفع</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -167,7 +168,6 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                         <TableCell className="text-center text-xs tabular-nums font-bold">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
                         <TableCell className="text-center text-xs tabular-nums font-bold">{item.unitPrice?.toLocaleString('en-US')}</TableCell>
                         <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal?.toLocaleString('en-US')}</TableCell>
-                        <TableCell className="text-center text-[10px] font-bold">{item.paymentType}</TableCell>
                       </TableRow>
                     ))}
                  </TableBody>
@@ -261,10 +261,9 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
           {expense.paymentType || "نقد"}
         </Badge>
       </TableCell>
-      <TableCell className="text-right py-4 max-w-[150px]">
+      <TableCell className="text-right py-4">
         <div className="flex flex-col gap-0.5">
-          {expense.payeeName && <span className="text-[10px] font-bold text-primary truncate">{expense.payeeName}</span>}
-          {!expense.payeeName && <span className="text-[10px] text-muted-foreground italic">-</span>}
+          <span className="text-[10px] font-bold text-primary truncate max-w-[80px]">{expense.payeeName || "-"}</span>
         </div>
       </TableCell>
       <TableCell className="text-left py-4">
@@ -284,7 +283,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
                   حذف المصروف؟
                 </AlertDialogTitle>
@@ -346,6 +345,16 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const { data: rawPurchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
 
+  const invoicesQuery = useMemoFirebase(() => {
+    if (!db || !user || !campaignId) return null
+    return query(
+      collection(db, "users", user.uid, "invoices"),
+      where("campaignId", "==", campaignId)
+    )
+  }, [db, user, campaignId])
+
+  const { data: invoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
+
   const purchases = rawPurchases ? [...rawPurchases].sort((a: any, b: any) => {
     const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0
     const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0
@@ -382,9 +391,11 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const totalExpenses = expenses?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0
   const totalPurchases = purchases?.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) || 0
+  const totalRevenue = invoices?.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) || 0
   const totalCost = totalExpenses + totalPurchases
+  const netProfit = totalRevenue - totalCost
 
-  if (loadingCampaign || loadingExpenses || loadingPurchases) {
+  if (loadingCampaign || loadingExpenses || loadingPurchases || loadingInvoices) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -425,7 +436,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
@@ -470,11 +481,14 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           </div>
         )}
 
-        <Card className="border-none shadow-sm rounded-2xl lux-gradient text-white overflow-hidden relative">
+        <Card className={cn(
+          "border-none shadow-sm rounded-2xl overflow-hidden relative text-white",
+          netProfit >= 0 ? "lux-gradient" : "bg-destructive"
+        )}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
           <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
-            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">إجمالي التكلفة النهائية</span>
-            <span className="text-4xl font-black tabular-nums">{totalCost.toLocaleString('en-US')}</span>
+            <span className="text-xs font-bold opacity-80 uppercase tracking-wider">صافي أرباح الحملة</span>
+            <span className="text-4xl font-black tabular-nums">{netProfit.toLocaleString('en-US')}</span>
             <span className="text-xs opacity-70 font-bold">ريال يمني</span>
           </CardContent>
         </Card>
@@ -505,21 +519,36 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 outline-none animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="p-5 bg-green-50 rounded-2xl border border-green-100/50 space-y-1">
+                <div className="flex items-center gap-2 text-green-600 mb-1">
+                  <Banknote className="w-4 h-4" />
+                  <span className="text-[10px] font-bold">إجمالي المبيعات (Revenue)</span>
+                </div>
+                <p className="text-2xl font-black text-green-700 tabular-nums">{totalRevenue.toLocaleString('en-US')}</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100/50 space-y-1">
                 <div className="flex items-center gap-2 text-orange-600 mb-1">
                   <ArrowDownRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي الشراء</span>
                 </div>
-                <p className="text-2xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString('en-US')}</p>
+                <p className="text-xl font-black text-orange-700 tabular-nums">{totalPurchases.toLocaleString('en-US')}</p>
               </div>
               <div className="p-5 bg-accent/5 rounded-2xl border border-accent/10 space-y-1">
                 <div className="flex items-center gap-2 text-accent mb-1">
                   <ArrowUpRight className="w-4 h-4" />
                   <span className="text-[10px] font-bold">إجمالي المصاريف</span>
                 </div>
-                <p className="text-2xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString('en-US')}</p>
+                <p className="text-xl font-black text-accent tabular-nums">{totalExpenses.toLocaleString('en-US')}</p>
               </div>
+            </div>
+
+            <div className="p-4 bg-muted/30 rounded-2xl border border-dashed flex justify-between items-center">
+              <span className="text-xs font-bold text-muted-foreground">إجمالي التكاليف (Costs)</span>
+              <span className="text-lg font-black tabular-nums">{totalCost.toLocaleString('en-US')} ر.ي</span>
             </div>
             
             {campaign.notes && (
