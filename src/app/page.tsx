@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
@@ -38,6 +39,7 @@ export default function Home() {
     profit: false,
     debtsToMe: false,
     debtsByMe: false,
+    liquidity: false,
   })
 
   useEffect(() => {
@@ -50,21 +52,47 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const formatAmount = (key: string, amount: number = 0) => {
+  const formatAmountValue = (key: string, amount: number = 0) => {
     if (!mounted) return "*****"
     return visibility[key] ? amount.toLocaleString('en-US') : "*****"
   }
 
+  // Queries for real-time stats
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(
-      collection(db, "users", user.uid, "invoices"),
-      orderBy("createdAt", "desc"),
-      limit(3)
-    )
+    return query(collection(db, "users", user.uid, "invoices"), orderBy("createdAt", "desc"))
   }, [db, user])
+  const { data: allInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
 
-  const { data: recentInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
+  const purchasesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "purchases"))
+  }, [db, user])
+  const { data: allPurchases } = useCollection(purchasesQuery)
+
+  const expensesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "expenses"))
+  }, [db, user])
+  const { data: allExpenses } = useCollection(expensesQuery)
+
+  const stats = useMemo(() => {
+    const totalRev = allInvoices?.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0) || 0
+    const totalRevPaid = allInvoices?.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0) || 0
+    const debtsToMe = totalRev - totalRevPaid
+
+    const totalPurCost = allPurchases?.reduce((acc, p) => acc + (p.totalAmount || 0), 0) || 0
+    const totalPurPaid = allPurchases?.reduce((acc, p) => acc + (p.paidAmount || 0), 0) || 0
+    
+    const totalExpCost = allExpenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0
+    const totalExpPaid = allExpenses?.reduce((acc, e) => acc + (e.paidAmount || 0), 0) || 0
+    
+    const debtsByMe = (totalPurCost - totalPurPaid) + (totalExpCost - totalExpPaid)
+    const estimatedProfit = totalRev - (totalPurCost + totalExpCost)
+    const liquidity = totalRevPaid - (totalPurPaid + totalExpPaid)
+    
+    return { estimatedProfit, debtsToMe, debtsByMe, liquidity }
+  }, [allInvoices, allPurchases, allExpenses])
 
   const handleLogout = () => {
     if (auth) signOut(auth)
@@ -95,7 +123,6 @@ export default function Home() {
           const newDocRef = doc(db, 'users', user.uid, colName, docSnap.id)
           await setDoc(newDocRef, { ...data, userId: user.uid, migratedFrom: demoUid })
           
-          // Sub-collections for invoices and purchases
           if (colName === 'invoices' || colName === 'purchases') {
             const subColRef = collection(db, 'users', demoUid, colName, docSnap.id, 'items')
             const subSnapshot = await getDocs(subColRef)
@@ -114,7 +141,7 @@ export default function Home() {
         description: `تم نقل ${totalDocs} سجل من الحساب التجريبي إلى حسابك الحالي.` 
       })
       setMigrationDone(true)
-      window.location.reload() // Reload to refresh all data
+      window.location.reload()
     } catch (e: any) {
       console.error(e)
       toast({ 
@@ -129,8 +156,8 @@ export default function Home() {
 
   if (!mounted) return null
 
-  // Show migration tool if account is new (no invoices)
-  const showRestoreTool = recentInvoices && recentInvoices.length === 0 && !migrationDone && user?.uid !== 'luJcA2AwKHYdXbeU9GvietyCkeu2'
+  const recentInvoices = allInvoices?.slice(0, 3) || []
+  const showRestoreTool = allInvoices && allInvoices.length === 0 && !migrationDone && user?.uid !== 'luJcA2AwKHYdXbeU9GvietyCkeu2'
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -170,7 +197,7 @@ export default function Home() {
             </button>
           </div>
           <p className="text-4xl font-black tabular-nums tracking-tighter">
-            {formatAmount("profit", 0)} <span className="text-lg font-normal opacity-80">ر.ي</span>
+            {formatAmountValue("profit", stats.estimatedProfit)} <span className="text-lg font-normal opacity-80">ر.ي</span>
           </p>
         </div>
       </header>
@@ -178,11 +205,17 @@ export default function Home() {
       <section className="px-4 -mt-14 mb-8 relative z-20">
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
-            <CardContent className="p-5 flex flex-col gap-3">
-              <div className="flex justify-between items-start">
-                <div className="p-2.5 bg-green-50 text-green-700 rounded-2xl w-fit">
-                  <ArrowUpRight className="w-5 h-5" />
+            <CardContent className="p-5 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-green-50 text-green-700 rounded-xl">
+                  <ArrowUpRight className="w-4 h-4" />
                 </div>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-xl font-black text-green-700 tabular-nums">
+                  {formatAmountValue("debtsToMe", stats.debtsToMe)} <span className="text-[10px] font-normal opacity-70">ر.ي</span>
+                </p>
                 <button 
                   onClick={() => toggleVisibility('debtsToMe')}
                   className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
@@ -190,32 +223,26 @@ export default function Home() {
                   {visibility['debtsToMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
               </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون لك</p>
-                <p className="text-xl font-black text-green-700 tabular-nums">
-                  {formatAmount("debtsToMe", 0)} <span className="text-xs font-normal">ر.ي</span>
-                </p>
-              </div>
             </CardContent>
           </Card>
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
-            <CardContent className="p-5 flex flex-col gap-3">
-              <div className="flex justify-between items-start">
-                <div className="p-2.5 bg-red-50 text-red-700 rounded-2xl w-fit">
-                  <ArrowDownRight className="w-5 h-5" />
+            <CardContent className="p-5 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-red-50 text-red-700 rounded-xl">
+                  <ArrowDownRight className="w-4 h-4" />
                 </div>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-xl font-black text-red-700 tabular-nums">
+                  {formatAmountValue("debtsByMe", stats.debtsByMe)} <span className="text-[10px] font-normal opacity-70">ر.ي</span>
+                </p>
                 <button 
                   onClick={() => toggleVisibility('debtsByMe')}
                   className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
                 >
                   {visibility['debtsByMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide mb-1">ديون عليك</p>
-                <p className="text-xl font-black text-red-700 tabular-nums">
-                  {formatAmount("debtsByMe", 0)} <span className="text-xs font-normal">ر.ي</span>
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -264,10 +291,15 @@ export default function Home() {
               <div className="p-3.5 bg-white shadow-sm text-accent rounded-2xl">
                 <Wallet className="w-6 h-6" />
               </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
+                  <button onClick={() => toggleVisibility('liquidity')} className="p-0.5 opacity-50">
+                    {visibility['liquidity'] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
+                </div>
                 <p className="text-2xl font-black tabular-nums">
-                  0 <span className="text-sm font-normal opacity-70">ر.ي</span>
+                  {formatAmountValue("liquidity", stats.liquidity)} <span className="text-sm font-normal opacity-70">ر.ي</span>
                 </p>
               </div>
             </div>
@@ -289,7 +321,7 @@ export default function Home() {
             <div className="flex justify-center p-4">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ) : recentInvoices && recentInvoices.length > 0 ? (
+          ) : recentInvoices.length > 0 ? (
             recentInvoices.map((item: any) => (
               <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
                 <div className="flex flex-col gap-0.5">
