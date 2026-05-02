@@ -3,20 +3,64 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car, User, Plus } from "lucide-react"
+import { 
+  ChevronLeft, 
+  Save, 
+  Loader2, 
+  Fuel, 
+  Users, 
+  Snowflake, 
+  Waves, 
+  Package, 
+  Utensils, 
+  MoreHorizontal, 
+  Calendar as CalendarIcon, 
+  LayoutList, 
+  Wallet, 
+  Car, 
+  User, 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Table as TableIcon,
+  AlertCircle,
+  X,
+  Check,
+  ClipboardList
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, query, where, writeBatch } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import Link from "next/link"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const expenseTypes = [
   { label: "ديزل", icon: Fuel, value: "ديزل" },
@@ -28,6 +72,18 @@ const expenseTypes = [
   { label: "أكل", icon: Utensils, value: "أكل" },
   { label: "أخرى", icon: MoreHorizontal, value: "أخرى" },
 ]
+
+interface TempExpense {
+  tempId: string;
+  type: string;
+  amount: number;
+  paymentType: string;
+  paidAmount: number;
+  remainingAmount: number;
+  payeeId: string | null;
+  date: string;
+  notes: string;
+}
 
 export default function NewExpensePage() {
   const router = useRouter()
@@ -53,7 +109,10 @@ export default function NewExpensePage() {
 
   const { data: suppliers } = useCollection(suppliersQuery)
 
+  // Global State
   const [campaignId, setCampaignId] = useState("")
+  
+  // Form State for Single Expense
   const [type, setType] = useState("")
   const [amount, setAmount] = useState("")
   const [paymentType, setPaymentType] = useState("نقد")
@@ -61,6 +120,10 @@ export default function NewExpensePage() {
   const [payeeId, setPayeeId] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  // List State
+  const [addedExpenses, setAddedExpenses] = useState<TempExpense[]>([])
 
   const formatInputNumber = (val: string) => {
     if (!val) return ""
@@ -87,13 +150,12 @@ export default function NewExpensePage() {
   const numPaidAmount = paymentType === "نقد" ? numAmount : (paymentType === "دين" ? 0 : (parseFloat(paidAmount) || 0))
   const remainingAmount = numAmount - numPaidAmount
 
-  const handleSave = async () => {
-    if (!db || !user) return
-    if (!campaignId || !type || numAmount <= 0) {
+  const handleAddToList = () => {
+    if (!type || numAmount <= 0) {
       toast({
         variant: "destructive",
         title: "خطأ في الإدخال",
-        description: "يرجى اختيار الحملة ونوع المصروف وإدخال مبلغ صحيح",
+        description: "يرجى اختيار نوع المصروف وإدخال مبلغ صحيح",
       })
       return
     }
@@ -107,66 +169,128 @@ export default function NewExpensePage() {
       return
     }
 
-    setLoading(true)
-    const expenseData = {
-      campaignId,
+    const newExpense: TempExpense = {
+      tempId: editingId || Math.random().toString(36).substr(2, 9),
       type,
       amount: numAmount,
-      paidAmount: numPaidAmount,
-      remainingAmount: remainingAmount,
       paymentType,
+      paidAmount: numPaidAmount,
+      remainingAmount,
       payeeId: (paymentType !== "نقد") ? payeeId : null,
-      date: new Date(date).toISOString(),
-      notes,
-      userId: user.uid,
-      createdAt: serverTimestamp(),
+      date,
+      notes
     }
 
-    addDoc(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"), expenseData)
-      .then(() => {
-        toast({
-          title: "تم بنجاح",
-          description: "تم حفظ المصروف بنجاح",
-        })
-        router.push("/")
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: `users/${user.uid}/campaigns/${campaignId}/expenses`,
-          operation: 'create',
-          requestResourceData: expenseData,
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => {
-        setLoading(false)
-      })
+    if (editingId) {
+      setAddedExpenses(addedExpenses.map(e => e.tempId === editingId ? newExpense : e))
+      setEditingId(null)
+      toast({ title: "تم تحديث المصروف في القائمة" })
+    } else {
+      setAddedExpenses([newExpense, ...addedExpenses])
+      toast({ title: "تمت إضافة المصروف للقائمة" })
+    }
+
+    // Reset Form
+    setType("")
+    setAmount("")
+    setPaidAmount("")
+    setPaymentType("نقد")
+    setNotes("")
   }
 
+  const handleEdit = (expense: TempExpense) => {
+    setEditingId(expense.tempId)
+    setType(expense.type)
+    setAmount(expense.amount.toString())
+    setPaymentType(expense.paymentType)
+    setPaidAmount(expense.paymentType === "جزئي" ? expense.paidAmount.toString() : "")
+    setPayeeId(expense.payeeId || "")
+    setDate(expense.date)
+    setNotes(expense.notes)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleRemove = (tempId: string) => {
+    setAddedExpenses(addedExpenses.filter(e => e.tempId !== tempId))
+  }
+
+  const handleFinalSave = async () => {
+    if (!db || !user) return
+    if (!campaignId) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "يرجى اختيار الحملة أولاً",
+      })
+      return
+    }
+    if (addedExpenses.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "قائمة فارغة",
+        description: "يرجى إضافة مصروف واحد على الأقل للقائمة",
+      })
+      return
+    }
+
+    setLoading(true)
+    const batch = writeBatch(db)
+    
+    try {
+      addedExpenses.forEach((exp) => {
+        const expenseRef = doc(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
+        batch.set(expenseRef, {
+          ...exp,
+          id: expenseRef.id,
+          campaignId,
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+          date: new Date(exp.date).toISOString()
+        })
+      })
+
+      await batch.commit()
+      toast({
+        title: "تم الحفظ بنجاح",
+        description: `تم تسجيل ${addedExpenses.length} مصاريف في الحملة`,
+      })
+      router.push(`/campaigns/${campaignId}`)
+    } catch (error: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `users/${user.uid}/campaigns/${campaignId}/expenses`,
+        operation: 'create'
+      }))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const totalBatchAmount = addedExpenses.reduce((acc, curr) => acc + curr.amount, 0)
+
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-10">
-      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-10">
+    <div className="flex flex-col min-h-screen bg-background pb-24">
+      <header className="p-4 flex items-center justify-between border-b bg-white sticky top-0 z-20 shadow-sm">
         <button onClick={() => router.back()} className="p-2 -mr-2">
           <ChevronLeft className="w-6 h-6 rotate-180" />
         </button>
-        <h1 className="text-lg font-bold">إضافة مصروف جديد</h1>
+        <h1 className="text-lg font-bold">تسجيل مصاريف التشغيل</h1>
         <div className="w-6" />
       </header>
 
       <main className="p-4 space-y-6">
-        <Card className="border-none shadow-xl rounded-[1.5rem] overflow-hidden">
-          <CardHeader className="bg-accent/5 border-b border-accent/10">
-            <CardTitle className="text-md font-bold text-accent">تفاصيل المصروف والتشغيل</CardTitle>
+        {/* Campaign Selection - Global for the session */}
+        <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+          <CardHeader className="bg-primary/5 border-b p-4">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-primary" />
+              اختيار الحملة
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-5">
+          <CardContent className="p-4">
             <div className="space-y-2">
-              <Label className="text-sm font-bold flex items-center gap-2">
-                <LayoutList className="w-4 h-4 text-primary" />
-                اختيار الحملة <span className="text-destructive">*</span>
-              </Label>
-              <Select onValueChange={setCampaignId} dir="rtl">
+              <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
                 <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                  <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة"} />
+                  <SelectValue placeholder={loadingCampaigns ? "جاري التحميل..." : "اختر الحملة المستهدفة"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   {openCampaigns?.map((camp) => (
@@ -175,10 +299,24 @@ export default function NewExpensePage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
 
+        {/* Entry Form */}
+        <Card className={cn(
+          "border-2 shadow-md rounded-[1.5rem] overflow-hidden transition-all duration-300",
+          editingId ? "border-accent ring-2 ring-accent/10" : "border-primary/10"
+        )}>
+          <CardHeader className={cn("p-4 border-b", editingId ? "bg-accent/5" : "bg-muted/30")}>
+            <CardTitle className={cn("text-sm font-bold flex items-center gap-2", editingId ? "text-accent" : "text-primary")}>
+              {editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {editingId ? "تعديل بيانات المصروف الحالي" : "إضافة مصروف جديد للقائمة"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-5">
             <div className="space-y-3">
-              <Label className="text-sm font-bold flex items-center gap-2">
-                <MoreHorizontal className="w-4 h-4 text-primary" />
+              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                <MoreHorizontal className="w-3.5 h-3.5 text-primary" />
                 نوع المصروف <span className="text-destructive">*</span>
               </Label>
               <div className="grid grid-cols-4 gap-2">
@@ -188,158 +326,269 @@ export default function NewExpensePage() {
                     type="button"
                     onClick={() => setType(item.value)}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all gap-1.5",
+                      "flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all gap-1",
                       type === item.value 
                         ? "bg-accent text-white border-accent shadow-md scale-95" 
                         : "bg-white text-muted-foreground border-muted-foreground/10 hover:bg-accent/5"
                     )}
                   >
-                    <item.icon className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">{item.label}</span>
+                    <item.icon className="w-4 h-4" />
+                    <span className="text-[9px] font-bold">{item.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="text-sm font-bold flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-primary" />
-                إجمالي المبلغ (ر.ي) <span className="text-destructive">*</span>
-              </Label>
-              <Input 
-                id="amount"
-                type="text"
-                inputMode="decimal"
-                placeholder="0" 
-                className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-lg font-black tabular-nums"
-                value={formatInputNumber(amount)}
-                onChange={handleAmountChange}
-              />
-            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5 text-primary" />
+                  المبلغ (ر.ي) <span className="text-destructive">*</span>
+                </Label>
+                <Input 
+                  id="amount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0" 
+                  className="h-12 rounded-xl border-muted-foreground/20 font-black text-lg tabular-nums"
+                  value={formatInputNumber(amount)}
+                  onChange={handleAmountChange}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-bold flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-primary" />
-                طريقة الدفع
-              </Label>
-              <Select onValueChange={setPaymentType} defaultValue={paymentType} dir="rtl">
-                <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                  <SelectValue placeholder="اختر الطريقة" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="نقد">نقد (سداد كامل)</SelectItem>
-                  <SelectItem value="دين">دين (على الحساب)</SelectItem>
-                  <SelectItem value="جزئي">سداد جزئي</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5 text-primary" />
+                  طريقة السداد
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["نقد", "دين", "جزئي"].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setPaymentType(t)}
+                      className={cn(
+                        "py-3 text-[11px] font-bold rounded-xl border transition-all",
+                        paymentType === t 
+                          ? "bg-primary text-white border-primary shadow-sm" 
+                          : "bg-muted/30 text-muted-foreground border-transparent"
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {(paymentType === "دين" || paymentType === "جزئي") && (
-              <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                <div className="flex justify-between items-center px-1">
-                  <Label className="text-sm font-bold flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    المورد المستحق للدين <span className="text-destructive">*</span>
-                  </Label>
-                  <Link href="/suppliers/new">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-primary gap-1 font-bold">
-                      <Plus className="w-3 h-3" />
-                      مورد جديد
-                    </Button>
-                  </Link>
-                </div>
-                <Select onValueChange={setPayeeId} dir="rtl">
-                  <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                    <SelectValue placeholder="اختر المورد" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {suppliers?.map((sup) => (
-                      <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {paymentType === "جزئي" && (
-              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+              <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                 <div className="space-y-2">
-                  <Label htmlFor="paidAmount" className="text-sm font-bold text-accent">المبلغ المدفوع</Label>
-                  <Input 
-                    id="paidAmount"
-                    type="text"
-                    inputMode="decimal"
-                    className="h-12 rounded-xl border-accent/20 font-bold text-accent tabular-nums"
-                    value={formatInputNumber(paidAmount)}
-                    onChange={handlePaidAmountChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold text-destructive">المبلغ المتبقي</Label>
-                  <div className="h-12 flex items-center px-4 bg-destructive/5 border border-destructive/10 rounded-xl font-black text-destructive tabular-nums">
-                    {remainingAmount.toLocaleString('en-US')}
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-primary" />
+                      المورد المستحق
+                    </Label>
+                    <Link href="/suppliers/new">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-primary gap-1 font-bold text-[10px]">
+                        <Plus className="w-3 h-3" />
+                        مورد جديد
+                      </Button>
+                    </Link>
                   </div>
+                  <Select onValueChange={setPayeeId} value={payeeId} dir="rtl">
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue placeholder="اختر المورد..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {suppliers?.map((sup) => (
+                        <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {paymentType === "جزئي" && (
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-accent/5 rounded-2xl border border-accent/10">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-accent">المدفوع</Label>
+                      <Input 
+                        type="text"
+                        inputMode="decimal"
+                        className="h-10 rounded-xl border-accent/20 font-bold text-accent tabular-nums"
+                        value={formatInputNumber(paidAmount)}
+                        onChange={handlePaidAmountChange}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-destructive">المتبقي (دين)</Label>
+                      <div className="h-10 flex items-center px-3 bg-destructive/5 border border-destructive/10 rounded-xl font-black text-destructive tabular-nums text-sm">
+                        {remainingAmount.toLocaleString('en-US')}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="expense-date" className="text-sm font-bold flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-primary" />
-                تاريخ المصروف
-              </Label>
-              <div className="relative">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                  <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                  تاريخ المصروف
+                </Label>
                 <Input 
-                  id="expense-date"
+                  id="date"
                   type="date"
-                  className="h-12 rounded-xl border-muted-foreground/20 focus:ring-accent text-right pr-10 tabular-nums"
+                  className="h-12 rounded-xl border-muted-foreground/20 text-right tabular-nums"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
-                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                  <MoreHorizontal className="w-3.5 h-3.5 text-primary" />
+                  ملاحظات
+                </Label>
+                <Input 
+                  id="notes"
+                  placeholder="ملاحظات اختيارية..." 
+                  className="h-12 rounded-xl border-muted-foreground/20"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-sm font-bold flex items-center gap-2">
-                <MoreHorizontal className="w-4 h-4 text-primary" />
-                ملاحظات إضافية
-              </Label>
-              <Textarea 
-                id="notes"
-                placeholder="مثال: ديزل للسيارة رقم 1..." 
-                className="min-h-[100px] rounded-xl border-muted-foreground/20 resize-none"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+            <div className="flex gap-2 pt-2">
+              <Button 
+                onClick={handleAddToList} 
+                className={cn("flex-1 h-12 rounded-xl font-bold gap-2 shadow-lg", editingId ? "bg-accent" : "lux-gradient")}
+              >
+                {editingId ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                {editingId ? "تحديث في القائمة" : "إضافة لقائمة المصاريف"}
+              </Button>
+              {editingId && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setEditingId(null)
+                    setType("")
+                    setAmount("")
+                    setPaidAmount("")
+                    setPaymentType("نقد")
+                    setNotes("")
+                  }} 
+                  className="h-12 w-12 rounded-xl"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-3">
-          <Button 
-            className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg gap-2 bg-accent hover:bg-accent/90" 
-            onClick={handleSave}
-            disabled={loading || loadingCampaigns}
-          >
-            {loading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Save className="w-6 h-6" />
+        {/* List Table */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="text-sm font-black flex items-center gap-2">
+              <TableIcon className="w-4 h-4 text-primary" />
+              المصاريف المضافة ({addedExpenses.length})
+            </h3>
+            {addedExpenses.length > 0 && (
+              <span className="text-xs font-bold text-primary tabular-nums">الإجمالي: {totalBatchAmount.toLocaleString('en-US')} ر.ي</span>
             )}
-            حفظ وتأكيد المصروف
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="w-full h-12 rounded-xl text-muted-foreground font-bold"
-            onClick={() => router.back()}
-            disabled={loading}
-          >
-            تراجع
-          </Button>
+          </div>
+
+          {addedExpenses.length > 0 ? (
+            <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+              <Table dir="rtl">
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold">المبلغ</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold">الدفع</TableHead>
+                    <TableHead className="text-left text-[10px] font-bold">إجراء</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {addedExpenses.map((exp) => (
+                    <TableRow key={exp.tempId} className="animate-in slide-in-from-right-2">
+                      <TableCell className="text-right text-xs font-bold">{exp.type}</TableCell>
+                      <TableCell className="text-center text-xs font-black text-accent tabular-nums">{exp.amount.toLocaleString('en-US')}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className={cn(
+                          "text-[8px] px-1.5 py-0 border-none",
+                          exp.paymentType === "نقد" ? "bg-green-50 text-green-600" : (exp.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+                        )}>
+                          {exp.paymentType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEdit(exp)} className="p-1 text-accent">
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button className="p-1 text-destructive">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 font-bold">
+                                  حذف المصروف <Trash2 className="w-5 h-5 text-destructive" />
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-right font-medium">
+                                  هل أنت متأكد من حذف هذا المصروف من القائمة؟
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="flex-row gap-2 mt-4">
+                                <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRemove(exp.tempId)} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">حذف</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem] bg-white/50">
+              لا توجد مصاريف مضافة للقائمة حالياً
+            </div>
+          )}
         </div>
+
+        {/* Final Save */}
+        {addedExpenses.length > 0 && (
+          <div className="pt-4 sticky bottom-4 z-30">
+            <Button 
+              className="w-full h-14 rounded-2xl text-lg font-black shadow-xl gap-2 lux-gradient" 
+              onClick={handleFinalSave}
+              disabled={loading || !campaignId}
+            >
+              {loading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <Save className="w-6 h-6" />
+              )}
+              تأكيد وحفظ الكل ({totalBatchAmount.toLocaleString('en-US')} ر.ي)
+            </Button>
+            {!campaignId && (
+              <p className="text-[10px] text-destructive font-bold text-center mt-2 flex items-center justify-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                يرجى اختيار الحملة قبل الحفظ النهائي
+              </p>
+            )}
+          </div>
+        )}
       </main>
     </div>
   )
 }
-
