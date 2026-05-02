@@ -18,7 +18,7 @@ export function SplashScreen() {
               src={logo.imageUrl} 
               alt="Logo" 
               fill
-              className="object-cover p-2"
+              className="object-cover"
               data-ai-hint="fish logo"
             />
           </div>
