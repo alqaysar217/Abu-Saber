@@ -546,7 +546,7 @@ export default function DebtsPage() {
             </button>
             <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
               <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
-              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
+              <p className="text-xs text-white/70 font-bold">كشف العمليات والديون</p>
             </div>
           </SheetHeader>
 
@@ -607,12 +607,16 @@ export default function DebtsPage() {
                        </div>
                     </div>
 
-                    {!isPaid && (
-                      <div className="flex gap-2 pt-1">
-                        <Button variant="outline" className="flex-1 h-9 rounded-xl text-[10px] font-bold gap-1 border-primary/20 text-primary" onClick={() => router.push(`/campaigns/${tr.campaignId}?tab=${tr.trType === 'sale' ? 'sales' : (tr.trType === 'purchase' ? 'purchases' : 'expenses')}`)}>التفاصيل</Button>
-                        <Button className="flex-1 h-9 rounded-xl text-[10px] font-bold gap-1 lux-gradient" onClick={() => { setPaymentTarget({ ...tr, remainingAmount: remaining }); setPaymentAmount(remaining.toString()); }}>تسجيل سداد</Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button variant="outline" className="flex-1 h-9 rounded-xl text-[10px] font-bold gap-1 border-primary/20 text-primary" onClick={() => router.push(`/campaigns/${tr.campaignId}?tab=${tr.trType === 'sale' ? 'sales' : (tr.trType === 'purchase' ? 'purchases' : 'expenses')}`)}>
+                        التفاصيل
+                      </Button>
+                      {!isPaid && (
+                        <Button className="flex-1 h-9 rounded-xl text-[10px] font-bold gap-1 lux-gradient" onClick={() => { setPaymentTarget({ ...tr, remainingAmount: remaining }); setPaymentAmount(remaining.toString()); }}>
+                          تسجيل سداد
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )
               })
