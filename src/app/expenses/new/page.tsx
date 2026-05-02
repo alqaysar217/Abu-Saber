@@ -81,7 +81,7 @@ interface TempExpense {
   paidAmount: number;
   remainingAmount: number;
   payeeId: string | null;
-  payeeName?: string;
+  payeeName: string | null;
   date: string;
   notes: string;
 }
@@ -179,10 +179,10 @@ export default function NewExpensePage() {
       paymentType,
       paidAmount: numPaidAmount,
       remainingAmount,
-      payeeId: (paymentType !== "نقد") ? payeeId : null,
-      payeeName: (paymentType !== "نقد") ? selectedSupplier?.name : undefined,
+      payeeId: (paymentType !== "نقد") ? (payeeId || null) : null,
+      payeeName: (paymentType !== "نقد") ? (selectedSupplier?.name || null) : null,
       date,
-      notes
+      notes: notes || ""
     }
 
     if (editingId) {
@@ -263,8 +263,8 @@ export default function NewExpensePage() {
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: `users/${user.uid}/campaigns/${campaignId}/expenses/bulk`,
-          operation: 'create',
+          path: `users/${user.uid}/campaigns/${campaignId}/expenses/${addedExpenses[0]?.tempId || 'bulk'}`,
+          operation: 'write',
         })
         errorEmitter.emit('permission-error', permissionError)
       })
