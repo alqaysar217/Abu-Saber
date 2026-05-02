@@ -27,7 +27,8 @@ import {
   Edit3,
   Table as TableIcon,
   X,
-  User
+  User,
+  Car
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -219,6 +220,116 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
   )
 }
 
+function ExpenseDetailRow({ expense, campaignId, userId }: { expense: any, campaignId: string, userId: string }) {
+  const db = useFirestore()
+  const router = useRouter()
+  const { toast } = useToast()
+
+  const handleDelete = async () => {
+    if (!db || !userId || !campaignId) return
+    const expenseRef = doc(db, "users", userId, "campaigns", campaignId, "expenses", expense.id)
+    
+    deleteDoc(expenseRef)
+      .then(() => {
+        toast({ title: "تم حذف المصروف بنجاح" })
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: expenseRef.path,
+          operation: 'delete'
+        }))
+      })
+  }
+
+  const typeIcon = {
+    "ديزل": Fuel,
+    "عمال": Users,
+    "ثلج": Snowflake,
+    "ملح": Waves,
+    "صيانة": Car,
+    "أكياس": Package,
+    "أكل": Utensils,
+    "أخرى": MoreHorizontal
+  }[expense.type as string] || MoreHorizontal
+
+  const Icon = typeIcon;
+
+  return (
+    <div className="flex flex-col p-4 bg-white rounded-2xl border border-border/50 shadow-sm gap-3 animate-in fade-in slide-in-from-right-2">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-accent/10 text-accent rounded-xl">
+            <Icon className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold">{expense.type}</span>
+            <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {expense.expenseDate ? format(new Date(expense.expenseDate), "dd MMM yyyy", { locale: ar }) : "بدون تاريخ"}
+            </span>
+          </div>
+        </div>
+        <div className="text-right flex flex-col items-end gap-1">
+          <span className="text-sm font-black text-accent tabular-nums">{expense.amount?.toLocaleString('en-US')} ر.ي</span>
+          <Badge variant="outline" className={cn(
+            "text-[8px] px-1.5 py-0 border-none font-bold",
+            expense.paymentType === "نقد" ? "bg-green-50 text-green-600" : (expense.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+          )}>
+            {expense.paymentType || "نقد"}
+          </Badge>
+        </div>
+      </div>
+      
+      {expense.notes && (
+        <p className="text-[11px] text-muted-foreground font-medium bg-muted/30 p-2 rounded-lg italic">
+          "{expense.notes}"
+        </p>
+      )}
+
+      {expense.payeeName && (
+        <div className="flex items-center gap-1 text-[10px] font-bold text-primary">
+          <User className="w-3 h-3" />
+          <span>المورد: {expense.payeeName}</span>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-3 pt-2 border-t border-border/40">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button className="flex items-center gap-1 text-[10px] font-bold text-destructive hover:opacity-70 transition-opacity">
+              <Trash2 className="w-3.5 h-3.5" />
+              حذف
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-right text-destructive flex items-center justify-start gap-2 font-bold">
+                <AlertCircle className="w-5 h-5" />
+                حذف المصروف؟
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-right font-medium">
+                هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row gap-2 mt-4">
+              <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        <button 
+          onClick={() => router.push(`/campaigns/${campaignId}/expenses/${expense.id}/edit`)}
+          className="flex items-center gap-1 text-[10px] font-bold text-accent hover:opacity-70 transition-opacity"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+          تعديل
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
   const { campaignId } = use(params)
@@ -243,14 +354,21 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
-    return query(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
+    return query(
+      collection(db, "users", user.uid, "campaigns", campaignId, "expenses"),
+      orderBy("expenseDate", "desc")
+    )
   }, [db, user, campaignId])
 
   const { data: expenses, isLoading: loadingExpenses } = useCollection(expensesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
-    return query(collection(db, "users", user.uid, "purchases"), where("campaignId", "==", campaignId))
+    return query(
+      collection(db, "users", user.uid, "purchases"), 
+      where("campaignId", "==", campaignId),
+      orderBy("purchaseDate", "desc")
+    )
   }, [db, user, campaignId])
 
   const { data: purchases, isLoading: loadingPurchases } = useCollection(purchasesQuery)
@@ -452,37 +570,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
 
           <TabsContent value="expenses" className="space-y-3 outline-none animate-in fade-in duration-300">
              {expenses && expenses.length > 0 ? (
-              expenses.map((e: any) => {
-                const typeIcon = {
-                  "ديزل": Fuel,
-                  "عمال": Users,
-                  "ثلج": Snowflake,
-                  "ملح": Waves,
-                  "أكياس": Package,
-                  "أكل": Utensils,
-                  "أخرى": MoreHorizontal
-                }[e.type as string] || MoreHorizontal
-
-                const Icon = typeIcon;
-
-                return (
-                  <div key={e.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-border/50 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-accent/10 text-accent rounded-lg">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold">{e.type}</span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px] font-medium">{e.notes || "لا يوجد ملاحظات"}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-black text-accent tabular-nums">{e.amount?.toLocaleString('en-US')} ر.ي</span>
-                      <p className="text-[10px] text-muted-foreground font-bold">{e.date ? format(new Date(e.date), "dd MMM", { locale: ar }) : ""}</p>
-                    </div>
-                  </div>
-                )
-              })
+              expenses.map((e: any) => (
+                <ExpenseDetailRow key={e.id} expense={e} campaignId={campaignId} userId={user.uid} />
+              ))
             ) : (
               <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-3xl font-bold">لا توجد مصاريف لهذه الحملة</div>
             )}
