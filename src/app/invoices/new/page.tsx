@@ -17,7 +17,8 @@ import {
   Sparkles,
   Fish,
   Scale,
-  Coins
+  Coins,
+  UserPlus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ import { collection, addDoc, serverTimestamp, query, where } from "firebase/fire
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 interface InvoiceItem {
   fishType: string
@@ -65,7 +67,7 @@ export default function NewInvoicePage() {
   
   const customersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "suppliers"))
+    return query(collection(db, "users", user.uid, "customers"))
   }, [db, user])
 
   const { data: customers } = useCollection(customersQuery)
@@ -189,10 +191,18 @@ export default function NewInvoicePage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-                <User className="w-3 h-3 text-primary" />
-                العميل / المشتري
-              </Label>
+              <div className="flex justify-between items-center px-1">
+                <Label className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                  <User className="w-3 h-3 text-primary" />
+                  العميل / المشتري
+                </Label>
+                <Link href="/customers/new">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-primary gap-1 font-bold text-[10px]">
+                    <UserPlus className="w-3 h-3" />
+                    عميل جديد
+                  </Button>
+                </Link>
+              </div>
               <Select onValueChange={setCustomerId} value={customerId} dir="rtl">
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="اختر العميل" />
