@@ -346,57 +346,52 @@ export default function DebtsPage() {
                   <div 
                     key={tr.id} 
                     className={cn(
-                      "p-5 rounded-[1.8rem] border shadow-sm space-y-4 transition-all relative overflow-hidden",
+                      "p-4 rounded-[1.5rem] border shadow-sm space-y-2.5 transition-all relative overflow-hidden",
                       tr.type === 'customer_payment' 
-                        ? 'bg-gradient-to-br from-green-50/80 via-white to-white border-green-100' 
-                        : 'bg-gradient-to-br from-orange-50/80 via-white to-white border-orange-100'
+                        ? 'bg-gradient-to-br from-green-50/60 to-white border-green-100' 
+                        : 'bg-gradient-to-br from-orange-50/60 to-white border-orange-100'
                     )}
                   >
-                    {/* Row 1: Status Badge and Date */}
+                    {/* Row 1: Status and Date */}
                     <div className="flex justify-between items-center">
-                      <Badge className={cn(
-                        "rounded-xl px-3 py-1 text-[10px] font-black shadow-sm border-none", 
-                        tr.type === 'customer_payment' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'
+                      <span className={cn(
+                        "text-[11px] font-black", 
+                        tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
                       )}>
                         {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
-                      </Badge>
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/80">
-                        <Calendar className="w-3.5 h-3.5 text-primary/40" />
-                        <span>{tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}</span>
-                      </div>
+                      </span>
+                      <span className="text-[10px] font-bold text-muted-foreground/70 tabular-nums">
+                        {tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}
+                      </span>
                     </div>
 
-                    {/* Row 2: Entity / Payee */}
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-inner",
-                        tr.type === 'customer_payment' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                      )}>
-                        <User className="w-5 h-5" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground font-bold">الجهة / المستلم</span>
-                        <span className="text-sm font-black">{tr.entityName}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Row 3: Amount Section */}
-                    <div className="flex justify-between items-end pt-4 border-t border-dashed border-border/40">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">المبلغ المسدد</span>
-                        <span className={cn(
-                          "text-2xl font-black tabular-nums",
-                          tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
+                    {/* Row 2: Entity and Recipient (Notes) */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-6 h-6 rounded-md flex items-center justify-center shadow-inner",
+                          tr.type === 'customer_payment' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
                         )}>
-                          {tr.amount.toLocaleString('en-US')} <span className="text-xs font-bold">ر.ي</span>
-                        </span>
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-sm font-black text-foreground/90">{tr.entityName}</span>
                       </div>
                       {tr.notes && (
-                         <div className="flex items-center gap-1.5 px-3 py-2 bg-white/60 rounded-2xl border border-border/30 max-w-[55%] mb-1 shadow-sm">
-                            <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-[10px] text-muted-foreground font-bold truncate leading-tight">{tr.notes}</span>
-                         </div>
+                        <span className="text-[10px] text-muted-foreground font-bold truncate max-w-[40%] text-left" dir="rtl">
+                          المستلم: {tr.notes}
+                        </span>
                       )}
+                    </div>
+                    
+                    {/* Row 3: Label and Amount */}
+                    <div className="flex justify-between items-center pt-2 border-t border-dashed border-border/30">
+                      <span className="text-[10px] text-muted-foreground font-black">المبلغ المسدد</span>
+                      <span className={cn(
+                        "text-lg font-black tabular-nums",
+                        tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
+                      )}>
+                        {tr.amount.toLocaleString('en-US')} <span className="text-[9px] font-bold">ر.ي</span>
+                      </span>
                     </div>
                   </div>
                 ))
