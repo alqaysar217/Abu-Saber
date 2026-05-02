@@ -23,7 +23,8 @@ import {
   Check,
   X,
   CreditCard,
-  Hash
+  Hash,
+  ArrowDownToLine
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,17 +46,6 @@ import { collection, doc, setDoc, serverTimestamp, query, where } from "firebase
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 interface PurchaseItem {
   tempId: string
@@ -123,7 +113,7 @@ export default function NewPurchasePage() {
     const lineTotal = qty * price
 
     if (!currentItem.fishType || isNaN(qty) || isNaN(price) || qty <= 0 || price <= 0) {
-      toast({ variant: "destructive", title: "بيانات ناقصة" })
+      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى إكمال بيانات الصنف" })
       return
     }
 
@@ -156,6 +146,7 @@ export default function NewPurchasePage() {
       paymentType: item.paymentType,
       paidAmount: item.paymentType === "جزئي" ? item.paidAmount.toString() : ""
     })
+    window.scrollTo({ top: 100, behavior: 'smooth' })
   }
 
   const handleRemoveItem = (tempId: string) => {
@@ -179,9 +170,16 @@ export default function NewPurchasePage() {
     setLoading(true)
     const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
     const purchaseData = {
-      id: purchaseRef.id, campaignId, supplierId, totalAmount: grandTotal, paidAmount: totalPaid,
+      id: purchaseRef.id,
+      campaignId,
+      supplierId,
+      totalAmount: grandTotal,
+      paidAmount: totalPaid,
       status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
-      purchaseDate: new Date(date).toISOString(), userId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      purchaseDate: new Date(date).toISOString(),
+      userId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }
 
     setDoc(purchaseRef, purchaseData)
@@ -208,83 +206,255 @@ export default function NewPurchasePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        <Card className="border-none shadow-sm rounded-2xl bg-white">
-          <CardHeader className="bg-orange-50/50 border-b p-4"><CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2"><ClipboardList className="w-4 h-4" />بيانات التوريد</CardTitle></CardHeader>
-          <CardContent className="p-4 space-y-5">
-            <div className="space-y-2"><Label className="text-[11px] font-bold">الحملة *</Label><Select onValueChange={setCampaignId} value={campaignId} dir="rtl"><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر الحملة..." /></SelectTrigger><SelectContent className="rounded-xl">{openCampaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label className="text-[11px] font-bold">المورد *</Label><Select onValueChange={setSupplierId} value={supplierId} dir="rtl"><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر المورد..." /></SelectTrigger><SelectContent className="rounded-xl">{suppliers?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label className="text-[11px] font-bold">تاريخ الشراء</Label><Input type="date" className="h-12 rounded-xl text-right" value={date} onChange={e => setDate(e.target.value)} /></div>
+        {/* supply card */}
+        <Card className="border-none shadow-md rounded-[1.5rem] bg-white overflow-hidden">
+          <CardHeader className="bg-orange-50 border-b border-orange-100 p-4">
+            <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              بيانات التوريد
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold flex items-center gap-2 text-muted-foreground">
+                <Ship className="w-3.5 h-3.5 text-orange-600" />
+                الحملة المرتبطة *
+              </Label>
+              <Select onValueChange={setCampaignId} value={campaignId} dir="rtl">
+                <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
+                  <SelectValue placeholder="اختر الحملة..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {openCampaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold flex items-center gap-2 text-muted-foreground">
+                <User className="w-3.5 h-3.5 text-orange-600" />
+                المورد (البائع) *
+              </Label>
+              <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
+                <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
+                  <SelectValue placeholder="اختر المورد..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {suppliers?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold flex items-center gap-2 text-muted-foreground">
+                <CalendarIcon className="w-3.5 h-3.5 text-orange-600" />
+                تاريخ الشراء
+              </Label>
+              <Input 
+                type="date" 
+                className="h-12 rounded-xl text-right border-muted-foreground/20" 
+                value={date} 
+                onChange={e => setDate(e.target.value)} 
+              />
+            </div>
           </CardContent>
         </Card>
 
-        <Card className={cn("border-2 shadow-md rounded-2xl bg-white", editingId ? "border-accent" : "border-primary/10")}>
-           <CardHeader className="p-4 pb-2"><CardTitle className={cn("text-sm font-bold flex items-center gap-2", editingId ? "text-accent" : "text-primary")}>{editingId ? <Edit3 className="w-4 h-4" /> : <Fish className="w-4 h-4" />}{editingId ? "تعديل الصنف" : "إضافة صنف سمك جديد"}</CardTitle></CardHeader>
-           <CardContent className="p-4 space-y-4">
-              <div className="space-y-2"><Label className="text-[11px] font-bold">نوع السمك</Label><Input placeholder="مثال: هامور..." className="h-12 rounded-xl" value={currentItem.fishType} onChange={e => setCurrentItem({...currentItem, fishType: e.target.value})} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label className="text-[11px] font-bold">الكمية (كجم)</Label><Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.quantity)} onChange={e => handleInputNumberChange('quantity', e.target.value)} /></div>
-                <div className="space-y-2"><Label className="text-[11px] font-bold">سعر الكيلو</Label><Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.pricePerKg)} onChange={e => handleInputNumberChange('pricePerKg', e.target.value)} /></div>
+        {/* item form card */}
+        <Card className={cn(
+          "border-2 shadow-lg rounded-[1.5rem] bg-white transition-all duration-300", 
+          editingId ? "border-accent ring-4 ring-accent/10" : "border-primary/10"
+        )}>
+           <CardHeader className={cn("p-4 border-b", editingId ? "bg-accent/5" : "bg-muted/30")}>
+             <CardTitle className={cn("text-sm font-bold flex items-center gap-2", editingId ? "text-accent" : "text-primary")}>
+               {editingId ? <Edit3 className="w-4 h-4" /> : <Fish className="w-4 h-4" />}
+               {editingId ? "تعديل بيانات الصنف" : "إضافة صنف سمك جديد"}
+             </CardTitle>
+           </CardHeader>
+           <CardContent className="p-5 space-y-5">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold flex items-center gap-2">
+                  <Fish className="w-3.5 h-3.5 text-muted-foreground" />
+                  نوع السمك
+                </Label>
+                <Input 
+                  placeholder="مثال: هامور، تونة..." 
+                  className="h-12 rounded-xl" 
+                  value={currentItem.fishType} 
+                  onChange={e => setCurrentItem({...currentItem, fishType: e.target.value})} 
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold">طريقة السداد</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold flex items-center gap-2">
+                    <Scale className="w-3.5 h-3.5 text-muted-foreground" />
+                    الكمية (كجم)
+                  </Label>
+                  <Input 
+                    type="text" 
+                    inputMode="decimal" 
+                    className="h-12 rounded-xl tabular-nums" 
+                    value={formatInputNumber(currentItem.quantity)} 
+                    onChange={e => handleInputNumberChange('quantity', e.target.value)} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold flex items-center gap-2">
+                    <Coins className="w-3.5 h-3.5 text-muted-foreground" />
+                    سعر الكيلو
+                  </Label>
+                  <Input 
+                    type="text" 
+                    inputMode="decimal" 
+                    className="h-12 rounded-xl tabular-nums" 
+                    value={formatInputNumber(currentItem.pricePerKg)} 
+                    onChange={e => handleInputNumberChange('pricePerKg', e.target.value)} 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-[11px] font-bold flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+                  طريقة السداد لهذا الصنف
+                </Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {["نقد", "دين", "جزئي"].map(t => <button key={t} type="button" onClick={() => setCurrentItem({...currentItem, paymentType: t})} className={cn("py-3 text-[11px] font-bold rounded-xl border transition-all", currentItem.paymentType === t ? 'bg-primary text-white' : 'bg-muted/30')}>{t}</button>)}
+                  {["نقد", "دين", "جزئي"].map(t => (
+                    <button 
+                      key={t} 
+                      type="button" 
+                      onClick={() => setCurrentItem({...currentItem, paymentType: t})} 
+                      className={cn(
+                        "py-3 text-[11px] font-black rounded-xl border transition-all", 
+                        currentItem.paymentType === t ? 'bg-primary text-white border-primary shadow-md' : 'bg-muted/30 text-muted-foreground'
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {currentItem.paymentType === "جزئي" && (
-                <div className="p-4 bg-accent/5 rounded-2xl border border-dashed border-accent/20 space-y-4">
+                <div className="p-4 bg-accent/5 rounded-2xl border border-dashed border-accent/30 space-y-4 animate-in slide-in-from-top-2">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-accent">المبلغ المسدد لهذا الصنف</Label>
-                    <Input type="text" inputMode="decimal" placeholder="0" className="h-12 rounded-xl border-accent/30 text-accent font-black tabular-nums" value={formatInputNumber(currentItem.paidAmount)} onChange={handleInputNumberChange('paidAmount', e.target.value)} />
+                    <Label className="text-xs font-bold text-accent flex items-center gap-2">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      المبلغ المسدد الآن
+                    </Label>
+                    <Input 
+                      type="text" 
+                      inputMode="decimal" 
+                      placeholder="0" 
+                      className="h-12 rounded-xl border-accent/30 text-accent font-black text-lg tabular-nums" 
+                      value={formatInputNumber(currentItem.paidAmount)} 
+                      onChange={e => handleInputNumberChange('paidAmount', e.target.value)} 
+                    />
                   </div>
                   <div className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
-                    <span className="text-xs font-bold text-muted-foreground">المتبقي لهذا الصنف:</span>
-                    <span className="text-md font-black text-orange-600 tabular-nums">{currentRemaining.toLocaleString('en-US')} ر.ي</span>
+                    <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                      <ArrowDownToLine className="w-3 h-3" />
+                      المتبقي (دين للمورد):
+                    </span>
+                    <span className="text-md font-black text-destructive tabular-nums">{currentRemaining.toLocaleString('en-US')} ر.ي</span>
                   </div>
                 </div>
               )}
 
-              <Button onClick={handleAddItem} className="w-full h-12 rounded-xl font-bold lux-gradient">{editingId ? "حفظ التعديلات" : "إضافة للقائمة"}</Button>
+              <Button 
+                onClick={handleAddItem} 
+                className={cn(
+                  "w-full h-14 rounded-2xl font-black text-lg shadow-lg gap-2", 
+                  editingId ? "bg-accent hover:bg-accent/90" : "lux-gradient"
+                )}
+              >
+                {editingId ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                {editingId ? "تحديث الصنف" : "إضافة صنف للقائمة"}
+              </Button>
            </CardContent>
         </Card>
 
+        {/* items list */}
         <div className="space-y-3">
-          <h3 className="text-sm font-black flex items-center gap-2 px-2"><TableIcon className="w-4 h-4 text-primary" />الأصناف المشتراة ({addedItems.length})</h3>
-          <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
-            <Table dir="rtl">
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
-                  <TableHead className="text-center text-[10px] font-bold">الكمية</TableHead>
-                  <TableHead className="text-center text-[10px] font-bold">سعر الكيلو</TableHead>
-                  <TableHead className="text-center text-[10px] font-bold">الإجمالي</TableHead>
-                  <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {addedItems.map(item => (
-                  <TableRow key={item.tempId}>
-                    <TableCell className="text-right font-bold text-xs">{item.fishType}</TableCell>
-                    <TableCell className="text-center text-xs tabular-nums">{item.quantity.toLocaleString('en-US')} kg</TableCell>
-                    <TableCell className="text-center text-xs tabular-nums">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
-                    <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal.toLocaleString('en-US')}</TableCell>
-                    <TableCell className="text-left">
-                      <div className="flex gap-2">
-                        <button onClick={() => handleEditItem(item)} className="text-accent"><Edit3 className="w-4 h-4" /></button>
-                        <button onClick={() => handleRemoveItem(item.tempId)} className="text-destructive"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </TableCell>
+          <h3 className="text-sm font-black flex items-center gap-2 px-2">
+            <TableIcon className="w-4 h-4 text-orange-600" />
+            الأصناف المشتراة ({addedItems.length})
+          </h3>
+          {addedItems.length > 0 ? (
+            <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+              <Table dir="rtl">
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="text-right text-[10px] font-black">الصنف</TableHead>
+                    <TableHead className="text-center text-[10px] font-black">الكمية</TableHead>
+                    <TableHead className="text-center text-[10px] font-black">سعر الكيلو</TableHead>
+                    <TableHead className="text-center text-[10px] font-black">الإجمالي</TableHead>
+                    <TableHead className="text-left text-[10px] font-black">إجراء</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                </TableHeader>
+                <TableBody>
+                  {addedItems.map(item => (
+                    <TableRow key={item.tempId} className="animate-in fade-in slide-in-from-right-1">
+                      <TableCell className="text-right font-bold text-xs">{item.fishType}</TableCell>
+                      <TableCell className="text-center text-xs tabular-nums font-medium">{item.quantity.toLocaleString('en-US')} كجم</TableCell>
+                      <TableCell className="text-center text-xs tabular-nums font-medium">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
+                      <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal.toLocaleString('en-US')}</TableCell>
+                      <TableCell className="text-left py-2">
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => handleEditItem(item)} className="p-1 text-accent hover:bg-accent/10 rounded-full transition-colors">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleRemoveItem(item.tempId)} className="p-1 text-destructive hover:bg-destructive/10 rounded-full transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground text-xs border-2 border-dashed rounded-[2rem] bg-white/50">
+              لم يتم إضافة أصناف بعد
+            </div>
+          )}
         </div>
 
+        {/* final summary and save */}
         {addedItems.length > 0 && (
-          <Button className="w-full h-14 rounded-2xl text-lg font-black shadow-xl bg-orange-600" onClick={handleFinalSave} disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : <Save className="w-6 h-6" />}حفظ وتأكيد المشتريات ({grandTotal.toLocaleString('en-US')} ر.ي)</Button>
+          <div className="space-y-4 animate-in slide-in-from-bottom-4">
+            <Card className="border-none shadow-xl rounded-[2rem] bg-primary text-white p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-4 relative z-10">
+                <span className="text-xs font-bold opacity-80 flex items-center gap-2">
+                  <Hash className="w-3.5 h-3.5" />
+                  إجمالي قيمة الفاتورة
+                </span>
+                <span className="text-2xl font-black tabular-nums">{grandTotal.toLocaleString('en-US')} ر.ي</span>
+              </div>
+              <div className="grid grid-cols-2 gap-6 text-center relative z-10">
+                <div className="space-y-1">
+                  <span className="text-[10px] block opacity-70 font-bold uppercase tracking-wider">المدفوع نقداً</span>
+                  <span className="text-lg font-black tabular-nums text-green-400">{totalPaid.toLocaleString('en-US')}</span>
+                </div>
+                <div className="border-r border-white/10 space-y-1">
+                  <span className="text-[10px] block opacity-70 font-bold uppercase tracking-wider">المتبقي (دين)</span>
+                  <span className="text-lg font-black tabular-nums text-orange-400">{totalDue.toLocaleString('en-US')}</span>
+                </div>
+              </div>
+            </Card>
+
+            <Button 
+              className="w-full h-16 rounded-[1.5rem] text-xl font-black shadow-xl bg-orange-600 hover:bg-orange-700 gap-3" 
+              onClick={handleFinalSave} 
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Save className="w-6 h-6" />}
+              حفظ وتأكيد المشتريات
+            </Button>
+          </div>
         )}
       </main>
     </div>
