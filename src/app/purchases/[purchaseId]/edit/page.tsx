@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, use } from "react"
@@ -205,18 +204,23 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
   const handleUpdate = async () => {
     if (!db || !user || !purchaseRef) return
     setLoading(true)
-    try {
-      await updateDoc(purchaseRef, {
-        campaignId,
-        supplierId,
-        totalAmount: grandTotal,
-        paidAmount: totalPaid,
-        status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
-        purchaseDate: new Date(date).toISOString(),
-        updatedAt: serverTimestamp(),
-      })
-      const batch = writeBatch(db)
-      const oldItems = await getDocs(collection(purchaseRef, "items"))
+
+    // First update the main document
+    updateDoc(purchaseRef, {
+      campaignId,
+      supplierId,
+      totalAmount: grandTotal,
+      paidAmount: totalPaid,
+      status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
+      purchaseDate: new Date(date).toISOString(),
+      updatedAt: serverTimestamp(),
+    }).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update' }))
+    });
+
+    // Handle items update using batch
+    const batch = writeBatch(db)
+    getDocs(collection(purchaseRef, "items")).then(oldItems => {
       oldItems.docs.forEach(d => batch.delete(d.ref))
       addedItems.forEach(item => {
         const iRef = doc(collection(purchaseRef, "items"))
@@ -225,12 +229,14 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
           unitPrice: item.pricePerKg, lineTotal: item.lineTotal, paymentType: item.paymentType, paidAmount: item.paidAmount
         })
       })
-      await batch.commit()
-      toast({ title: "تم التحديث بنجاح" })
-      router.back()
-    } catch (e) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update' }))
-    } finally { setLoading(false) }
+      // Non-blocking commit
+      batch.commit().then(() => {
+        toast({ title: "تم التحديث بنجاح" })
+        router.back()
+      }).catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path + "/items", operation: 'write' }))
+      }).finally(() => setLoading(false))
+    })
   }
 
   if (fetchingData) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin" /></div>

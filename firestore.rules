@@ -4,6 +4,9 @@
  * CORE PHILOSOPHY:
  * Robust Path-Based Ownership.
  * Everything under /users/{userId}/ belongs exclusively to that user.
+ * 
+ * NOTE: Triggering a fresh redeployment to ensure deep sub-collection 
+ * permissions (like expenses) are correctly applied.
  */
 
 rules_version = '2';
@@ -15,11 +18,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Simplest and most robust ownership rule:
-    // Any document or subcollection under /users/{userId} is accessible only by that userId.
-    // Triggering a redeployment with this comment.
-    match /users/{userId}/{allPaths=**} {
+    // Comprehensive rule for the user's root and all nested sub-collections
+    // This explicitly covers /users/{userId}, /users/{userId}/campaigns, 
+    // /users/{userId}/campaigns/{id}/expenses, etc.
+    match /users/{userId} {
       allow read, write: if isOwner(userId);
+      
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId);
+      }
     }
     
     // Default deny for everything else

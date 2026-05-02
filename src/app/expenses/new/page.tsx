@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -45,7 +44,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, query, where, writeBatch } from "firebase/firestore"
+import { collection, doc, serverTimestamp, query, where, writeBatch } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import Link from "next/link"
@@ -232,44 +231,46 @@ export default function NewExpensePage() {
     setLoading(true)
     const batch = writeBatch(db)
     
-    try {
-      addedExpenses.forEach((exp) => {
-        // Correctly referencing the collection path: /users/{userId}/campaigns/{campaignId}/expenses
-        const expenseCollectionRef = collection(db, "users", user.uid, "campaigns", campaignId, "expenses")
-        const expenseRef = doc(expenseCollectionRef)
-        
-        batch.set(expenseRef, {
-          id: expenseRef.id,
-          type: exp.type,
-          amount: exp.amount,
-          paymentType: exp.paymentType,
-          paidAmount: exp.paidAmount,
-          remainingAmount: exp.remainingAmount,
-          payeeId: exp.payeeId,
-          payeeName: exp.payeeName,
-          notes: exp.notes,
-          campaignId: campaignId,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-          expenseDate: new Date(exp.date).toISOString()
-        })
+    addedExpenses.forEach((exp) => {
+      const expenseCollectionRef = collection(db, "users", user.uid, "campaigns", campaignId, "expenses")
+      const expenseRef = doc(expenseCollectionRef)
+      
+      batch.set(expenseRef, {
+        id: expenseRef.id,
+        type: exp.type,
+        amount: exp.amount,
+        paymentType: exp.paymentType,
+        paidAmount: exp.paidAmount,
+        remainingAmount: exp.remainingAmount,
+        payeeId: exp.payeeId,
+        payeeName: exp.payeeName,
+        notes: exp.notes,
+        campaignId: campaignId,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        expenseDate: new Date(exp.date).toISOString()
       })
+    })
 
-      await batch.commit()
-      toast({
-        title: "تم الحفظ بنجاح",
-        description: `تم تسجيل ${addedExpenses.length} مصاريف بنجاح`,
+    // Perform non-blocking commit
+    batch.commit()
+      .then(() => {
+        toast({
+          title: "تم الحفظ بنجاح",
+          description: `تم تسجيل ${addedExpenses.length} مصاريف بنجاح`,
+        })
+        router.push(`/campaigns/${campaignId}`)
       })
-      router.push(`/campaigns/${campaignId}`)
-    } catch (error: any) {
-      // Better error context
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: `users/${user.uid}/campaigns/${campaignId}/expenses`,
-        operation: 'write'
-      }))
-    } finally {
-      setLoading(false)
-    }
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: `users/${user.uid}/campaigns/${campaignId}/expenses/bulk`,
+          operation: 'create',
+        })
+        errorEmitter.emit('permission-error', permissionError)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   const totalBatchAmount = addedExpenses.reduce((acc, curr) => acc + curr.amount, 0)
