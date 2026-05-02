@@ -28,6 +28,7 @@ import {
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore"
@@ -382,16 +383,16 @@ export default function DebtsPage() {
       <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
         <SheetContent side="bottom" className="h-[85vh] rounded-t-[2.5rem] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
           <SheetHeader className="p-6 bg-primary text-white relative">
-             <div className="flex flex-col gap-1 text-right">
-              <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
-              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
-            </div>
             <button 
               onClick={() => setSelectedEntity(null)}
-              className="absolute left-6 top-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              className="absolute left-6 top-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
             >
               <X className="w-5 h-5 text-white" />
             </button>
+            <div className="flex flex-col gap-1 text-right mt-4">
+              <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
+              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
+            </div>
           </SheetHeader>
 
           <div className="h-full overflow-y-auto p-4 space-y-3 pb-24 bg-muted/20" dir="rtl">
