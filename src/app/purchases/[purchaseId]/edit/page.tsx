@@ -225,6 +225,7 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
       supplierId,
       totalAmount: grandTotal,
       paidAmount: totalPaid,
+      remainingAmount: totalDue,
       status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
       purchaseDate: parsedDate.toISOString(),
       updatedAt: serverTimestamp(),

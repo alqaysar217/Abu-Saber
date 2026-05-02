@@ -181,6 +181,7 @@ function NewPurchaseContent() {
       supplierId,
       totalAmount: grandTotal,
       paidAmount: totalPaid,
+      remainingAmount: totalDue,
       status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
       purchaseDate: new Date(date).toISOString(),
       userId: user.uid,
