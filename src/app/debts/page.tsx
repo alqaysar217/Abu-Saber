@@ -113,7 +113,7 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // Calculate Customer Debts (Entities that have any non-zero remaining amount)
+  // Calculate Customer Debts
   const customerDebts = useMemo(() => {
     if (!invoices || !customers) return []
     const debtsMap = new Map()
@@ -187,12 +187,12 @@ export default function DebtsPage() {
     const amount = parseFloat(paymentAmount.replace(/,/g, ""))
     
     if (isNaN(amount) || amount <= 0) {
-      toast({ variant: "destructive", title: "مبلغ غير صالح", description: "يرجى إدخال مبلغ أكبر من صفر" })
+      toast({ variant: "destructive", title: "مبلغ غير صالح" })
       return
     }
 
     if (amount > paymentTarget.remainingAmount) {
-      toast({ variant: "destructive", title: "تجاوز الرصيد", description: `المبلغ المدخل (${amount.toLocaleString()}) أكبر من الدين المتبقي (${paymentTarget.remainingAmount.toLocaleString()})` })
+      toast({ variant: "destructive", title: "تجاوز المديونية" })
       return
     }
 
@@ -212,7 +212,6 @@ export default function DebtsPage() {
       updatedAt: serverTimestamp()
     }
 
-    // Create a transaction record for history
     const transactionData = {
       type: selectedEntity?.type === 'customer' ? 'customer_payment' : 'supplier_payment',
       entityId: selectedEntity?.id,
@@ -230,7 +229,6 @@ export default function DebtsPage() {
     try {
       await updateDoc(docRef, updateData)
       await addDoc(collection(db, "users", user.uid, "paymentTransactions"), transactionData)
-      
       toast({ title: "تم تسجيل السداد بنجاح" })
       setPaymentTarget(null)
       setPaymentAmount("")
@@ -290,18 +288,18 @@ export default function DebtsPage() {
 
               {customerDebts.map((c) => (
                 <div key={c.id} onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
-                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                  </div>
                   <div className="flex gap-4 items-center text-right">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                      <User className="w-6 h-6" />
+                    </div>
                     <div className="flex flex-col">
                       <span className="font-black text-sm">{c.name}</span>
                       <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                      <User className="w-6 h-6" />
-                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
+                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                   </div>
                 </div>
               ))}
@@ -320,18 +318,18 @@ export default function DebtsPage() {
 
               {supplierDebts.map((s) => (
                 <div key={s.id} onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                  <div className="flex flex-col items-start gap-1">
-                    <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
-                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                  </div>
                   <div className="flex gap-4 items-center text-right">
+                    <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
+                      <Wallet className="w-6 h-6" />
+                    </div>
                     <div className="flex flex-col">
                       <span className="font-black text-sm">{s.name}</span>
                       <span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
-                      <Wallet className="w-6 h-6" />
-                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
+                    <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                   </div>
                 </div>
               ))}
@@ -379,7 +377,7 @@ export default function DebtsPage() {
             <button onClick={() => setSelectedEntity(null)} className="absolute left-6 top-8 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10">
               <X className="w-5 h-5 text-white" />
             </button>
-            <div className="flex flex-col gap-1 items-end mt-4">
+            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2">
               <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
               <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
             </div>
@@ -398,6 +396,7 @@ export default function DebtsPage() {
                     {isPaid && <div className="absolute top-0 right-0 p-1 bg-green-500 text-white rounded-bl-xl z-10"><CheckCircle2 className="w-4 h-4" /></div>}
                     
                     <div className="flex justify-between items-start">
+                      {/* Right Side: Campaign and Items */}
                       <div className="flex flex-col gap-1 text-right">
                         <div className="flex items-center gap-1.5 text-primary">
                           <Ship className="w-3.5 h-3.5" />
@@ -415,6 +414,8 @@ export default function DebtsPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Left Side: Type and Date */}
                       <div className="flex flex-col items-end gap-1.5">
                         <Badge className={cn("rounded-lg px-2 py-0.5 text-[8px] font-bold border-none", tr.trType === 'sale' ? "bg-green-50 text-green-600" : (tr.trType === 'purchase' ? "bg-orange-50 text-orange-600" : "bg-accent/10 text-accent"))}>
                           {tr.trType === 'sale' ? "مبيعات" : tr.trType === 'purchase' ? "مشتريات" : "مصروف"}
