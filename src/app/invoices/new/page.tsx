@@ -366,6 +366,7 @@ export default function NewInvoicePage() {
                           <TableRow>
                             <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
                             <TableHead className="text-center text-[10px] font-bold">الكمية</TableHead>
+                            <TableHead className="text-center text-[10px] font-bold">سعر الكيلو</TableHead>
                             <TableHead className="text-center text-[10px] font-bold">الإجمالي</TableHead>
                             <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
                           </TableRow>
@@ -375,6 +376,7 @@ export default function NewInvoicePage() {
                             <TableRow key={item.tempId} className="animate-in fade-in slide-in-from-right-1">
                               <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
                               <TableCell className="text-center text-[10px] tabular-nums">{item.quantity.toLocaleString('en-US')} kg</TableCell>
+                              <TableCell className="text-center text-[10px] tabular-nums">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
                               <TableCell className="text-center text-xs font-black text-primary tabular-nums">{item.total.toLocaleString('en-US')}</TableCell>
                               <TableCell className="text-left p-2">
                                 <div className="flex items-center gap-1">
