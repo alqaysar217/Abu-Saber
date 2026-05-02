@@ -346,42 +346,55 @@ export default function DebtsPage() {
                   <div 
                     key={tr.id} 
                     className={cn(
-                      "p-4 rounded-2xl border shadow-sm space-y-3 transition-all",
+                      "p-5 rounded-[1.8rem] border shadow-sm space-y-4 transition-all relative overflow-hidden",
                       tr.type === 'customer_payment' 
-                        ? 'bg-gradient-to-l from-green-50/50 to-white border-green-100' 
-                        : 'bg-gradient-to-l from-orange-50/50 to-white border-orange-100'
+                        ? 'bg-gradient-to-br from-green-50/80 via-white to-white border-green-100' 
+                        : 'bg-gradient-to-br from-orange-50/80 via-white to-white border-orange-100'
                     )}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col gap-1 items-start text-right">
-                         <span className={cn(
-                           "text-[10px] font-black px-2 py-0.5 rounded-lg", 
-                           tr.type === 'customer_payment' ? 'bg-green-600 text-white shadow-sm' : 'bg-orange-600 text-white shadow-sm'
-                         )}>
-                          {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
-                        </span>
-                        <span className="text-sm font-bold mt-1">{tr.entityName}</span>
+                    {/* Row 1: Status Badge and Date */}
+                    <div className="flex justify-between items-center">
+                      <Badge className={cn(
+                        "rounded-xl px-3 py-1 text-[10px] font-black shadow-sm border-none", 
+                        tr.type === 'customer_payment' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'
+                      )}>
+                        {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
+                      </Badge>
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/80">
+                        <Calendar className="w-3.5 h-3.5 text-primary/40" />
+                        <span>{tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}</span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
-                        {tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}
-                        <Calendar className="w-3 h-3" />
-                      </span>
+                    </div>
+
+                    {/* Row 2: Entity / Payee */}
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-inner",
+                        tr.type === 'customer_payment' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                      )}>
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground font-bold">الجهة / المستلم</span>
+                        <span className="text-sm font-black">{tr.entityName}</span>
+                      </div>
                     </div>
                     
-                    <div className="flex justify-between items-center py-1 border-t border-dashed border-border/40">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] text-muted-foreground font-bold">المبلغ المسدد</span>
+                    {/* Row 3: Amount Section */}
+                    <div className="flex justify-between items-end pt-4 border-t border-dashed border-border/40">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">المبلغ المسدد</span>
                         <span className={cn(
-                          "text-xl font-black tabular-nums",
+                          "text-2xl font-black tabular-nums",
                           tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
                         )}>
-                          {tr.amount.toLocaleString('en-US')} <span className="text-[10px] font-bold">ر.ي</span>
+                          {tr.amount.toLocaleString('en-US')} <span className="text-xs font-bold">ر.ي</span>
                         </span>
                       </div>
                       {tr.notes && (
-                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-xl border border-border/30 max-w-[60%]">
-                            <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
-                            <span className="text-[10px] text-muted-foreground font-medium truncate">{tr.notes}</span>
+                         <div className="flex items-center gap-1.5 px-3 py-2 bg-white/60 rounded-2xl border border-border/30 max-w-[55%] mb-1 shadow-sm">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] text-muted-foreground font-bold truncate leading-tight">{tr.notes}</span>
                          </div>
                       )}
                     </div>
