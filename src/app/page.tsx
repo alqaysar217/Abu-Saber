@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/layout/BottomNav"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -16,11 +17,16 @@ import {
   Loader2, 
   Menu, 
   Copy, 
+  RotateCcw,
+  Download,
+  AlertCircle
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy } from "firebase/firestore"
+import { collection, query, orderBy, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+
+const SHARED_UID = "luJcA2AwKHYdXbeU9GvietyCkeu2";
 
 export default function Home() {
   const { user } = useUser()
@@ -28,6 +34,7 @@ export default function Home() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [restoring, setRestoring] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     debtsToMe: false,
     debtsByMe: false,
@@ -92,9 +99,53 @@ export default function Home() {
     }
   }
 
+  const restoreDemoData = async () => {
+    if (!db || !user) return
+    setRestoring(true)
+    const collections = ["campaigns", "customers", "suppliers", "invoices", "purchases", "expenses", "paymentTransactions"]
+    
+    try {
+      for (const colName of collections) {
+        const demoRef = collection(db, "users", SHARED_UID, colName)
+        const snap = await getDocs(demoRef)
+        
+        for (const d of snap.docs) {
+          const data = d.data()
+          const newData = {
+            ...data,
+            userId: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }
+          
+          // Save main document
+          await setDoc(doc(db, "users", user.uid, colName, d.id), newData)
+          
+          // Copy items for invoices and purchases if they exist
+          if (colName === "invoices" || colName === "purchases") {
+             const itemsSnap = await getDocs(collection(db, "users", SHARED_UID, colName, d.id, "items"))
+             for (const itemDoc of itemsSnap.docs) {
+               await setDoc(doc(db, "users", user.uid, colName, d.id, "items", itemDoc.id), {
+                 ...itemDoc.data(),
+                 userId: user.uid
+               })
+             }
+          }
+        }
+      }
+      toast({ title: "تمت استعادة البيانات بنجاح" })
+    } catch (e) {
+      console.error(e)
+      toast({ variant: "destructive", title: "فشل في استعادة البيانات" })
+    } finally {
+      setRestoring(false)
+    }
+  }
+
   if (!mounted) return null
 
   const recentInvoices = allInvoices?.slice(0, 5) || []
+  const isAccountEmpty = !loadingInvoices && allInvoices?.length === 0 && allPurchases?.length === 0
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -164,6 +215,30 @@ export default function Home() {
           </Card>
         </div>
       </section>
+
+      {isAccountEmpty && (
+        <section className="px-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+          <Card className="border-2 border-dashed border-primary/20 bg-primary/5 rounded-[2.5rem] p-6 text-center space-y-4 shadow-inner">
+            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+              <RotateCcw className="w-7 h-7 text-primary" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-black text-primary text-sm">استعادة البيانات</h3>
+              <p className="text-[10px] text-muted-foreground font-bold px-6 leading-relaxed">
+                هل ترغب في استعادة بيانات الحساب المرجعي ({SHARED_UID.substring(0,8)}...)؟ سيتم نسخ الفواتير والحملات لحسابك.
+              </p>
+            </div>
+            <Button 
+              onClick={restoreDemoData} 
+              disabled={restoring}
+              className="w-full rounded-2xl lux-gradient h-12 font-black gap-2 shadow-lg active:scale-95 transition-all"
+            >
+              {restoring ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              تأكيد استعادة البيانات الآن
+            </Button>
+          </Card>
+        </section>
+      )}
 
       <section className="px-4 mb-8">
         <Card className="border-none shadow-lg rounded-[2rem] bg-gradient-to-r from-accent/20 to-transparent border-r-4 border-accent">
