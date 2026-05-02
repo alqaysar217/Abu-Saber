@@ -31,7 +31,8 @@ import {
   Car,
   TrendingUp,
   Banknote,
-  DollarSign
+  DollarSign,
+  Info
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -129,8 +130,8 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="p-6 bg-green-600 text-white">
-          <div className="flex justify-between items-center">
-             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2">
+          <div className="flex justify-between items-center flex-row-reverse">
+             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2 flex-row-reverse">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
              </DialogTitle>
@@ -138,9 +139,9 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                <X className="w-5 h-5" />
              </button>
           </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
-             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> العميل: {customer?.name}</p>
-             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90 text-right">
+             <p className="font-bold flex items-center justify-end gap-2">العميل: {customer?.name} <User className="w-3 h-3" /></p>
+             <p className="flex items-center justify-end gap-2">التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""} <Calendar className="w-3 h-3" /></p>
           </div>
         </DialogHeader>
         
@@ -152,7 +153,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                     <TableRow>
                       <TableHead className="text-right font-bold text-[10px]">النوع</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
-                      <TableHead className="text-center font-bold text-[10px]">سعر الكيلو</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">السعر</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
                     </TableRow>
                  </TableHeader>
@@ -187,7 +188,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف فاتورة المبيعات؟
                     </AlertDialogTitle>
@@ -277,8 +278,8 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="p-6 bg-orange-600 text-white">
-          <div className="flex justify-between items-center">
-             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2">
+          <div className="flex justify-between items-center flex-row-reverse">
+             <DialogTitle className="text-right text-lg font-bold flex items-center gap-2 flex-row-reverse">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
              </DialogTitle>
@@ -286,9 +287,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                <X className="w-5 h-5" />
              </button>
           </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
-             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> المورد: {supplier?.name}</p>
-             <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
+          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90 text-right">
+             <p className="font-bold flex items-center justify-end gap-2">المورد: {supplier?.name} <User className="w-3 h-3" /></p>
+             <p className="flex items-center justify-end gap-2">التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""} <Calendar className="w-3 h-3" /></p>
           </div>
         </DialogHeader>
         
@@ -302,7 +303,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                     <TableRow>
                       <TableHead className="text-right font-bold text-[10px]">النوع</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
-                      <TableHead className="text-center font-bold text-[10px]">سعر الكيلو</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">السعر</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
                     </TableRow>
                  </TableHeader>
@@ -337,7 +338,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
@@ -428,7 +429,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
                   حذف المصروف؟
                 </AlertDialogTitle>
@@ -594,7 +595,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
@@ -644,10 +645,14 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           netProfit >= 0 ? "lux-gradient" : "bg-destructive"
         )}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-          <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
+          <CardContent className="p-6 flex flex-col items-center text-center gap-1 relative z-10">
             <span className="text-xs font-bold opacity-80 uppercase tracking-wider">صافي أرباح الحملة</span>
             <span className="text-4xl font-black tabular-nums">{netProfit.toLocaleString('en-US')}</span>
             <span className="text-xs opacity-70 font-bold">ريال يمني</span>
+            <div className="flex items-center gap-1.5 mt-2 px-3 py-1 bg-white/10 rounded-full border border-white/10">
+              <Info className="w-3 h-3 opacity-60" />
+              <span className="text-[9px] font-bold opacity-70">المعادلة: (المبيعات - التكاليف)</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -718,13 +723,13 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             
             {campaign.notes && (
               <Card className="border-none shadow-sm rounded-2xl bg-white">
-                <CardHeader className="p-4 pb-0">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-primary" />
+                <CardHeader className="p-4 pb-0 text-right">
+                  <CardTitle className="text-sm font-bold flex items-center justify-end gap-2">
                     ملاحظات الحملة
+                    <AlertCircle className="w-4 h-4 text-primary" />
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed font-medium">
+                <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed font-medium text-right">
                   {campaign.notes}
                 </CardContent>
               </Card>
