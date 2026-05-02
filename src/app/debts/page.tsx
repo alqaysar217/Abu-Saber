@@ -29,7 +29,8 @@ import {
   Filter,
   Check,
   LayoutDashboard,
-  Coins
+  Coins,
+  CreditCard
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -716,9 +717,9 @@ export default function DebtsPage() {
       </Sheet>
 
       <Dialog open={!!paymentTarget} onOpenChange={() => setPaymentTarget(null)}>
-        <DialogContent className="max-w-[95%] rounded-3xl mx-auto p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-[95%] rounded-3xl mx-auto p-0 overflow-hidden border-none shadow-2xl [&>button]:left-4 [&>button]:right-auto">
           <DialogHeader className="p-6 bg-gradient-to-br from-primary to-accent text-white">
-            <DialogTitle className="text-lg font-black text-right flex items-center justify-end gap-2">
+            <DialogTitle className="text-lg font-black text-right flex items-center justify-start gap-2">
               <Banknote className="w-5 h-5" />
               تسجيل سداد مالي
             </DialogTitle>
