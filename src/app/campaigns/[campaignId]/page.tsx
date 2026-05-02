@@ -190,7 +190,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                    <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
@@ -262,8 +262,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
       <TableCell className="text-right py-4 max-w-[150px]">
         <div className="flex flex-col gap-0.5">
           {expense.payeeName && <span className="text-[10px] font-bold text-primary truncate">{expense.payeeName}</span>}
-          {expense.notes && <span className="text-[10px] text-muted-foreground italic truncate">"{expense.notes}"</span>}
-          {!expense.payeeName && !expense.notes && <span className="text-[10px] text-muted-foreground italic">-</span>}
+          {!expense.payeeName && <span className="text-[10px] text-muted-foreground italic">-</span>}
         </div>
       </TableCell>
       <TableCell className="text-left py-4">
@@ -283,7 +282,7 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
                   حذف المصروف؟
                 </AlertDialogTitle>
@@ -424,7 +423,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
