@@ -3,12 +3,12 @@
 
 import { useState } from "react"
 import { useAuth } from "@/firebase"
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { signInWithEmailAndPassword, signInAnonymously } from "firebase/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Phone, Lock, LogIn, Loader2, AlertCircle } from "lucide-react"
+import { Phone, Lock, LogIn, Loader2, AlertCircle, UserRoundCheck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function LoginPage() {
@@ -17,6 +17,7 @@ export function LoginPage() {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
   const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +50,19 @@ export function LoginPage() {
     }
   }
 
+  const handleGuestLogin = async () => {
+    if (!auth) return
+    setGuestLoading(true)
+    try {
+      await signInAnonymously(auth)
+      toast({ title: "تم الدخول كضيف", description: "يمكنك الآن تجربة النظام" })
+    } catch (err) {
+      toast({ variant: "destructive", title: "فشل الدخول السريع" })
+    } finally {
+      setGuestLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
@@ -75,7 +89,7 @@ export function LoginPage() {
                   className="h-12 rounded-xl pr-10 text-left font-mono focus:ring-primary"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || guestLoading}
                 />
               </div>
             </div>
@@ -90,7 +104,7 @@ export function LoginPage() {
                   className="h-12 rounded-xl pr-10 text-left focus:ring-primary"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || guestLoading}
                 />
               </div>
             </div>
@@ -98,7 +112,7 @@ export function LoginPage() {
             <Button 
               type="submit" 
               className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg bg-primary hover:bg-primary/90 transition-all active:scale-95 gap-2"
-              disabled={loading}
+              disabled={loading || guestLoading}
             >
               {loading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -110,6 +124,21 @@ export function LoginPage() {
               )}
             </Button>
           </form>
+
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted"></span></div>
+            <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-white px-2 text-muted-foreground font-bold">أو</span></div>
+          </div>
+
+          <Button 
+            variant="outline" 
+            className="w-full h-12 rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 gap-2"
+            onClick={handleGuestLogin}
+            disabled={loading || guestLoading}
+          >
+            {guestLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserRoundCheck className="w-4 h-4" />}
+            الدخول السريع (للتجربة)
+          </Button>
 
           <div className="text-center space-y-4">
             <p className="text-[10px] text-muted-foreground leading-relaxed">
