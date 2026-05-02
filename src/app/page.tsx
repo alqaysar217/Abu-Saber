@@ -213,15 +213,15 @@ export default function Home() {
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون لك</span>
               </div>
               <div className="flex justify-between items-center">
-                <p className="text-xl font-black text-green-700 tabular-nums">
-                  {formatAmountValue("debtsToMe", stats.debtsToMe)} <span className="text-[10px] font-normal opacity-70">ر.ي</span>
-                </p>
                 <button 
                   onClick={() => toggleVisibility('debtsToMe')}
                   className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
                 >
                   {visibility['debtsToMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
+                <p className="text-xl font-black text-green-700 tabular-nums">
+                  {formatAmountValue("debtsToMe", stats.debtsToMe)}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -234,15 +234,15 @@ export default function Home() {
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">ديون عليك</span>
               </div>
               <div className="flex justify-between items-center">
-                <p className="text-xl font-black text-red-700 tabular-nums">
-                  {formatAmountValue("debtsByMe", stats.debtsByMe)} <span className="text-[10px] font-normal opacity-70">ر.ي</span>
-                </p>
                 <button 
                   onClick={() => toggleVisibility('debtsByMe')}
                   className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
                 >
                   {visibility['debtsByMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
+                <p className="text-xl font-black text-red-700 tabular-nums">
+                  {formatAmountValue("debtsByMe", stats.debtsByMe)}
+                </p>
               </div>
             </CardContent>
           </Card>
