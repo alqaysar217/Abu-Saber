@@ -112,7 +112,7 @@ export default function DebtsPage() {
     const debtsMap = new Map()
     
     purchases.forEach(p => {
-      const remaining = (p.totalAmount || 0) - (p.paidAmount || 0)
+      const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
       if (remaining > 0 && p.supplierId) {
         const current = debtsMap.get(p.supplierId) || 0
         debtsMap.set(p.supplierId, current + remaining)
@@ -156,8 +156,12 @@ export default function DebtsPage() {
       const trs = []
       
       const relevantPurchases = (purchases || [])
-        .filter(p => p.supplierId === selectedEntity.id && ((p.totalAmount || 0) - (p.paidAmount || 0)) > 0)
-        .map(tr => ({ ...tr, trType: 'purchase' }))
+        .filter(p => p.supplierId === selectedEntity.id && (p.remainingAmount !== undefined ? p.remainingAmount > 0 : ((p.totalAmount || 0) - (p.paidAmount || 0)) > 0))
+        .map(tr => ({ 
+          ...tr, 
+          trType: 'purchase',
+          remainingAmount: tr.remainingAmount !== undefined ? tr.remainingAmount : ((tr.totalAmount || 0) - (tr.paidAmount || 0))
+        }))
       trs.push(...relevantPurchases)
 
       const relevantExpenses = (expenses || [])
@@ -321,99 +325,97 @@ export default function DebtsPage() {
             >
               <X className="w-5 h-5 text-white" />
             </button>
-            <div className="flex flex-col gap-1 items-start mt-4">
-              <SheetTitle className="text-xl font-black text-white text-right w-full">{selectedEntity?.name}</SheetTitle>
-              <p className="text-xs text-white/70 font-bold text-right w-full">كشف العمليات غير المسددة</p>
+            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full">
+              <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
+              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
             </div>
           </SheetHeader>
 
-          <div className="h-full overflow-y-auto p-4 space-y-4 pb-20 bg-muted/20" dir="rtl">
+          <div className="h-full overflow-y-auto p-4 space-y-3 pb-20 bg-muted/20" dir="rtl">
             {entityTransactions.length > 0 ? (
               entityTransactions.map((tr: any) => {
                 const campaign = campaigns?.find(c => c.id === tr.campaignId)
                 const date = tr.invoiceDate || tr.purchaseDate || tr.expenseDate || (tr.createdAt?.toDate ? tr.createdAt.toDate() : tr.createdAt)
-                const remaining = (tr.trType === 'sale' || tr.trType === 'expense')
-                  ? tr.remainingAmount 
-                  : (tr.totalAmount - tr.paidAmount)
+                const remaining = tr.remainingAmount || 0
 
                 return (
                   <div 
                     key={tr.id} 
                     onClick={() => handleTransactionClick(tr)}
-                    className="p-5 bg-white rounded-[2rem] border border-border/50 shadow-sm space-y-4 active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30 group"
+                    className="p-4 bg-white rounded-2xl border border-border/60 shadow-sm space-y-3 active:scale-[0.98] transition-all cursor-pointer hover:border-primary/40 group relative overflow-hidden"
                   >
-                    <div className="flex justify-between items-start border-b border-border/40 pb-3">
-                      <div className="flex flex-col gap-1 items-start">
-                        <div className="flex items-center gap-1.5 text-primary">
-                          <Ship className="w-3.5 h-3.5" />
-                          <span className="text-xs font-black">{campaign?.name || "حملة غير معروفة"}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-[10px] font-bold">
-                            {date ? format(new Date(date), "dd MMM yyyy", { locale: ar }) : "بدون تاريخ"}
-                          </span>
-                        </div>
-                      </div>
+                    {/* Header Row: Type & Campaign */}
+                    <div className="flex justify-between items-center">
                       <Badge className={cn(
-                        "rounded-xl px-2 py-0.5 text-[9px] font-black border-none",
+                        "rounded-lg px-2 py-0.5 text-[8px] font-bold border-none",
                         tr.trType === 'sale' ? "bg-green-50 text-green-600" : (tr.trType === 'purchase' ? "bg-orange-50 text-orange-600" : "bg-accent/10 text-accent")
                       )}>
                         {tr.trType === 'sale' ? (
-                          <span className="flex items-center gap-1"><Receipt className="w-3 h-3" /> مبيعات</span>
+                          <span className="flex items-center gap-1">مبيعات</span>
                         ) : tr.trType === 'purchase' ? (
-                          <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> مشتريات</span>
+                          <span className="flex items-center gap-1">مشتريات</span>
                         ) : (
-                          <span className="flex items-center gap-1"><Wallet className="w-3 h-3" /> مصروف: {tr.type}</span>
+                          <span className="flex items-center gap-1">مصروف: {tr.type}</span>
                         )}
                       </Badge>
+                      <div className="flex items-center gap-1.5 text-primary">
+                        <span className="text-[10px] font-black max-w-[120px] truncate">{campaign?.name || "حملة غير معروفة"}</span>
+                        <Ship className="w-3 h-3" />
+                      </div>
                     </div>
 
-                    {(tr.items && tr.items.length > 0) && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-start">
-                          <Fish className="w-3 h-3" />
-                          الأصناف المسجلة
-                        </p>
-                        <div className="flex flex-wrap gap-2 justify-start">
-                          {tr.items.map((item: any, idx: number) => (
-                            <div key={idx} className="bg-muted/50 px-2.5 py-1 rounded-lg border border-border/40">
-                              <span className="text-[10px] font-bold">{item.fishType} ({item.quantity} كجم)</span>
-                            </div>
+                    {/* Info Row: Date and Small Item List */}
+                    <div className="flex justify-between items-end">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="w-2.5 h-2.5" />
+                        <span className="text-[9px] font-medium">
+                          {date ? format(new Date(date), "dd/MM/yyyy", { locale: ar }) : "-"}
+                        </span>
+                      </div>
+                      
+                      {(tr.items && tr.items.length > 0) && (
+                        <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                          {tr.items.slice(0, 2).map((item: any, idx: number) => (
+                            <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-muted rounded font-bold text-muted-foreground whitespace-nowrap">
+                              {item.fishType}
+                            </span>
                           ))}
+                          {tr.items.length > 2 && <span className="text-[8px] font-bold text-muted-foreground">+ {tr.items.length - 2}</span>}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {tr.trType === 'expense' && tr.notes && (
-                      <p className="text-[10px] text-muted-foreground text-right italic">"{tr.notes}"</p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                       <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
-                          <span className="text-[9px] font-bold text-muted-foreground">المبلغ المدفوع</span>
-                          <span className="text-sm font-black tabular-nums">{tr.paidAmount?.toLocaleString()}</span>
-                       </div>
-                       <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
-                          <span className="text-[9px] font-bold text-muted-foreground">إجمالي القيمة</span>
-                          <span className="text-sm font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
-                       </div>
+                      {tr.trType === 'expense' && tr.notes && (
+                        <p className="text-[9px] text-muted-foreground truncate max-w-[50%] italic">"{tr.notes}"</p>
+                      )}
                     </div>
 
-                    <div className={cn(
-                      "p-4 rounded-2xl flex justify-between items-center shadow-inner",
-                      selectedEntity?.type === 'customer' ? "bg-green-50/50" : "bg-red-50/50"
-                    )}>
-                      <span className={cn(
-                        "text-[11px] font-black",
-                        selectedEntity?.type === 'customer' ? "text-green-700" : "text-red-700"
-                      )}>المبلغ المتبقي</span>
-                      <div className="flex items-center gap-2">
-                         <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
-                         <ChevronLeft className="w-4 h-4 text-primary" />
-                      </div>
+                    {/* Finance Row: Compact Stats */}
+                    <div className="grid grid-cols-3 gap-2 py-2 border-t border-dashed border-border mt-1">
+                       <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] text-muted-foreground font-bold">إجمالي القيمة</span>
+                          <span className="text-[11px] font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
+                       </div>
+                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
+                          <span className="text-[8px] text-muted-foreground font-bold">المبلغ المدفوع</span>
+                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString()}</span>
+                       </div>
+                       <div className="flex flex-col gap-0.5 border-r border-border/50 pr-2">
+                          <span className="text-[8px] text-muted-foreground font-bold">المبلغ المتبقي</span>
+                          <span className={cn(
+                            "text-[11px] font-black tabular-nums",
+                            selectedEntity?.type === 'customer' ? "text-green-700" : "text-red-700"
+                          )}>
+                            {remaining.toLocaleString()}
+                          </span>
+                       </div>
                     </div>
-                    <p className="text-[9px] text-center font-bold text-primary/60 opacity-0 group-hover:opacity-100 transition-opacity">اضغط للانتقال لتفاصيل الحملة</p>
+                    
+                    <div className="flex justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity absolute inset-0 bg-primary/5 pointer-events-none">
+                       <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                         اضغط للتفاصيل في الحملة
+                         <ChevronLeft className="w-3 h-3" />
+                       </span>
+                    </div>
                   </div>
                 )
               })
