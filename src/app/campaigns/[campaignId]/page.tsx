@@ -191,8 +191,8 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                      حذف عملية الشراء؟
                       <Trash2 className="w-5 h-5" />
+                      حذف عملية الشراء؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
@@ -259,14 +259,9 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
           {expense.paymentType || "نقد"}
         </Badge>
       </TableCell>
-      <TableCell className="text-center py-4">
-        <span className="text-[10px] text-muted-foreground font-bold tabular-nums">
-          {expense.expenseDate ? format(new Date(expense.expenseDate), "dd/MM/yy", { locale: ar }) : "-"}
-        </span>
-      </TableCell>
       <TableCell className="text-right py-4 max-w-[150px]">
         <div className="flex flex-col gap-0.5">
-          {expense.payeeName && <span className="text-[10px] font-bold text-primary truncate">مورد: {expense.payeeName}</span>}
+          {expense.payeeName && <span className="text-[10px] font-bold text-primary truncate">{expense.payeeName}</span>}
           {expense.notes && <span className="text-[10px] text-muted-foreground italic truncate">"{expense.notes}"</span>}
           {!expense.payeeName && !expense.notes && <span className="text-[10px] text-muted-foreground italic">-</span>}
         </div>
@@ -289,8 +284,8 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                  حذف المصروف؟
                   <Trash2 className="w-5 h-5" />
+                  حذف المصروف؟
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-right font-medium">
                   هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
@@ -430,8 +425,8 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
-                  تأكيد أرشفة الحملة
                   <AlertCircle className="w-5 h-5" />
+                  تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">
@@ -561,8 +556,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                         <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
                         <TableHead className="text-center text-[10px] font-bold">المبلغ</TableHead>
                         <TableHead className="text-center text-[10px] font-bold">الدفع</TableHead>
-                        <TableHead className="text-center text-[10px] font-bold">التاريخ</TableHead>
-                        <TableHead className="text-right text-[10px] font-bold">المورد/الملاحظات</TableHead>
+                        <TableHead className="text-right text-[10px] font-bold">المورد</TableHead>
                         <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
                       </TableRow>
                     </TableHeader>
