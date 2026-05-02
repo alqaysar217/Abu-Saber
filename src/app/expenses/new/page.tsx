@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car, User } from "lucide-react"
+import { ChevronLeft, Save, Loader2, Fuel, Users, Snowflake, Waves, Package, Utensils, MoreHorizontal, Calendar as CalendarIcon, LayoutList, Wallet, Car, User, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +16,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebas
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import Link from "next/link"
 
 const expenseTypes = [
   { label: "ديزل", icon: Fuel, value: "ديزل" },
@@ -45,12 +46,12 @@ export default function NewExpensePage() {
 
   const { data: openCampaigns, isLoading: loadingCampaigns } = useCollection(campaignsQuery)
 
-  const customersQuery = useMemoFirebase(() => {
+  const suppliersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "customers"))
+    return query(collection(db, "users", user.uid, "suppliers"))
   }, [db, user])
 
-  const { data: customers } = useCollection(customersQuery)
+  const { data: suppliers } = useCollection(suppliersQuery)
 
   const [campaignId, setCampaignId] = useState("")
   const [type, setType] = useState("")
@@ -101,7 +102,7 @@ export default function NewExpensePage() {
       toast({
         variant: "destructive",
         title: "بيانات ناقصة",
-        description: "يرجى اختيار اسم العميل لتسجيل الدين عليه",
+        description: "يرجى اختيار اسم المورد لتسجيل الدين له",
       })
       return
     }
@@ -235,17 +236,25 @@ export default function NewExpensePage() {
 
             {(paymentType === "دين" || paymentType === "جزئي") && (
               <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                <Label className="text-sm font-bold flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" />
-                  اسم العميل (صاحب الدين) <span className="text-destructive">*</span>
-                </Label>
+                <div className="flex justify-between items-center px-1">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    المورد المستحق للدين <span className="text-destructive">*</span>
+                  </Label>
+                  <Link href="/suppliers/new">
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-primary gap-1 font-bold">
+                      <Plus className="w-3 h-3" />
+                      مورد جديد
+                    </Button>
+                  </Link>
+                </div>
                 <Select onValueChange={setPayeeId} dir="rtl">
                   <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
-                    <SelectValue placeholder="اختر العميل" />
+                    <SelectValue placeholder="اختر المورد" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {customers?.map((cust) => (
-                      <SelectItem key={cust.id} value={cust.id}>{cust.name}</SelectItem>
+                    {suppliers?.map((sup) => (
+                      <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -333,3 +342,4 @@ export default function NewExpensePage() {
     </div>
   )
 }
+
