@@ -4,8 +4,6 @@
  * CORE PHILOSOPHY:
  * Robust Path-Based Ownership.
  * Everything under /users/{userId}/ belongs exclusively to that user.
- * 
- * NOTE: Using a single recursive match for maximum reliability and simplicity.
  */
 
 rules_version = '2';
@@ -18,7 +16,6 @@ service cloud.firestore {
     }
 
     // Comprehensive rule for the user's entire data tree
-    // This covers /users/{userId} and all sub-collections (purchases, invoices, etc.)
     match /users/{userId}/{allPaths=**} {
       allow read, write: if isOwner(userId);
     }
@@ -26,6 +23,12 @@ service cloud.firestore {
     // Explicit rule for the user document itself
     match /users/{userId} {
       allow read, write: if isOwner(userId);
+    }
+    
+    // SPECIAL RULE: Allow any authenticated user to READ from the demo account for migration
+    // Account UID: luJcA2AwKHYdXbeU9GvietyCkeu2
+    match /users/luJcA2AwKHYdXbeU9GvietyCkeu2/{allPaths=**} {
+      allow read: if request.auth != null;
     }
     
     // Default deny for everything else
