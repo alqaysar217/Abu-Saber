@@ -130,27 +130,27 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
           </div>
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
         <DialogHeader className="p-6 bg-green-600 text-white relative">
           <button 
             onClick={() => setOpen(false)} 
-            className="absolute left-4 top-6 p-1 hover:bg-white/20 rounded-full transition-colors z-10"
+            className="absolute left-6 top-8 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex flex-col gap-4 text-right">
+          <div className="flex flex-col gap-4 text-right mt-4">
              <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
              </DialogTitle>
-             <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
+             <div className="flex flex-col gap-2 text-xs opacity-90 items-start">
                 <p className="font-bold flex items-center gap-2">
+                  <User className="w-4 h-4" />
                   <span>العميل: {customer?.name}</span>
-                  <User className="w-3 h-3" />
                 </p>
                 <p className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
                   <span>التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
-                  <Calendar className="w-3 h-3" />
                 </p>
              </div>
           </div>
@@ -287,27 +287,27 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
           </div>
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
         <DialogHeader className="p-6 bg-orange-600 text-white relative">
           <button 
             onClick={() => setOpen(false)} 
-            className="absolute left-4 top-6 p-1 hover:bg-white/20 rounded-full transition-colors z-10"
+            className="absolute left-6 top-8 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-white" />
           </button>
-          <div className="flex flex-col gap-4 text-right">
+          <div className="flex flex-col gap-4 text-right mt-4">
              <DialogTitle className="text-lg font-bold flex items-center justify-start gap-2">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
              </DialogTitle>
-             <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
+             <div className="flex flex-col gap-2 text-xs opacity-90 items-start">
                 <p className="font-bold flex items-center gap-2">
+                  <User className="w-4 h-4" />
                   <span>المورد: {supplier?.name}</span>
-                  <User className="w-3 h-3" />
                 </p>
                 <p className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
                   <span>التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
-                  <Calendar className="w-3 h-3" />
                 </p>
              </div>
           </div>
