@@ -129,25 +129,28 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-6 bg-green-600 text-white">
-          <div className="flex justify-between items-center">
-             <DialogTitle className="text-lg font-bold flex items-center gap-2">
+        <DialogHeader className="p-6 bg-green-600 text-white relative">
+          <button 
+            onClick={() => setOpen(false)} 
+            className="absolute left-4 top-6 p-1 hover:bg-white/20 rounded-full transition-colors z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex flex-col gap-4 text-right">
+             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
              </DialogTitle>
-             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
-               <X className="w-5 h-5" />
-             </button>
-          </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
-             <p className="font-bold flex items-center gap-2">
-               <User className="w-3 h-3" />
-               <span>العميل: {customer?.name}</span>
-             </p>
-             <p className="flex items-center gap-2">
-               <Calendar className="w-3 h-3" />
-               <span>التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
-             </p>
+             <div className="flex flex-col gap-1 text-xs opacity-90">
+                <p className="font-bold flex items-center gap-2">
+                  <User className="w-3 h-3" />
+                  <span>العميل: {customer?.name}</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <Calendar className="w-3 h-3" />
+                  <span>التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+                </p>
+             </div>
           </div>
         </DialogHeader>
         
@@ -283,25 +286,28 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-6 bg-orange-600 text-white">
-          <div className="flex justify-between items-center">
-             <DialogTitle className="text-lg font-bold flex items-center gap-2">
+        <DialogHeader className="p-6 bg-orange-600 text-white relative">
+          <button 
+            onClick={() => setOpen(false)} 
+            className="absolute left-4 top-6 p-1 hover:bg-white/20 rounded-full transition-colors z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex flex-col gap-4 text-right">
+             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
              </DialogTitle>
-             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
-               <X className="w-5 h-5" />
-             </button>
-          </div>
-          <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
-             <p className="font-bold flex items-center gap-2">
-               <User className="w-3 h-3" />
-               <span>المورد: {supplier?.name}</span>
-             </p>
-             <p className="flex items-center gap-2">
-               <Calendar className="w-3 h-3" />
-               <span>التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
-             </p>
+             <div className="flex flex-col gap-1 text-xs opacity-90">
+                <p className="font-bold flex items-center gap-2">
+                  <User className="w-3 h-3" />
+                  <span>المورد: {supplier?.name}</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <Calendar className="w-3 h-3" />
+                  <span>التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+                </p>
+             </div>
           </div>
         </DialogHeader>
         
@@ -608,7 +614,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
-                  <AlertCircle className="w-5 h-5" />
+                  <Archive className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
@@ -657,18 +663,19 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           netProfit >= 0 ? "lux-gradient" : "bg-destructive"
         )}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-          <CardContent className="p-6 flex flex-col items-center text-center gap-1 relative z-10">
+          <CardContent className="p-6 flex flex-col items-center text-center gap-2 relative z-10">
             <span className="text-xs font-bold opacity-80 uppercase tracking-wider">صافي أرباح الحملة</span>
             <span className="text-4xl font-black tabular-nums">{netProfit.toLocaleString('en-US')}</span>
             <span className="text-xs opacity-70 font-bold">ريال يمني</span>
             <div className="flex items-center gap-1.5 mt-2 px-3 py-1 bg-white/10 rounded-full border border-white/10">
-              <span className="text-[9px] font-bold opacity-70">المعادلة: (المبيعات - التكاليف)</span>
+              <Info className="w-3 h-3 opacity-70" />
+              <span className="text-[9px] font-bold opacity-70">المعادلة: (المبيعات - [المشتريات + المصاريف])</span>
             </div>
           </CardContent>
         </Card>
 
         <Tabs defaultValue="overview" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-4 h-14 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
+          <TabsList className="grid w-full grid-cols-4 h-16 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
               className="rounded-xl text-[10px] font-bold flex flex-col items-center justify-center gap-1 h-full transition-all duration-300 data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:via-[#1a4d36] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
