@@ -6,16 +6,18 @@ import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2, LogOut } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Wallet, Eye, EyeOff, Loader2, LogOut, User as UserIcon, Copy } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase"
 import { collection, query, limit, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
   const { user } = useUser()
   const auth = useAuth()
   const db = useFirestore()
+  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     profit: false,
@@ -33,7 +35,6 @@ export default function Home() {
     setVisibility(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // استخدام en-US لضمان ظهور الأرقام بالإنجليزية
   const formatAmount = (key: string, amount: number = 0) => {
     if (!mounted) return "*****"
     return visibility[key] ? amount.toLocaleString('en-US') : "*****"
@@ -52,6 +53,13 @@ export default function Home() {
 
   const handleLogout = () => {
     if (auth) signOut(auth)
+  }
+
+  const copyUid = () => {
+    if (user?.uid) {
+      navigator.clipboard.writeText(user.uid)
+      toast({ title: "تم نسخ معرف المستخدم", description: "يمكنك الآن استخدامه في لوحة التحكم" })
+    }
   }
 
   if (!mounted) return null
@@ -194,11 +202,26 @@ export default function Home() {
             ))
           ) : (
             <div className="text-center py-10 text-muted-foreground text-xs bg-white rounded-[1.5rem] border border-dashed">
-              لا توجد فواتير مسجلة حالياً
+              لا توجد فواتير مسجلة حالياً لهذه الجلسة
             </div>
           )}
         </div>
       </section>
+
+      {/* Footer Info for Admin */}
+      <footer className="px-6 py-8 mt-auto border-t border-dashed opacity-40">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-center">معرف الجلسة الحالية (UID)</p>
+          <button 
+            onClick={copyUid}
+            className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full hover:bg-muted/80 transition-colors"
+          >
+            <span className="text-[10px] font-mono truncate max-w-[200px]">{user?.uid}</span>
+            <Copy className="w-3 h-3" />
+          </button>
+          <p className="text-[8px] text-center max-w-xs">هذا الرمز يساعدك في العثور على بياناتك في لوحة تحكم فايربيس. كل حساب له رمز فريد.</p>
+        </div>
+      </footer>
 
       <BottomNav />
     </div>
