@@ -244,13 +244,21 @@ export default function NewExpensePage() {
     try {
       addedExpenses.forEach((exp) => {
         const expenseRef = doc(collection(db, "users", user.uid, "campaigns", campaignId, "expenses"))
+        // Map TempExpense to final document, ensuring userId is set
         batch.set(expenseRef, {
-          ...exp,
           id: expenseRef.id,
+          type: exp.type,
+          amount: exp.amount,
+          paymentType: exp.paymentType,
+          paidAmount: exp.paidAmount,
+          remainingAmount: exp.remainingAmount,
+          payeeId: exp.payeeId,
+          payeeName: exp.payeeName,
+          notes: exp.notes,
           campaignId,
           userId: user.uid,
           createdAt: serverTimestamp(),
-          date: new Date(exp.date).toISOString()
+          expenseDate: new Date(exp.date).toISOString()
         })
       })
 
@@ -610,4 +618,3 @@ export default function NewExpensePage() {
     </div>
   )
 }
-

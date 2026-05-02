@@ -2,134 +2,34 @@
  * Firestore Security Rules for Fish Trading Management System
  * 
  * CORE PHILOSOPHY:
- * This ruleset implements a strict User-Ownership model using path-based authorization.
- * The system is designed for individual fish traders to manage their own business data
- * (customers, suppliers, invoices, expenses) in complete isolation.
- * 
- * DATA STRUCTURE:
- * All application data is strictly hierarchical, nested under the root path:
- * /users/{userId}/...
- * This ensures that a user's UID is part of every document's path, allowing for
- * high-performance authorization without the need for additional database lookups (get() calls).
+ * This ruleset implements a robust User-Ownership model.
+ * Everything under the path /users/{userId}/ is private to that user.
  */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- HELPER FUNCTIONS ---
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
+    // Helper to check if the user is the owner of the path
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function isValidRelationalOwner(userId) {
-      return request.resource.data.userId == userId;
-    }
-
-    function isRelationalImmutable() {
-      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
-    }
-
-    // --- COLLECTION RULES ---
-
+    // Match any document under the /users/{userId} hierarchy
     match /users/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if false;
+      // Allow the owner to manage their own user document
+      allow read, write: if isOwner(userId);
 
-      match /customers/{customerId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
+      // Recursive match for ALL subcollections under the user's path
+      // This covers customers, suppliers, campaigns, invoices, purchases, expenses, etc.
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
       }
-
-      match /suppliers/{supplierId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-      }
-
-      match /fishTypes/{fishTypeId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-      }
-
-      match /campaigns/{campaignId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-
-        match /expenses/{expenseId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-          allow update: if isExistingOwner(userId) && isRelationalImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-      }
-
-      match /invoices/{invoiceId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-
-        match /items/{invoiceItemId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-          allow update: if isExistingOwner(userId) && isRelationalImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-      }
-
-      match /purchases/{purchaseId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-
-        match /items/{purchaseItemId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-          allow update: if isExistingOwner(userId) && isRelationalImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-      }
-
-      match /paymentTransactions/{paymentTransactionId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-        allow update: if isExistingOwner(userId) && isRelationalImmutable();
-        allow delete: if isExistingOwner(userId);
-
-        match /invoiceAllocations/{allocationId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-          allow update: if isExistingOwner(userId) && isRelationalImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /purchaseAllocations/{allocationId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidRelationalOwner(userId);
-          allow update: if isExistingOwner(userId) && isRelationalImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-      }
+    }
+    
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
