@@ -147,20 +147,21 @@ export default function DebtsPage() {
     });
   }
 
-  // Calculate Customer Debts with filtering and sorting
+  // Calculate Customer Debts (Including settled ones)
   const filteredCustomerDebts = useMemo(() => {
     if (!invoices || !customers) return []
     const debtsMap = new Map()
+    
     invoices.forEach(inv => {
+      const customerId = inv.customerId
+      if (!customerId) return
       const remaining = inv.remainingAmount || 0
-      if (remaining > 0) {
-        const current = debtsMap.get(inv.customerId) || { amount: 0, date: 0 }
-        const invDate = new Date(inv.invoiceDate || 0).getTime()
-        debtsMap.set(inv.customerId, { 
-          amount: current.amount + remaining,
-          date: Math.max(current.date, invDate)
-        })
-      }
+      const current = debtsMap.get(customerId) || { amount: 0, date: 0 }
+      const invDate = new Date(inv.invoiceDate || 0).getTime()
+      debtsMap.set(customerId, { 
+        amount: current.amount + remaining,
+        date: Math.max(current.date, invDate)
+      })
     })
     
     const results = Array.from(debtsMap.entries()).map(([id, info]) => {
@@ -171,31 +172,33 @@ export default function DebtsPage() {
     return sortData(results, sortBy)
   }, [invoices, customers, searchTerm, sortBy])
 
-  // Calculate Supplier Debts with filtering and sorting
+  // Calculate Supplier Debts (Including settled ones)
   const filteredSupplierDebts = useMemo(() => {
     if (!purchases || !suppliers || !expenses) return []
     const debtsMap = new Map()
+    
     purchases.forEach(p => {
+      const supplierId = p.supplierId
+      if (!supplierId) return
       const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
-      if (remaining > 0 && p.supplierId) {
-        const current = debtsMap.get(p.supplierId) || { amount: 0, date: 0 }
-        const pDate = new Date(p.purchaseDate || 0).getTime()
-        debtsMap.set(p.supplierId, { 
-          amount: current.amount + remaining,
-          date: Math.max(current.date, pDate)
-        })
-      }
+      const current = debtsMap.get(supplierId) || { amount: 0, date: 0 }
+      const pDate = new Date(p.purchaseDate || 0).getTime()
+      debtsMap.set(supplierId, { 
+        amount: current.amount + remaining,
+        date: Math.max(current.date, pDate)
+      })
     })
+    
     expenses.forEach(e => {
+      const payeeId = e.payeeId
+      if (!payeeId) return
       const remaining = e.remainingAmount || 0
-      if (remaining > 0 && e.payeeId) {
-        const current = debtsMap.get(e.payeeId) || { amount: 0, date: 0 }
-        const eDate = new Date(e.expenseDate || 0).getTime()
-        debtsMap.set(e.payeeId, { 
-          amount: current.amount + remaining,
-          date: Math.max(current.date, eDate)
-        })
-      }
+      const current = debtsMap.get(payeeId) || { amount: 0, date: 0 }
+      const eDate = new Date(e.expenseDate || 0).getTime()
+      debtsMap.set(payeeId, { 
+        amount: current.amount + remaining,
+        date: Math.max(current.date, eDate)
+      })
     })
     
     const results = Array.from(debtsMap.entries()).map(([id, info]) => {
@@ -416,23 +419,37 @@ export default function DebtsPage() {
               {filteredCustomerDebts.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
               ) : (
-                filteredCustomerDebts.map((c) => (
-                  <div key={c.id} onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                    <div className="flex gap-4 items-center text-right">
-                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                        <User className="w-6 h-6" />
+                filteredCustomerDebts.map((c) => {
+                  const isSettled = c.amount <= 0;
+                  return (
+                    <div 
+                      key={c.id} 
+                      onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} 
+                      className={cn(
+                        "flex justify-between items-center p-5 rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer",
+                        isSettled ? "bg-muted/20 opacity-70" : "bg-white"
+                      )}
+                    >
+                      <div className="flex gap-4 items-center text-right">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", isSettled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={cn("font-black text-sm", isSettled && "text-muted-foreground")}>{c.name}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-black text-sm">{c.name}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        {isSettled ? (
+                          <Badge className="bg-green-100 text-green-700 border-none font-black text-[9px] px-2 py-0.5 rounded-lg">حساب مُصفر</Badge>
+                        ) : (
+                          <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
+                        )}
+                        <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
-                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </TabsContent>
 
@@ -450,23 +467,37 @@ export default function DebtsPage() {
               {filteredSupplierDebts.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
               ) : (
-                filteredSupplierDebts.map((s) => (
-                  <div key={s.id} onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                    <div className="flex gap-4 items-center text-right">
-                      <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
-                        <Wallet className="w-6 h-6" />
+                filteredSupplierDebts.map((s) => {
+                  const isSettled = s.amount <= 0;
+                  return (
+                    <div 
+                      key={s.id} 
+                      onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} 
+                      className={cn(
+                        "flex justify-between items-center p-5 rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer",
+                        isSettled ? "bg-muted/20 opacity-70" : "bg-white"
+                      )}
+                    >
+                      <div className="flex gap-4 items-center text-right">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", isSettled ? "bg-muted text-muted-foreground" : "bg-red-50 text-red-500")}>
+                          <Wallet className="w-6 h-6" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={cn("font-black text-sm", isSettled && "text-muted-foreground")}>{s.name}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-black text-sm">{s.name}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span>
+                      <div className="flex flex-col items-end gap-1">
+                        {isSettled ? (
+                          <Badge className="bg-green-100 text-green-700 border-none font-black text-[9px] px-2 py-0.5 rounded-lg">حساب مُصفر</Badge>
+                        ) : (
+                          <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
+                        )}
+                        <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
-                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </TabsContent>
 
@@ -481,53 +512,49 @@ export default function DebtsPage() {
                   <div 
                     key={tr.id} 
                     className={cn(
-                      "p-4 rounded-[1.5rem] border shadow-sm space-y-2.5 transition-all relative overflow-hidden",
+                      "p-3 rounded-[1.5rem] border shadow-sm space-y-2.5 transition-all relative overflow-hidden",
                       tr.type === 'customer_payment' 
                         ? 'bg-gradient-to-br from-green-50/60 to-white border-green-100' 
                         : 'bg-gradient-to-br from-orange-50/60 to-white border-orange-100'
                     )}
                   >
-                    {/* Row 1: Status (Badge) and Date */}
+                    {/* الصف الأول: الحالة والتاريخ */}
                     <div className="flex justify-between items-center">
                       <Badge className={cn(
-                        "text-[10px] font-black px-2.5 py-0.5 rounded-lg border-none shadow-sm", 
+                        "text-[9px] font-black px-2 py-0.5 rounded-lg border-none shadow-sm", 
                         tr.type === 'customer_payment' 
                           ? 'text-white bg-green-600' 
                           : 'text-white bg-orange-600'
                       )}>
                         {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
                       </Badge>
-                      <span className="text-[10px] font-bold text-muted-foreground/70 tabular-nums">
+                      <span className="text-[9px] font-bold text-muted-foreground/70 tabular-nums">
                         {tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}
                       </span>
                     </div>
 
-                    {/* Row 2: Entity and Recipient (Notes) */}
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-6 h-6 rounded-md flex items-center justify-center shadow-inner",
-                          tr.type === 'customer_payment' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                        )}>
-                          <User className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="text-sm font-black text-foreground/90">{tr.entityName}</span>
+                    {/* الصف الثاني: الجهة والمستلم */}
+                    <div className="flex justify-between items-center px-1">
+                      <div className="flex items-center gap-2 max-w-[55%]">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs font-black text-foreground/90 truncate">{tr.entityName}</span>
                       </div>
                       {tr.notes && (
-                        <span className="text-[10px] text-muted-foreground font-bold truncate max-w-[40%] text-left bg-white/50 px-2 py-0.5 rounded-md" dir="rtl">
-                          المستلم: {tr.notes}
-                        </span>
+                        <div className="flex items-center gap-1.5 max-w-[40%] bg-white/40 px-2 py-0.5 rounded-md">
+                           <FileText className="w-2.5 h-2.5 text-muted-foreground" />
+                           <span className="text-[9px] text-muted-foreground font-bold truncate">المستلم: {tr.notes}</span>
+                        </div>
                       )}
                     </div>
                     
-                    {/* Row 3: Label and Amount */}
-                    <div className="flex justify-between items-center pt-2 border-t border-dashed border-border/30">
-                      <span className="text-[10px] text-muted-foreground font-black">المبلغ المسدد</span>
+                    {/* الصف الثالث: المبلغ */}
+                    <div className="flex justify-between items-center pt-2 border-t border-dashed border-border/30 px-1">
+                      <span className="text-[9px] text-muted-foreground font-black">المبلغ المسدد</span>
                       <span className={cn(
-                        "text-lg font-black tabular-nums",
+                        "text-base font-black tabular-nums",
                         tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
                       )}>
-                        {tr.amount.toLocaleString('en-US')} <span className="text-[9px] font-bold">ر.ي</span>
+                        {tr.amount.toLocaleString('en-US')} <span className="text-[8px] font-bold">ر.ي</span>
                       </span>
                     </div>
                   </div>
@@ -623,7 +650,7 @@ export default function DebtsPage() {
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 opacity-40">
                 <CheckCircle2 className="w-12 h-12 text-green-600" />
-                <p className="text-sm font-bold">الحساب مُصفر تماماً</p>
+                <p className="text-sm font-bold">لا توجد عمليات مسجلة لهذا الحساب</p>
               </div>
             )}
           </div>
