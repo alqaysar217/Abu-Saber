@@ -6,25 +6,23 @@ import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
   Search, 
-  Filter, 
   Receipt, 
   Loader2, 
   Calendar, 
-  User, 
   ArrowUpDown,
   Download,
   Eye,
   FileText,
-  Ship,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
   Fish,
   Scale,
   Coins,
   History,
   Info,
   CheckCircle2,
+  Wallet,
+  Ship,
+  User,
+  CreditCard,
   AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -89,7 +87,6 @@ export default function AllSalesDetailedPage() {
   const reportData = useMemo(() => {
     if (!invoices) return []
 
-    // 1. Flatten: Invoice -> Items
     let items: any[] = []
     invoices.forEach(inv => {
       const customer = customers?.find(c => c.id === inv.customerId)
@@ -100,7 +97,7 @@ export default function AllSalesDetailedPage() {
       if (invoiceItems.length > 0) {
         invoiceItems.forEach((item: any) => {
           items.push({
-            id: `${inv.id}-${item.fishType}-${item.quantity}`,
+            id: `${inv.id}-${item.fishType}-${item.quantity}-${item.pricePerKg}`,
             invoiceId: inv.id,
             fishType: item.fishType || "غير محدد",
             quantity: item.quantity || 0,
@@ -119,36 +116,13 @@ export default function AllSalesDetailedPage() {
             notes: inv.notes || inv.description || ""
           })
         })
-      } else {
-        // Fallback for invoices without nested items
-        items.push({
-          id: inv.id,
-          invoiceId: inv.id,
-          fishType: "فواتير قديمة/مجمعة",
-          quantity: 1,
-          pricePerKg: inv.totalAmount,
-          lineTotal: inv.totalAmount,
-          customerName: customer?.name || "عميل غير معروف",
-          customerId: inv.customerId,
-          campaignName: campaign?.name || "بدون حملة",
-          campaignId: inv.campaignId,
-          date: inv.invoiceDate,
-          paymentType: inv.paymentType,
-          paidAmount: inv.paidAmount || 0,
-          remainingAmount: inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0)),
-          totalAmount: inv.totalAmount,
-          status: inv.status,
-          notes: inv.notes || inv.description || ""
-        })
       }
     })
 
-    // 2. Filter
     return items.filter(item => {
       const matchesSearch = 
         item.fishType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.invoiceId.toLowerCase().includes(searchTerm.toLowerCase())
+        item.customerName.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesCampaign = filterCampaign === "all" || item.campaignId === filterCampaign
       const matchesCustomer = filterCustomer === "all" || item.customerId === filterCustomer
@@ -156,7 +130,6 @@ export default function AllSalesDetailedPage() {
 
       return matchesSearch && matchesCampaign && matchesCustomer && matchesPayment
     }).sort((a, b) => {
-      // 3. Sort
       const direction = sortConfig.direction === 'asc' ? 1 : -1
       if (sortConfig.key === 'date') return (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
       if (sortConfig.key === 'amount') return (a.lineTotal - b.lineTotal) * direction
@@ -164,27 +137,25 @@ export default function AllSalesDetailedPage() {
     })
   }, [invoices, customers, campaigns, searchTerm, filterCampaign, filterCustomer, filterPaymentType, sortConfig])
 
-  // Export to CSV Function
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["نوع السمك", "الكمية", "سعر الكيلو", "إجمالي الصنف", "إجمالي الفاتورة", "المدفوع نقداً", "المتبقي (دين)", "العميل", "التاريخ", "الحملة", "نوع الدفع", "الملاحظات"]
+    const headers = ["نوع السمك", "الكمية", "سعر الكيلو", "إجمالي الصنف", "العميل", "التاريخ", "الحملة", "طريقة الدفع", "المدفوع", "المتبقي (دين)", "الملاحظات"]
     const rows = reportData.map(item => [
       item.fishType,
       item.quantity,
       item.pricePerKg,
       item.lineTotal,
-      item.totalAmount,
-      item.paidAmount,
-      item.remainingAmount,
       item.customerName,
       format(new Date(item.date), "yyyy-MM-dd"),
       item.campaignName,
       item.paymentType,
+      item.paidAmount,
+      item.remainingAmount,
       `"${item.notes}"`
     ])
 
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" // Add BOM for Excel Arabic support
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"
     csvContent += headers.join(",") + "\n"
     rows.forEach(row => {
       csvContent += row.join(",") + "\n"
@@ -215,7 +186,7 @@ export default function AllSalesDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <Receipt className="w-5 h-5" />
-            تقرير المبيعات الشامل
+            سجل المبيعات التفصيلي
           </h1>
           <Button 
             variant="outline" 
@@ -228,8 +199,8 @@ export default function AllSalesDetailedPage() {
         </div>
 
         <div className="flex gap-2" dir="rtl">
-          <div className="relative flex-1 group">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
+          <div className="relative flex-1">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="بحث بنوع السمك أو العميل..." 
               className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
@@ -288,15 +259,20 @@ export default function AllSalesDetailedPage() {
         ) : (
           <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[1200px]">
+              <Table dir="rtl" className="min-w-[1400px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="text-right font-black text-[10px] py-4">صنف السمك / الكمية</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">العميل / التاريخ</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">الحملة</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">التحصيل (المدفوع/المتبقي)</TableHead>
+                    <TableHead className="text-right font-black text-[10px] py-4">نوع السمك</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">الكمية</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">سعر الكجم</TableHead>
                     <TableHead className="text-center font-black text-[10px]">إجمالي الصنف</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">المستلم/ملاحظات</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">اسم العميل</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">تاريخ البيع</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">اسم الحملة</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">طريقة الدفع</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المتبقي (دين)</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">ملاحظات</TableHead>
                     <TableHead className="text-left font-black text-[10px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -304,57 +280,50 @@ export default function AllSalesDetailedPage() {
                   {reportData.map((item) => (
                     <TableRow key={item.id} className="active:bg-muted/50 transition-colors border-b-muted/20">
                       <TableCell className="text-right py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-primary/5 text-primary rounded-xl shrink-0">
-                            <Fish className="w-4 h-4" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-black text-foreground">{item.fishType}</span>
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1 mt-0.5">
-                              <Scale className="w-2.5 h-2.5" />
-                              {item.quantity.toLocaleString()} كجم × {item.pricePerKg.toLocaleString()}
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                           <Fish className="w-3.5 h-3.5 text-primary/60" />
+                           <span className="text-xs font-black text-foreground">{item.fishType}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-foreground truncate max-w-[150px]">{item.customerName}</span>
-                          <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1 mt-0.5">
-                            <Calendar className="w-2.5 h-2.5" />
-                            {item.date ? format(new Date(item.date), "dd MMM yyyy", { locale: ar }) : ""}
-                          </span>
-                        </div>
+                      <TableCell className="text-center font-bold text-xs tabular-nums">
+                        {item.quantity.toLocaleString()} <span className="text-[9px] opacity-50">كجم</span>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-[9px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-lg truncate max-w-[100px]">
-                          {item.campaignName}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex gap-2">
-                             <Badge className={cn(
-                               "text-[8px] px-1.5 py-0 border-none font-black shadow-none",
-                               item.paymentType === "نقد" ? "bg-green-50 text-green-600" : (item.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
-                             )}>
-                               {item.paymentType}
-                             </Badge>
-                             <span className="text-[9px] font-black text-green-700 tabular-nums">مدفوع: {item.paidAmount.toLocaleString()}</span>
-                          </div>
-                          {item.remainingAmount > 0 && (
-                            <span className="text-[9px] font-black text-destructive tabular-nums bg-destructive/5 px-2 rounded">
-                              متبقي: {item.remainingAmount.toLocaleString()}
-                            </span>
-                          )}
-                        </div>
+                      <TableCell className="text-center font-bold text-xs tabular-nums text-muted-foreground">
+                        {item.pricePerKg.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-center font-black text-xs tabular-nums text-primary">
                         {item.lineTotal.toLocaleString()}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-xs font-bold text-foreground truncate max-w-[120px] inline-block">{item.customerName}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
+                          {item.date ? format(new Date(item.date), "yyyy/MM/dd", { locale: ar }) : ""}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-[9px] font-black text-primary/70 truncate max-w-[100px] inline-block">
+                          {item.campaignName}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={cn(
+                          "text-[8px] px-1.5 py-0 border-none font-black shadow-none",
+                          item.paymentType === "نقد" ? "bg-green-50 text-green-600" : (item.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+                        )}>
+                          {item.paymentType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center font-black text-xs tabular-nums text-green-700">
+                        {item.paidAmount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-center font-black text-xs tabular-nums text-destructive bg-destructive/5">
+                        {item.remainingAmount.toLocaleString()}
+                      </TableCell>
                       <TableCell className="text-right max-w-[150px]">
                         <p className="text-[9px] text-muted-foreground font-medium truncate italic" title={item.notes}>
-                          {item.notes || "- لا يوجد -"}
+                          {item.notes || "-"}
                         </p>
                       </TableCell>
                       <TableCell className="text-left">
@@ -379,7 +348,7 @@ export default function AllSalesDetailedPage() {
 
       <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t flex justify-between items-center z-40">
          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">إجمالي المبيعات المفلترة</span>
+            <span className="text-[10px] font-bold text-muted-foreground">إجمالي مبيعات القائمة</span>
             <span className="text-lg font-black text-primary tabular-nums">
                {reportData.reduce((acc, curr) => acc + curr.lineTotal, 0).toLocaleString()} <span className="text-[10px]">ر.ي</span>
             </span>
