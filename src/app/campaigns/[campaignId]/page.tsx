@@ -13,7 +13,7 @@ import {
   Snowflake, 
   Waves, 
   Utensils, 
-  MoreHorizontal,
+  MoreHorizontal, 
   Loader2,
   Calendar,
   LayoutDashboard,
@@ -32,6 +32,7 @@ import {
   TrendingUp,
   Banknote,
   DollarSign,
+  Plus,
   Info
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@ import { BottomNav } from "@/components/layout/BottomNav"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import Link from "next/link"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -474,6 +476,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const { user } = useUser()
   const { toast } = useToast()
   const [archiving, setArchiving] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
 
   const campaignRef = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
@@ -674,7 +677,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="overview" className="w-full" dir="rtl">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
           <TabsList className="grid w-full grid-cols-4 h-16 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
             <TabsTrigger 
               value="overview" 
@@ -802,6 +805,25 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Floating Action Button */}
+      {activeTab !== "overview" && !isCompleted && (
+        <div className="fixed bottom-24 left-6 z-40 animate-in slide-in-from-bottom-4 duration-500">
+          <Link href={
+            activeTab === "sales" ? `/invoices/new?campaignId=${campaignId}` :
+            activeTab === "purchases" ? `/purchases/new?campaignId=${campaignId}` :
+            `/expenses/new?campaignId=${campaignId}`
+          }>
+            <Button 
+              size="icon" 
+              className="w-14 h-14 rounded-full shadow-2xl lux-gradient text-white hover:scale-110 active:scale-95 transition-transform"
+            >
+              <Plus className="w-8 h-8" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   )

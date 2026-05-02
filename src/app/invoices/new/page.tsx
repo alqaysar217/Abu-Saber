@@ -1,8 +1,8 @@
 
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   Plus, 
   Trash2, 
@@ -55,8 +55,9 @@ interface InvoiceItem {
   total: number
 }
 
-export default function NewInvoicePage() {
+function NewInvoiceContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const db = useFirestore()
   const { user } = useUser()
@@ -74,6 +75,11 @@ export default function NewInvoicePage() {
   // Payment Form State
   const [paymentType, setPaymentType] = useState("نقد")
   const [paidAmount, setPaidAmount] = useState("")
+
+  useEffect(() => {
+    const cId = searchParams.get('campaignId')
+    if (cId) setCampaignId(cId)
+  }, [searchParams])
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -489,5 +495,13 @@ export default function NewInvoicePage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function NewInvoicePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary" /></div>}>
+      <NewInvoiceContent />
+    </Suspense>
   )
 }

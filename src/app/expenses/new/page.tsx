@@ -1,8 +1,8 @@
 
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ChevronLeft, 
   Save, 
@@ -85,8 +85,9 @@ interface TempExpense {
   notes: string;
 }
 
-export default function NewExpensePage() {
+function NewExpenseContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const db = useFirestore()
   const { user } = useUser()
@@ -119,6 +120,11 @@ export default function NewExpensePage() {
   const [notes, setNotes] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addedExpenses, setAddedExpenses] = useState<TempExpense[]>([])
+
+  useEffect(() => {
+    const cId = searchParams.get('campaignId')
+    if (cId) setCampaignId(cId)
+  }, [searchParams])
 
   const formatInputNumber = (val: string) => {
     if (!val) return ""
@@ -381,7 +387,7 @@ export default function NewExpensePage() {
               </Table>
             </Card>
           ) : (
-            <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem]">لا توجد مصاريف مضافة</div>
+            <div className="text-center py-16 text-muted-foreground text-sm border-2 border-dashed rounded-[2rem]">لا توجد مصروفات مضافة</div>
           )}
         </div>
 
@@ -393,5 +399,13 @@ export default function NewExpensePage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function NewExpensePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary" /></div>}>
+      <NewExpenseContent />
+    </Suspense>
   )
 }

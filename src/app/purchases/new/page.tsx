@@ -1,8 +1,8 @@
 
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ChevronLeft, 
   Save, 
@@ -57,8 +57,9 @@ interface PurchaseItem {
   paidAmount: number
 }
 
-export default function NewPurchasePage() {
+function NewPurchaseContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const db = useFirestore()
   const { user } = useUser()
@@ -77,6 +78,11 @@ export default function NewPurchasePage() {
   })
   const [addedItems, setAddedItems] = useState<PurchaseItem[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const cId = searchParams.get('campaignId')
+    if (cId) setCampaignId(cId)
+  }, [searchParams])
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -206,7 +212,6 @@ export default function NewPurchasePage() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* supply card */}
         <Card className="border-none shadow-md rounded-[1.5rem] bg-white overflow-hidden">
           <CardHeader className="bg-orange-50 border-b border-orange-100 p-4">
             <CardTitle className="text-sm font-bold text-orange-800 flex items-center gap-2">
@@ -260,7 +265,6 @@ export default function NewPurchasePage() {
           </CardContent>
         </Card>
 
-        {/* item form card */}
         <Card className={cn(
           "border-2 shadow-lg rounded-[1.5rem] bg-white transition-all duration-300", 
           editingId ? "border-accent ring-4 ring-accent/10" : "border-primary/10"
@@ -375,7 +379,6 @@ export default function NewPurchasePage() {
            </CardContent>
         </Card>
 
-        {/* items list */}
         <div className="space-y-3">
           <h3 className="text-sm font-black flex items-center gap-2 px-2">
             <TableIcon className="w-4 h-4 text-orange-600" />
@@ -386,11 +389,11 @@ export default function NewPurchasePage() {
               <Table dir="rtl">
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="text-right text-[10px] font-black">الصنف</TableHead>
-                    <TableHead className="text-center text-[10px] font-black">الكمية</TableHead>
-                    <TableHead className="text-center text-[10px] font-black">سعر الكيلو</TableHead>
-                    <TableHead className="text-center text-[10px] font-black">الإجمالي</TableHead>
-                    <TableHead className="text-left text-[10px] font-black">إجراء</TableHead>
+                    <TableHead className="text-right font-black text-xs">الصنف</TableHead>
+                    <TableHead className="text-center font-black text-xs">الكمية</TableHead>
+                    <TableHead className="text-center font-black text-xs">سعر الكيلو</TableHead>
+                    <TableHead className="text-center font-black text-xs">الإجمالي</TableHead>
+                    <TableHead className="text-left font-black text-xs">إجراء</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -422,7 +425,6 @@ export default function NewPurchasePage() {
           )}
         </div>
 
-        {/* final summary and save */}
         {addedItems.length > 0 && (
           <div className="space-y-4 animate-in slide-in-from-bottom-4">
             <Card className="border-none shadow-xl rounded-[2rem] bg-primary text-white p-6 relative overflow-hidden">
@@ -458,5 +460,13 @@ export default function NewPurchasePage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function NewPurchasePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary" /></div>}>
+      <NewPurchaseContent />
+    </Suspense>
   )
 }
