@@ -591,19 +591,29 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const totalCost = totalExpenses + totalPurchases
   const netProfit = totalRevenue - totalCost
 
+  // إعداد بيانات الرسم البياني المجمعة
   const chartData = [
     { 
       name: 'التكاليف', 
-      purchases: totalPurchases, 
-      expenses: totalExpenses 
+      primary: totalPurchases, 
+      secondary: totalExpenses,
+      pLabel: 'المشتريات',
+      sLabel: 'المصاريف',
+      type: 'costs'
     },
     { 
       name: 'المبيعات', 
-      revenue: totalRevenue 
+      primary: totalRevenue, 
+      secondary: 0,
+      pLabel: 'المبيعات',
+      type: 'sales'
     },
     { 
       name: 'الأرباح', 
-      profit: netProfit 
+      primary: netProfit, 
+      secondary: 0,
+      pLabel: 'الأرباح',
+      type: 'profit'
     },
   ]
 
@@ -779,12 +789,12 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
               <CardHeader className="p-0 pb-4 text-right">
                 <CardTitle className="text-sm font-bold flex items-center justify-start gap-2" dir="rtl">
                   <TrendingUp className="w-4 h-4 text-primary" />
-                  تحليل مالي للحملة
+                  تحليل مالي للحملة (التكاليف والمبيعات)
                 </CardTitle>
               </CardHeader>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
+                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }} barGap={0}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="name" 
@@ -796,22 +806,30 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                     <Tooltip 
                       cursor={{ fill: '#f5f5f5' }}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
-                      formatter={(value: number, name: string) => {
-                        const labels: Record<string, string> = {
-                          purchases: 'المشتريات',
-                          expenses: 'المصاريف',
-                          revenue: 'المبيعات',
-                          profit: 'الأرباح'
-                        }
-                        return [value.toLocaleString() + " ر.ي", labels[name] || name]
+                      formatter={(value: number, name: string, props: any) => {
+                        if (!value) return null;
+                        const entry = props.payload;
+                        const label = name === 'primary' ? entry.pLabel : entry.sLabel;
+                        return [value.toLocaleString() + " ر.ي", label]
                       }}
                     />
-                    <Bar dataKey="purchases" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} barSize={25} />
-                    <Bar dataKey="expenses" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} barSize={25} />
-                    <Bar dataKey="revenue" fill="hsl(var(--chart-2))" radius={[6, 6, 0, 0]} barSize={35} />
-                    <Bar dataKey="profit" fill="hsl(var(--chart-1))" radius={[6, 6, 0, 0]} barSize={35} />
+                    <Bar dataKey="primary" radius={[6, 6, 0, 0]} barSize={35}>
+                      {chartData.map((entry, index) => {
+                        let color = "hsl(var(--chart-4))"; // المشتريات
+                        if (entry.type === 'sales') color = "hsl(var(--chart-2))"; // المبيعات
+                        if (entry.type === 'profit') color = "hsl(var(--chart-1))"; // الأرباح
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                    <Bar dataKey="secondary" fill="hsl(var(--chart-3))" radius={[6, 6, 0, 0]} barSize={35} />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 border-t pt-4">
+                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[hsl(var(--chart-4))]" /><span className="text-[10px] font-bold text-muted-foreground">المشتريات</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[hsl(var(--chart-3))]" /><span className="text-[10px] font-bold text-muted-foreground">المصاريف</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[hsl(var(--chart-2))]" /><span className="text-[10px] font-bold text-muted-foreground">المبيعات</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[hsl(var(--chart-1))]" /><span className="text-[10px] font-bold text-muted-foreground">الأرباح</span></div>
               </div>
             </Card>
             
