@@ -140,7 +140,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
              </button>
           </div>
           <div className="mt-4 flex flex-col gap-1 text-xs opacity-90">
-             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> المورد: {supplier?.name}</p>
+             <p className="font-bold flex items-center gap-2"><User className="w-3 h-3" /> המورد: {supplier?.name}</p>
              <p className="flex items-center gap-2"><Calendar className="w-3 h-3" /> التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</p>
           </div>
         </DialogHeader>
@@ -190,9 +190,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                      حذف عملية الشراء؟
+                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                       <AlertCircle className="w-5 h-5" />
+                      حذف عملية الشراء؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
@@ -303,9 +303,9 @@ function ExpenseDetailRow({ expense, campaignId, userId }: { expense: any, campa
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                حذف المصروف؟
+              <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
                 <AlertCircle className="w-5 h-5" />
+                حذف المصروف؟
               </AlertDialogTitle>
               <AlertDialogDescription className="text-right font-medium">
                 هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
@@ -453,9 +453,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
-                  تأكيد أرشفة الحملة
+                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
                   <AlertCircle className="w-5 h-5" />
+                  تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">
