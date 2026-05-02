@@ -139,9 +139,9 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col gap-4 text-right">
-             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-end">
-               تفاصيل فاتورة المبيعات
+             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
+               تفاصيل فاتورة المبيعات
              </DialogTitle>
              <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
                 <p className="font-bold flex items-center gap-2">
@@ -199,9 +199,9 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                      حذف فاتورة المبيعات؟
+                    <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
+                      حذف فاتورة المبيعات؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة؟ سيؤثر ذلك على تقارير الأرباح.
@@ -296,9 +296,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col gap-4 text-right">
-             <DialogTitle className="text-lg font-bold flex items-center justify-end gap-2">
-               تفاصيل فاتورة المشتريات
+             <DialogTitle className="text-lg font-bold flex items-center justify-start gap-2">
                <TableIcon className="w-5 h-5" />
+               تفاصيل فاتورة المشتريات
              </DialogTitle>
              <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
                 <p className="font-bold flex items-center gap-2">
@@ -358,9 +358,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                      حذف عملية الشراء؟
+                    <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
                       <Trash2 className="w-5 h-5" />
+                      حذف عملية الشراء؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
@@ -449,9 +449,9 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
-                  حذف المصروف؟
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
                   <Trash2 className="w-5 h-5" />
+                  حذف المصروف؟
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-right font-medium">
                   هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
@@ -631,9 +631,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
-                  تأكيد أرشفة الحملة
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
                   <Archive className="w-5 h-5" />
+                  تأكيد أرشفة الحملة
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">
@@ -760,9 +760,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             {campaign.notes && (
               <Card className="border-none shadow-sm rounded-2xl bg-white">
                 <CardHeader className="p-4 pb-0 text-right">
-                  <CardTitle className="text-sm font-bold flex items-center justify-end gap-2">
-                    ملاحظات الحملة
+                  <CardTitle className="text-sm font-bold flex items-center justify-start gap-2">
                     <AlertCircle className="w-4 h-4 text-primary" />
+                    ملاحظات الحملة
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed font-medium text-right">
