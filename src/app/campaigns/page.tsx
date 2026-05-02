@@ -56,7 +56,7 @@ export default function CampaignsPage() {
         </div>
       </header>
 
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-3">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-20 gap-3">
             <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
@@ -69,24 +69,21 @@ export default function CampaignsPage() {
             return (
               <Link key={camp.id} href={`/campaigns/${camp.id}`}>
                 <Card className={cn(
-                  "border-none shadow-md rounded-[2rem] overflow-hidden transition-all duration-300 active:scale-[0.97] hover:shadow-xl group relative",
+                  "border-none shadow-sm rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98] hover:shadow-md group relative",
                   isCompleted ? "bg-muted/30 grayscale-[0.5]" : "bg-white"
                 )}>
-                  {/* Watermark Icon */}
-                  <Ship className="absolute -left-4 -top-4 w-24 h-24 opacity-[0.03] text-primary rotate-12 pointer-events-none" />
-                  
                   <CardContent className="p-0">
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-5">
-                        <div className="space-y-2">
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="space-y-1">
                           <h3 className={cn(
-                            "font-black text-xl leading-tight transition-colors", 
+                            "font-black text-base leading-tight transition-colors", 
                             isCompleted ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
                           )}>
                             {camp.name}
                           </h3>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground/80">
-                            <Calendar className="w-3.5 h-3.5 text-primary/70" />
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/80">
+                            <Calendar className="w-3 h-3 text-primary/70" />
                             <span>
                               {camp.startDate ? format(new Date(camp.startDate), "PPP", { locale: ar }) : "بدون تاريخ"}
                             </span>
@@ -94,42 +91,36 @@ export default function CampaignsPage() {
                         </div>
                         <Badge 
                           className={cn(
-                            "rounded-2xl px-4 py-1.5 font-black text-[10px] shadow-sm border-none",
+                            "rounded-xl px-3 py-1 font-black text-[9px] shadow-none border-none",
                             isCompleted 
                               ? "bg-secondary text-secondary-foreground" 
-                              : "lux-gradient text-white animate-in zoom-in-50"
+                              : "bg-accent/10 text-accent"
                           )}
                         >
                           {isCompleted ? (
-                            <span className="flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3 h-3" />
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
                               مكتملة
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                              نشطة الآن
+                            <span className="flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                              نشطة
                             </span>
                           )}
                         </Badge>
                       </div>
                       
-                      <div className="flex justify-between items-center pt-5 border-t border-border/40">
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn(
-                            "w-2.5 h-2.5 rounded-full",
-                            isCompleted ? "bg-muted-foreground/30" : "bg-accent shadow-[0_0_8px_rgba(36,184,36,0.5)] animate-pulse"
-                          )} />
-                          <p className="text-[11px] text-muted-foreground font-black">
-                            {isCompleted ? 'حملة مؤرشفة' : 'قيد التشغيل والبيع'}
-                          </p>
-                        </div>
+                      <div className="flex justify-between items-center pt-3 border-t border-border/40">
+                        <p className="text-[10px] text-muted-foreground font-bold">
+                          {isCompleted ? 'حملة مؤرشفة' : 'قيد التشغيل والبيع'}
+                        </p>
                         <div className={cn(
-                          "flex items-center gap-1 font-black text-xs transition-transform group-hover:translate-x-[-4px]",
+                          "flex items-center gap-1 font-black text-[10px] transition-transform group-hover:translate-x-[-2px]",
                           isCompleted ? "text-muted-foreground" : "text-primary"
                         )}>
-                          <span>عرض التفاصيل</span>
-                          <ChevronRight className="w-4 h-4" />
+                          <span>التفاصيل</span>
+                          <ChevronRight className="w-3 h-3" />
                         </div>
                       </div>
                     </div>
