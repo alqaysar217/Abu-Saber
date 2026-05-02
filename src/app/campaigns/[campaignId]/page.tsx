@@ -139,12 +139,12 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex flex-col gap-4 text-right mt-4" dir="rtl">
+          <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
              </DialogTitle>
-             <div className="flex flex-col gap-2 text-xs opacity-90 items-start">
+             <div className="flex flex-col gap-1 text-xs opacity-90 items-start">
                 <p className="font-bold flex items-center gap-2">
                   <User className="w-4 h-4" />
                   <span>العميل: {customer?.name}</span>
@@ -296,12 +296,12 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
           >
             <X className="w-5 h-5 text-white" />
           </button>
-          <div className="flex flex-col gap-4 text-right mt-4" dir="rtl">
+          <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center justify-start gap-2">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
              </DialogTitle>
-             <div className="flex flex-col gap-2 text-xs opacity-90 items-start">
+             <div className="flex flex-col gap-1 text-xs opacity-90 items-start">
                 <p className="font-bold flex items-center gap-2">
                   <User className="w-4 h-4" />
                   <span>المورد: {supplier?.name}</span>
@@ -592,7 +592,8 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const netProfit = totalRevenue - totalCost
 
   const chartData = [
-    { name: 'التكاليف', value: totalCost, fill: 'hsl(var(--chart-4))' },
+    { name: 'المشتريات', value: totalPurchases, fill: 'hsl(var(--chart-4))' },
+    { name: 'المصاريف', value: totalExpenses, fill: 'hsl(var(--chart-3))' },
     { name: 'المبيعات', value: totalRevenue, fill: 'hsl(var(--chart-2))' },
     { name: 'الأرباح', value: netProfit, fill: 'hsl(var(--chart-1))' },
   ]
@@ -638,7 +639,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold">
+                <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-orange-600 font-bold" dir="rtl">
                   <Archive className="w-5 h-5" />
                   تأكيد أرشفة الحملة
                 </AlertDialogTitle>
@@ -767,7 +768,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             {/* الرسم البياني للأداء المالي للحملة */}
             <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white p-4">
               <CardHeader className="p-0 pb-4 text-right">
-                <CardTitle className="text-sm font-bold flex items-center justify-start gap-2">
+                <CardTitle className="text-sm font-bold flex items-center justify-start gap-2" dir="rtl">
                   <TrendingUp className="w-4 h-4 text-primary" />
                   تحليل مالي للحملة
                 </CardTitle>
@@ -788,7 +789,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
                       formatter={(value: number) => [value.toLocaleString() + " ر.ي", "القيمة"]}
                     />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={35}>
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -801,7 +802,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             {campaign.notes && (
               <Card className="border-none shadow-sm rounded-2xl bg-white">
                 <CardHeader className="p-4 pb-0 text-right">
-                  <CardTitle className="text-sm font-bold flex items-center justify-start gap-2">
+                  <CardTitle className="text-sm font-bold flex items-center justify-start gap-2" dir="rtl">
                     <AlertCircle className="w-4 h-4 text-primary" />
                     ملاحظات الحملة
                   </CardTitle>
