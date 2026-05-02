@@ -27,7 +27,8 @@ import {
   AlertCircle,
   ArrowUpDown,
   Filter,
-  Check
+  Check,
+  LayoutDashboard
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -60,6 +61,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
@@ -79,7 +87,9 @@ export default function DebtsPage() {
   const [activeTab, setActiveTab] = useState("customers")
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>('amount_desc')
-  const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [filterStatus, setFilterStatus] = useState<string>("all") // For History Tab: Payment Type
+  const [filterCampaignId, setFilterCampaignId] = useState<string>("all")
+  const [filterDebtStatus, setFilterDebtStatus] = useState<string>("all") // For Debt Tabs: "all", "paid", "unpaid"
   const [recipientSearch, setRecipientSearch] = useState("")
   
   const [selectedEntity, setSelectedEntity] = useState<{ id: string, name: string, type: 'customer' | 'supplier' } | null>(null)
@@ -106,7 +116,7 @@ export default function DebtsPage() {
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "campaigns"))
+    return query(collection(db, "users", user.uid, "campaigns"), orderBy("startDate", "desc"))
   }, [db, user])
   const { data: campaigns } = useCollection(campaignsQuery)
 
@@ -147,12 +157,15 @@ export default function DebtsPage() {
     });
   }
 
-  // Calculate Customer Debts (Including settled ones)
+  // Calculate Customer Debts
   const filteredCustomerDebts = useMemo(() => {
     if (!invoices || !customers) return []
     const debtsMap = new Map()
     
     invoices.forEach(inv => {
+      // Filter by Campaign
+      if (filterCampaignId !== "all" && inv.campaignId !== filterCampaignId) return;
+
       const customerId = inv.customerId
       if (!customerId) return
       const remaining = inv.remainingAmount || 0
@@ -164,20 +177,30 @@ export default function DebtsPage() {
       })
     })
     
-    const results = Array.from(debtsMap.entries()).map(([id, info]) => {
+    let results = Array.from(debtsMap.entries()).map(([id, info]) => {
       const c = customers.find(x => x.id === id)
       return { id, name: c?.name || "عميل غير معروف", phone: c?.phone || "", amount: info.amount, date: info.date }
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return sortData(results, sortBy)
-  }, [invoices, customers, searchTerm, sortBy])
+    // Filter by Debt Status
+    if (filterDebtStatus === "unpaid") {
+      results = results.filter(d => d.amount > 0)
+    } else if (filterDebtStatus === "paid") {
+      results = results.filter(d => d.amount <= 0)
+    }
 
-  // Calculate Supplier Debts (Including settled ones)
+    return sortData(results, sortBy)
+  }, [invoices, customers, searchTerm, sortBy, filterCampaignId, filterDebtStatus])
+
+  // Calculate Supplier Debts
   const filteredSupplierDebts = useMemo(() => {
     if (!purchases || !suppliers || !expenses) return []
     const debtsMap = new Map()
     
     purchases.forEach(p => {
+      // Filter by Campaign
+      if (filterCampaignId !== "all" && p.campaignId !== filterCampaignId) return;
+
       const supplierId = p.supplierId
       if (!supplierId) return
       const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
@@ -190,6 +213,9 @@ export default function DebtsPage() {
     })
     
     expenses.forEach(e => {
+      // Filter by Campaign
+      if (filterCampaignId !== "all" && e.campaignId !== filterCampaignId) return;
+
       const payeeId = e.payeeId
       if (!payeeId) return
       const remaining = e.remainingAmount || 0
@@ -201,20 +227,32 @@ export default function DebtsPage() {
       })
     })
     
-    const results = Array.from(debtsMap.entries()).map(([id, info]) => {
+    let results = Array.from(debtsMap.entries()).map(([id, info]) => {
       const s = suppliers.find(x => x.id === id)
       return { id, name: s?.name || "مورد غير معروف", phone: s?.phone || "", amount: info.amount, date: info.date }
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
+    // Filter by Debt Status
+    if (filterDebtStatus === "unpaid") {
+      results = results.filter(d => d.amount > 0)
+    } else if (filterDebtStatus === "paid") {
+      results = results.filter(d => d.amount <= 0)
+    }
+
     return sortData(results, sortBy)
-  }, [purchases, suppliers, expenses, searchTerm, sortBy])
+  }, [purchases, suppliers, expenses, searchTerm, sortBy, filterCampaignId, filterDebtStatus])
 
   // Filtered History Transactions
   const filteredHistory = useMemo(() => {
     if (!historyTransactions) return []
     let results = [...historyTransactions]
 
-    // Status Filter
+    // Campaign Filter
+    if (filterCampaignId !== "all") {
+      results = results.filter(tr => tr.campaignId === filterCampaignId)
+    }
+
+    // Type Filter
     if (filterStatus !== "all") {
       results = results.filter(tr => tr.type === filterStatus)
     }
@@ -230,7 +268,7 @@ export default function DebtsPage() {
     }
 
     return sortData(results, sortBy)
-  }, [historyTransactions, filterStatus, searchTerm, recipientSearch, sortBy])
+  }, [historyTransactions, filterStatus, searchTerm, recipientSearch, sortBy, filterCampaignId])
 
   const totalCustomerDebts = filteredCustomerDebts.reduce((acc, curr) => acc + curr.amount, 0)
   const totalSupplierDebts = filteredSupplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
@@ -333,7 +371,7 @@ export default function DebtsPage() {
           <div className="relative flex-1 group">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder={activeTab === "history" ? "بحث بالجهة..." : "بحث بالاسم..."}
+              placeholder="بحث بالاسم..."
               className="pr-11 h-12 rounded-2xl bg-muted/50 border-none focus-visible:ring-primary focus-visible:bg-white transition-all shadow-inner text-right" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -357,38 +395,54 @@ export default function DebtsPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {activeTab === "history" && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className={cn("h-12 w-12 rounded-2xl border-none bg-muted/50", filterStatus !== 'all' ? 'text-orange-600' : 'text-primary')}>
-                  <Filter className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-2xl">
-                <DropdownMenuLabel className="text-right">تصفية حسب الحالة</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={filterStatus} onValueChange={setFilterStatus}>
-                  <DropdownMenuRadioItem value="all" className="flex justify-end gap-2">الكل</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="customer_payment" className="flex justify-end gap-2">استلام دفعة (من عميل)</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="supplier_payment" className="flex justify-end gap-2">صرف دفعة (لمورد)</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
 
-        {activeTab === "history" && (
-          <div className="relative group" dir="rtl">
-            <User className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input 
-              placeholder="فلترة حسب المستلم..." 
-              className="pr-11 h-10 rounded-xl bg-muted/30 border-none focus-visible:ring-orange-400 transition-all text-right text-xs" 
-              value={recipientSearch}
-              onChange={(e) => setRecipientSearch(e.target.value)}
-            />
+        {/* فلاتر إضافية */}
+        <div className="grid grid-cols-2 gap-2" dir="rtl">
+          <div className="space-y-1">
+            <Label className="text-[10px] font-bold mr-1 text-muted-foreground">تصفية حسب الحملة</Label>
+            <Select value={filterCampaignId} onValueChange={setFilterCampaignId}>
+              <SelectTrigger className="h-10 rounded-xl bg-muted/30 border-none text-[11px] font-bold">
+                <SelectValue placeholder="كل الحملات" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">كل الحملات</SelectItem>
+                {campaigns?.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          {activeTab !== "history" ? (
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold mr-1 text-muted-foreground">حالة السداد</Label>
+              <Select value={filterDebtStatus} onValueChange={setFilterDebtStatus}>
+                <SelectTrigger className="h-10 rounded-xl bg-muted/30 border-none text-[11px] font-bold">
+                  <SelectValue placeholder="الكل" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="unpaid">ديون قائمة</SelectItem>
+                  <SelectItem value="paid">حسابات مُصفرة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold mr-1 text-muted-foreground">اسم المستلم</Label>
+              <div className="relative">
+                <FileText className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                <Input 
+                  placeholder="فلترة بالمستلم..." 
+                  className="pr-8 h-10 rounded-xl bg-muted/30 border-none text-[11px] text-right"
+                  value={recipientSearch}
+                  onChange={(e) => setRecipientSearch(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="p-4">
@@ -417,7 +471,7 @@ export default function DebtsPage() {
               </div>
 
               {filteredCustomerDebts.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
+                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة للفلاتر</div>
               ) : (
                 filteredCustomerDebts.map((c) => {
                   const isSettled = c.amount <= 0;
@@ -465,7 +519,7 @@ export default function DebtsPage() {
               </div>
 
               {filteredSupplierDebts.length === 0 ? (
-                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة</div>
+                <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد نتائج مطابقة للفلاتر</div>
               ) : (
                 filteredSupplierDebts.map((s) => {
                   const isSettled = s.amount <= 0;
@@ -547,9 +601,12 @@ export default function DebtsPage() {
                       )}
                     </div>
                     
-                    {/* الصف الثالث: المبلغ */}
+                    {/* الصف الثالث: المبلغ والحملة */}
                     <div className="flex justify-between items-center pt-2 border-t border-dashed border-border/30 px-1">
-                      <span className="text-[9px] text-muted-foreground font-black">المبلغ المسدد</span>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Ship className="w-2.5 h-2.5" />
+                        <span className="text-[9px] font-bold">{campaigns?.find(c => c.id === tr.campaignId)?.name || "حملة مجهولة"}</span>
+                      </div>
                       <span className={cn(
                         "text-base font-black tabular-nums",
                         tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
@@ -586,7 +643,7 @@ export default function DebtsPage() {
                 const isPaid = remaining <= 0
 
                 return (
-                  <div key={tr.id} className={cn("p-4 bg-white rounded-2xl border border-border/60 shadow-sm space-y-3 relative overflow-hidden transition-all", isPaid && "opacity-60 bg-muted/50")}>
+                  <div key={tr.id} className={cn("p-4 bg-white rounded-2xl border border-border/60 shadow-sm space-y-3 relative overflow-hidden transition-all", isPaid && "bg-muted/50")}>
                     {isPaid && <div className="absolute top-0 right-0 p-1 bg-green-500 text-white rounded-bl-xl z-10"><CheckCircle2 className="w-4 h-4" /></div>}
                     
                     <div className="flex justify-between items-start">
