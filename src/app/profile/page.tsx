@@ -11,9 +11,9 @@ import {
   Phone, 
   Lock, 
   Camera, 
-  CheckCircle2,
   ShieldCheck,
-  Image as ImageIcon
+  AlertCircle,
+  Info
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,26 +45,18 @@ export default function ProfilePage() {
   const [photoBase64, setPhotoBase64] = useState("")
 
   useEffect(() => {
-    // تعبئة البيانات من الملف الشخصي في قاعدة البيانات
+    // تعبئة البيانات تلقائياً بناءً على الحساب المسجل
     if (profile) {
       setName(profile.name || "")
       setPhotoBase64(profile.photoBase64 || "")
-      if (profile.phone) {
-        setPhone(profile.phone)
-      } else if (user?.email) {
-        // إذا لم يوجد رقم هاتف في البروفايل، نستخرجه من الإيميل الافتراضي (الرقم@abosaber.com)
-        const extracted = user.email.split('@')[0]
-        if (/^\d+$/.test(extracted)) {
-          setPhone(extracted)
-        }
-      }
-    } else if (user) {
-      // إذا كان البروفايل جديداً تماماً، نأخذ الرقم من الحساب المسجل فوراً
-      if (user.email) {
-        const extracted = user.email.split('@')[0]
-        if (/^\d+$/.test(extracted)) {
-          setPhone(extracted)
-        }
+      setPhone(profile.phone || "")
+    }
+    
+    // إذا لم يكن هناك رقم في البروفايل، نحاول استخراجه من البريد الإلكتروني الافتراضي
+    if (!profile?.phone && user?.email) {
+      const extracted = user.email.split('@')[0]
+      if (/^\d+$/.test(extracted)) {
+        setPhone(extracted)
       }
     }
   }, [profile, user])
@@ -86,7 +78,7 @@ export default function ProfilePage() {
     setSaving(true)
     
     try {
-      // 1. Update Firestore profile
+      // 1. تحديث بيانات البروفايل في Firestore
       await setDoc(profileRef, {
         name,
         phone,
@@ -94,17 +86,21 @@ export default function ProfilePage() {
         updatedAt: serverTimestamp()
       }, { merge: true })
 
-      // 2. Update Auth Password if provided
-      if (newPassword && newPassword.length >= 6) {
+      // 2. تحديث كلمة السر إذا تم إدخالها وكان المستخدم مسجلاً (ليس ضيفاً)
+      if (newPassword && newPassword.length >= 6 && !user.isAnonymous) {
         try {
           await updatePassword(user, newPassword)
-          toast({ title: "تم تحديث كلمة السر والبيانات" })
-        } catch (e) {
-          toast({ 
-            variant: "destructive", 
-            title: "فشل تحديث كلمة السر", 
-            description: "يجب تسجيل الدخول مرة أخرى للقيام بهذا الإجراء لأسباب أمنية" 
-          })
+          toast({ title: "تم تحديث البيانات وكلمة السر" })
+        } catch (e: any) {
+          if (e.code === 'auth/requires-recent-login') {
+            toast({ 
+              variant: "destructive", 
+              title: "إجراء أمني مطلوب", 
+              description: "يرجى تسجيل الخروج والدخول مرة أخرى لتغيير كلمة السر" 
+            })
+          } else {
+            toast({ variant: "destructive", title: "فشل تحديث كلمة السر" })
+          }
         }
       } else {
         toast({ title: "تم حفظ البيانات بنجاح" })
@@ -121,6 +117,8 @@ export default function ProfilePage() {
   if (loadingProfile) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary" /></div>
   }
+
+  const isGuest = user?.isAnonymous
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-10">
@@ -156,8 +154,8 @@ export default function ProfilePage() {
             />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-black text-primary">{name || "صاحب الحساب"}</h2>
-            <p className="text-xs text-muted-foreground font-bold">{user?.email || "مستخدم مسجل"}</p>
+            <h2 className="text-xl font-black text-primary">{name || (isGuest ? "حساب ضيف" : "صاحب الحساب")}</h2>
+            <p className="text-xs text-muted-foreground font-bold">{isGuest ? "جلسة مؤقتة" : user?.email}</p>
           </div>
         </div>
 
@@ -177,37 +175,47 @@ export default function ProfilePage() {
                 value={name} 
                 onChange={e => setName(e.target.value)} 
                 className="h-12 rounded-xl border-muted-foreground/20"
-                placeholder="أدخل اسمك الجديد..."
+                placeholder="أدخل اسمك..."
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-black mr-1 flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-primary" /> رقم الهاتف المسجل
+                <Phone className="w-3.5 h-3.5 text-primary" /> رقم الهاتف
               </Label>
               <Input 
                 value={phone} 
-                onChange={e => setPhone(e.target.value)} 
-                className="h-12 rounded-xl border-muted-foreground/20 text-left font-mono"
+                readOnly={!isGuest} // الرقم مسجل في الحساب ولا يمكن تغييره إلا بإنشاء حساب جديد
+                onChange={e => setPhone(e.target.value)}
+                className="h-12 rounded-xl border-muted-foreground/20 text-left font-mono bg-muted/20"
                 placeholder="777XXXXXX"
                 dir="ltr"
               />
-              <p className="text-[9px] text-muted-foreground font-bold px-1 italic">هذا هو الرقم الذي تستخدمه لتسجيل الدخول.</p>
+              {!isGuest && <p className="text-[9px] text-muted-foreground font-bold px-1 italic">رقم الهاتف مرتبط بحسابك المسجل حالياً.</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-black mr-1 flex items-center gap-2">
-                <Lock className="w-3.5 h-3.5 text-primary" /> تغيير كلمة السر
-              </Label>
-              <Input 
-                type="password"
-                value={newPassword} 
-                onChange={e => setNewPassword(e.target.value)} 
-                className="h-12 rounded-xl border-muted-foreground/20 text-left"
-                placeholder="أدخل كلمة سر جديدة إذا أردت التغيير"
-              />
-              <p className="text-[9px] text-muted-foreground font-bold px-1 italic">يجب أن تكون 6 خانات على الأقل. اتركها فارغة للحفاظ على الحالية.</p>
-            </div>
+            {isGuest ? (
+              <div className="p-4 bg-primary/5 rounded-2xl border border-dashed border-primary/20 flex gap-3">
+                <Info className="w-5 h-5 text-primary shrink-0" />
+                <p className="text-[10px] text-muted-foreground font-bold leading-relaxed">
+                  أنت تستخدم "حساب ضيف" حالياً. لحفظ بياناتك بشكل دائم وتغيير كلمة السر، يرجى إنشاء حساب برقم هاتفك من صفحة تسجيل الدخول.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-2 border-t border-dashed mt-4">
+                <Label className="text-xs font-black mr-1 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-primary" /> تغيير كلمة السر
+                </Label>
+                <Input 
+                  type="password"
+                  value={newPassword} 
+                  onChange={e => setNewPassword(e.target.value)} 
+                  className="h-12 rounded-xl border-muted-foreground/20 text-left"
+                  placeholder="أدخل كلمة سر جديدة للتغيير"
+                />
+                <p className="text-[9px] text-muted-foreground font-bold px-1 italic">اترك الحقل فارغاً إذا كنت لا ترغب في تغييرها.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

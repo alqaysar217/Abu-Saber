@@ -1,14 +1,14 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/firebase"
-import { signInWithEmailAndPassword, signInAnonymously } from "firebase/auth"
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "firebase/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Phone, Lock, LogIn, Loader2, AlertCircle, UserRoundCheck, ShieldCheck } from "lucide-react"
+import { Phone, Lock, LogIn, Loader2, AlertCircle, UserRoundCheck, ShieldCheck, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function LoginPage() {
@@ -19,6 +19,13 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [guestLoading, setGuestLoading] = useState(false)
   const [error, setError] = useState("")
+  const [isRegistering, setIsRegistering] = useState(false)
+
+  // تعبئة رقم الهاتف تلقائياً إذا كان مخزناً سابقاً
+  useEffect(() => {
+    const savedPhone = localStorage.getItem("last_phone")
+    if (savedPhone) setPhone(savedPhone)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,20 +38,31 @@ export function LoginPage() {
     setLoading(true)
     setError("")
 
-    // Firebase expects email format, so we map phone to a virtual email
+    // تحويل رقم الهاتف إلى بريد إلكتروني افتراضي للنظام
     const email = `${phone.trim()}@abosaber.com`
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بحسابك الخاص" })
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password)
+        toast({ title: "تم إنشاء الحساب", description: "أهلاً بك في نظام أبو صابر" })
+      } else {
+        await signInWithEmailAndPassword(auth, email, password)
+        toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بنجاح" })
+      }
+      
+      // حفظ الرقم للعبئة التلقائية مستقبلاً
+      localStorage.setItem("last_phone", phone.trim())
     } catch (err: any) {
-      console.error(err)
-      setError("بيانات الدخول غير صحيحة أو الحساب غير موجود")
-      toast({ 
-        variant: "destructive", 
-        title: "فشل الدخول", 
-        description: "تأكد من الرقم المضاف في فايربيس" 
-      })
+      // تجنب console.error لمنع ظهور نافذة الخطأ البرمجية في NextJS
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setError("بيانات الدخول غير صحيحة. تأكد من الرقم وكلمة السر.")
+      } else if (err.code === 'auth/user-not-found') {
+        setError("هذا الرقم غير مسجل. يمكنك اختيار 'إنشاء حساب جديد'.")
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError("هذا الرقم مسجل مسبقاً، جرب تسجيل الدخول.")
+      } else {
+        setError("حدث خطأ في عملية المصادقة. يرجى المحاولة لاحقاً.")
+      }
     } finally {
       setLoading(false)
     }
@@ -57,7 +75,7 @@ export function LoginPage() {
       await signInAnonymously(auth)
       toast({ title: "وضع التجربة", description: "أنت الآن تستخدم جلسة مؤقتة (Guest)" })
     } catch (err) {
-      toast({ variant: "destructive", title: "فشل الدخول السريع" })
+      setError("فشل الدخول السريع كضيف")
     } finally {
       setGuestLoading(false)
     }
@@ -66,8 +84,10 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
-        <CardHeader className="lux-gradient text-white text-center pb-10 pt-10">
-          <CardTitle className="text-2xl font-black">تسجيل الدخول</CardTitle>
+        <CardHeader className="lux-gradient text-white text-center pb-10 pt-10 relative">
+          <CardTitle className="text-2xl font-black">
+            {isRegistering ? "إنشاء حساب جديد" : "تسجيل الدخول"}
+          </CardTitle>
           <div className="flex items-center justify-center gap-1.5 mt-1 opacity-70">
             <ShieldCheck className="w-3 h-3" />
             <p className="text-[10px] font-bold uppercase tracking-wider">نظام إدارة مبيعات الأسماك</p>
@@ -83,7 +103,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground mr-1">رقم الهاتف المسجل</Label>
+              <Label className="text-xs font-bold text-muted-foreground mr-1">رقم الهاتف</Label>
               <div className="relative">
                 <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
@@ -93,6 +113,7 @@ export function LoginPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading || guestLoading}
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -108,6 +129,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading || guestLoading}
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -121,16 +143,24 @@ export function LoginPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  <LogIn className="w-5 h-5" />
-                  دخول للنظام
+                  {isRegistering ? <UserPlus className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
+                  {isRegistering ? "تسجيل الحساب" : "دخول للنظام"}
                 </>
               )}
             </Button>
+
+            <button 
+              type="button"
+              onClick={() => { setIsRegistering(!isRegistering); setError(""); }}
+              className="w-full text-center text-xs font-bold text-primary hover:underline"
+            >
+              {isRegistering ? "لديك حساب بالفعل؟ سجل دخولك" : "ليس لديك حساب؟ أنشئ حساباً جديداً"}
+            </button>
           </form>
 
           <div className="relative py-2">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted"></span></div>
-            <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-white px-2 text-muted-foreground font-bold">للتجربة السريعة</span></div>
+            <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-white px-2 text-muted-foreground font-bold">أو استمر بدون حساب</span></div>
           </div>
 
           <div className="space-y-3">
@@ -141,14 +171,8 @@ export function LoginPage() {
               disabled={loading || guestLoading}
             >
               {guestLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserRoundCheck className="w-4 h-4" />}
-              دخول كـ "ضيف" (بيانات منفصلة)
+              دخول سريع كـ "ضيف"
             </Button>
-            
-            <div className="p-3 bg-muted/30 rounded-xl border border-dashed border-muted-foreground/10">
-              <p className="text-[9px] text-muted-foreground text-center leading-relaxed">
-                ملاحظة: الدخول كـ <strong>ضيف</strong> ينشئ جلسة جديدة وبياناتك فيها لن تظهر عند الدخول <strong>برقم الهاتف</strong>. كل حساب له مساحة تخزين خاصة به.
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>
