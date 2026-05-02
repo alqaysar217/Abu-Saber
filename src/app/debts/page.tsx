@@ -28,7 +28,8 @@ import {
   ArrowUpDown,
   Filter,
   Check,
-  LayoutDashboard
+  LayoutDashboard,
+  Coins
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -717,7 +718,10 @@ export default function DebtsPage() {
       <Dialog open={!!paymentTarget} onOpenChange={() => setPaymentTarget(null)}>
         <DialogContent className="max-w-[95%] rounded-3xl mx-auto p-0 overflow-hidden border-none shadow-2xl">
           <DialogHeader className="p-6 bg-gradient-to-br from-primary to-accent text-white">
-            <DialogTitle className="text-lg font-black text-right flex items-center justify-end gap-2">تسجيل سداد مالي <Banknote className="w-5 h-5" /></DialogTitle>
+            <DialogTitle className="text-lg font-black text-right flex items-center justify-end gap-2">
+              <Banknote className="w-5 h-5" />
+              تسجيل سداد مالي
+            </DialogTitle>
           </DialogHeader>
           <div className="p-6 space-y-5" dir="rtl">
             <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-2xl border border-dashed text-right">
@@ -732,7 +736,10 @@ export default function DebtsPage() {
             </div>
 
             <div className="space-y-2 text-right">
-              <Label className="text-xs font-black mr-1">المبلغ المراد سداده الآن</Label>
+              <Label className="text-xs font-black mr-1 flex items-center gap-2">
+                <Coins className="w-4 h-4 text-primary" />
+                المبلغ المراد سداده الآن
+              </Label>
               <Input type="text" inputMode="decimal" className="h-14 rounded-2xl text-center text-xl font-black tabular-nums border-2 focus:ring-primary" value={paymentAmount} onChange={(e) => { const v = e.target.value.replace(/,/g, ""); if (v === "" || /^\d*\.?\d*$/.test(v)) setPaymentAmount(v); }} />
               {parseFloat(paymentAmount) > paymentTarget?.remainingAmount && (
                 <p className="text-[10px] text-destructive font-black flex items-center gap-1 justify-end mt-1"><AlertCircle className="w-3 h-3" /> خطأ: المبلغ أكبر من الدين المتبقي</p>
@@ -740,12 +747,18 @@ export default function DebtsPage() {
             </div>
 
             <div className="space-y-2 text-right">
-              <Label className="text-xs font-black mr-1">تاريخ السداد</Label>
+              <Label className="text-xs font-black mr-1 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                تاريخ السداد
+              </Label>
               <Input type="date" className="h-12 rounded-2xl text-right" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
             </div>
 
             <div className="space-y-2 text-right">
-              <Label className="text-xs font-black mr-1">ملاحظات إضافية / المستلم (اختياري)</Label>
+              <Label className="text-xs font-black mr-1 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                ملاحظات إضافية / المستلم (اختياري)
+              </Label>
               <Textarea placeholder="مثال: تم تسليم المبلغ لفلان..." className="rounded-2xl resize-none text-right h-24" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
             </div>
           </div>
