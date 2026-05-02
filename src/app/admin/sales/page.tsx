@@ -278,7 +278,7 @@ export default function AllSalesDetailedPage() {
                 </TableHeader>
                 <TableBody>
                   {reportData.map((item) => (
-                    <TableRow key={item.id} className="active:bg-muted/50 transition-colors border-b-muted/20">
+                    <TableRow key={item.id} className="active:bg-muted/50 transition-colors border-b-muted/20 even:bg-muted/20">
                       <TableCell className="text-right py-4">
                         <div className="flex items-center gap-2">
                            <Fish className="w-3.5 h-3.5 text-primary/60" />
@@ -286,20 +286,20 @@ export default function AllSalesDetailedPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center font-bold text-xs tabular-nums">
-                        {item.quantity.toLocaleString()} <span className="text-[9px] opacity-50">كجم</span>
+                        {item.quantity.toLocaleString('en-US')} <span className="text-[9px] opacity-50">kg</span>
                       </TableCell>
                       <TableCell className="text-center font-bold text-xs tabular-nums text-muted-foreground">
-                        {item.pricePerKg.toLocaleString()}
+                        {item.pricePerKg.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-center font-black text-xs tabular-nums text-primary">
-                        {item.lineTotal.toLocaleString()}
+                        {item.lineTotal.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-xs font-bold text-foreground truncate max-w-[120px] inline-block">{item.customerName}</span>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
-                          {item.date ? format(new Date(item.date), "yyyy/MM/dd", { locale: ar }) : ""}
+                          {item.date ? format(new Date(item.date), "yyyy/MM/dd") : ""}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -316,10 +316,10 @@ export default function AllSalesDetailedPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center font-black text-xs tabular-nums text-green-700">
-                        {item.paidAmount.toLocaleString()}
+                        {item.paidAmount.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-center font-black text-xs tabular-nums text-destructive bg-destructive/5">
-                        {item.remainingAmount.toLocaleString()}
+                        {item.remainingAmount.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-right max-w-[150px]">
                         <p className="text-[9px] text-muted-foreground font-medium truncate italic" title={item.notes}>
@@ -350,7 +350,7 @@ export default function AllSalesDetailedPage() {
          <div className="flex flex-col">
             <span className="text-[10px] font-bold text-muted-foreground">إجمالي مبيعات القائمة</span>
             <span className="text-lg font-black text-primary tabular-nums">
-               {reportData.reduce((acc, curr) => acc + curr.lineTotal, 0).toLocaleString()} <span className="text-[10px]">ر.ي</span>
+               {reportData.reduce((acc, curr) => acc + curr.lineTotal, 0).toLocaleString('en-US')} <span className="text-[10px]">ر.ي</span>
             </span>
          </div>
          <Button 
