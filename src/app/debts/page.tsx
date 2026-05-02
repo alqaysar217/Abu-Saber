@@ -343,26 +343,48 @@ export default function DebtsPage() {
                 </div>
               ) : (
                 historyTransactions?.map((tr: any) => (
-                  <div key={tr.id} className="p-4 bg-white rounded-2xl border border-border/40 shadow-sm space-y-2">
+                  <div 
+                    key={tr.id} 
+                    className={cn(
+                      "p-4 rounded-2xl border shadow-sm space-y-3 transition-all",
+                      tr.type === 'customer_payment' 
+                        ? 'bg-gradient-to-l from-green-50/50 to-white border-green-100' 
+                        : 'bg-gradient-to-l from-orange-50/50 to-white border-orange-100'
+                    )}
+                  >
                     <div className="flex justify-between items-start">
-                      <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-lg", tr.type === 'customer_payment' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600')}>
-                        {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start text-right">
+                         <span className={cn(
+                           "text-[10px] font-black px-2 py-0.5 rounded-lg", 
+                           tr.type === 'customer_payment' ? 'bg-green-600 text-white shadow-sm' : 'bg-orange-600 text-white shadow-sm'
+                         )}>
+                          {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
+                        </span>
+                        <span className="text-sm font-bold mt-1">{tr.entityName}</span>
+                      </div>
                       <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
                         {tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}
                         <Calendar className="w-3 h-3" />
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-black tabular-nums">{tr.amount.toLocaleString()} ر.ي</span>
-                      <span className="text-sm font-bold text-right">{tr.entityName}</span>
-                    </div>
-                    {tr.notes && (
-                      <div className="p-2 bg-muted/30 rounded-lg text-[10px] text-muted-foreground font-medium text-right flex items-center justify-end gap-2">
-                        {tr.notes}
-                        <FileText className="w-3 h-3" />
+                    
+                    <div className="flex justify-between items-center py-1 border-t border-dashed border-border/40">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-muted-foreground font-bold">المبلغ المسدد</span>
+                        <span className={cn(
+                          "text-xl font-black tabular-nums",
+                          tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
+                        )}>
+                          {tr.amount.toLocaleString('en-US')} <span className="text-[10px] font-bold">ر.ي</span>
+                        </span>
                       </div>
-                    )}
+                      {tr.notes && (
+                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-xl border border-border/30 max-w-[60%]">
+                            <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] text-muted-foreground font-medium truncate">{tr.notes}</span>
+                         </div>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -377,7 +399,7 @@ export default function DebtsPage() {
             <button onClick={() => setSelectedEntity(null)} className="absolute left-6 top-8 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10">
               <X className="w-5 h-5 text-white" />
             </button>
-            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2">
+            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
               <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
               <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
             </div>
@@ -430,15 +452,15 @@ export default function DebtsPage() {
                     <div className="grid grid-cols-3 gap-2 py-2 border-t border-dashed border-border/50 text-center">
                        <div className="flex flex-col">
                           <span className="text-[8px] text-muted-foreground font-bold">المتبقي</span>
-                          <span className={cn("text-[11px] font-black tabular-nums", isPaid ? "text-muted-foreground line-through" : "text-red-600")}>{remaining.toLocaleString()}</span>
+                          <span className={cn("text-[11px] font-black tabular-nums", isPaid ? "text-muted-foreground line-through" : "text-red-600")}>{remaining.toLocaleString('en-US')}</span>
                        </div>
                        <div className="flex flex-col border-x border-border/30 px-1">
                           <span className="text-[8px] text-muted-foreground font-bold">المدفوع</span>
-                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString()}</span>
+                          <span className="text-[11px] font-black tabular-nums text-green-600">{tr.paidAmount?.toLocaleString('en-US')}</span>
                        </div>
                        <div className="flex flex-col">
                           <span className="text-[8px] text-muted-foreground font-bold">الإجمالي</span>
-                          <span className="text-[11px] font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
+                          <span className="text-[11px] font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString('en-US')}</span>
                        </div>
                     </div>
 
@@ -470,7 +492,7 @@ export default function DebtsPage() {
             <div className="grid grid-cols-2 gap-3 p-4 bg-muted/30 rounded-2xl border border-dashed text-right">
               <div className="space-y-1">
                 <span className="text-[10px] text-muted-foreground font-bold">المديونية المتبقية</span>
-                <p className="text-sm font-black text-red-600">{paymentTarget?.remainingAmount?.toLocaleString()} ر.ي</p>
+                <p className="text-sm font-black text-red-600">{paymentTarget?.remainingAmount?.toLocaleString('en-US')} ر.ي</p>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-muted-foreground font-bold">الحملة</span>
