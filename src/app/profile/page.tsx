@@ -45,12 +45,29 @@ export default function ProfilePage() {
   const [photoBase64, setPhotoBase64] = useState("")
 
   useEffect(() => {
+    // تعبئة البيانات من الملف الشخصي في قاعدة البيانات
     if (profile) {
       setName(profile.name || "")
-      setPhone(profile.phone || "")
       setPhotoBase64(profile.photoBase64 || "")
+      if (profile.phone) {
+        setPhone(profile.phone)
+      } else if (user?.email) {
+        // إذا لم يوجد رقم هاتف في البروفايل، نستخرجه من الإيميل الافتراضي (الرقم@abosaber.com)
+        const extracted = user.email.split('@')[0]
+        if (/^\d+$/.test(extracted)) {
+          setPhone(extracted)
+        }
+      }
+    } else if (user) {
+      // إذا كان البروفايل جديداً تماماً، نأخذ الرقم من الحساب المسجل فوراً
+      if (user.email) {
+        const extracted = user.email.split('@')[0]
+        if (/^\d+$/.test(extracted)) {
+          setPhone(extracted)
+        }
+      }
     }
-  }, [profile])
+  }, [profile, user])
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -79,12 +96,15 @@ export default function ProfilePage() {
 
       // 2. Update Auth Password if provided
       if (newPassword && newPassword.length >= 6) {
-        // This requires recent re-authentication in production, but let's try
         try {
           await updatePassword(user, newPassword)
           toast({ title: "تم تحديث كلمة السر والبيانات" })
         } catch (e) {
-          toast({ variant: "destructive", title: "فشل تحديث كلمة السر", description: "يرجى تسجيل الدخول مجدداً لتغيير كلمة السر" })
+          toast({ 
+            variant: "destructive", 
+            title: "فشل تحديث كلمة السر", 
+            description: "يجب تسجيل الدخول مرة أخرى للقيام بهذا الإجراء لأسباب أمنية" 
+          })
         }
       } else {
         toast({ title: "تم حفظ البيانات بنجاح" })
@@ -157,34 +177,36 @@ export default function ProfilePage() {
                 value={name} 
                 onChange={e => setName(e.target.value)} 
                 className="h-12 rounded-xl border-muted-foreground/20"
-                placeholder="أدخل اسمك..."
+                placeholder="أدخل اسمك الجديد..."
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-black mr-1 flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-primary" /> رقم الهاتف
+                <Phone className="w-3.5 h-3.5 text-primary" /> رقم الهاتف المسجل
               </Label>
               <Input 
                 value={phone} 
                 onChange={e => setPhone(e.target.value)} 
-                className="h-12 rounded-xl border-muted-foreground/20 text-left"
+                className="h-12 rounded-xl border-muted-foreground/20 text-left font-mono"
                 placeholder="777XXXXXX"
+                dir="ltr"
               />
+              <p className="text-[9px] text-muted-foreground font-bold px-1 italic">هذا هو الرقم الذي تستخدمه لتسجيل الدخول.</p>
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-black mr-1 flex items-center gap-2">
-                <Lock className="w-3.5 h-3.5 text-primary" /> كلمة سر جديدة
+                <Lock className="w-3.5 h-3.5 text-primary" /> تغيير كلمة السر
               </Label>
               <Input 
                 type="password"
                 value={newPassword} 
                 onChange={e => setNewPassword(e.target.value)} 
                 className="h-12 rounded-xl border-muted-foreground/20 text-left"
-                placeholder="اتركها فارغة إذا لم ترد التغيير"
+                placeholder="أدخل كلمة سر جديدة إذا أردت التغيير"
               />
-              <p className="text-[9px] text-muted-foreground font-bold px-1 italic">يجب أن تكون 6 خانات على الأقل</p>
+              <p className="text-[9px] text-muted-foreground font-bold px-1 italic">يجب أن تكون 6 خانات على الأقل. اتركها فارغة للحفاظ على الحالية.</p>
             </div>
           </CardContent>
         </Card>

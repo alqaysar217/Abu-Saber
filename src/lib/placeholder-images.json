@@ -15,7 +15,7 @@
     {
       "id": "app-logo",
       "description": "Luxurious logo for Abu Saber Fish Trading",
-      "imageUrl": "https://picsum.photos/seed/fishlogo/200/200",
+      "imageUrl": "/logo.png",
       "imageHint": "fish logo"
     }
   ]
