@@ -56,27 +56,44 @@ export default function CampaignsPage() {
         </div>
       </header>
 
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-20 gap-3">
             <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
             <p className="text-xs font-bold text-muted-foreground">جاري تحميل الحملات...</p>
           </div>
         ) : filteredCampaigns && filteredCampaigns.length > 0 ? (
-          <div className="bg-white rounded-[2rem] border border-border/60 shadow-sm overflow-hidden divide-y divide-border/40">
-            {filteredCampaigns.map((camp: any) => {
-              const isCompleted = camp.status === 'completed'
-              
-              return (
-                <Link key={camp.id} href={`/campaigns/${camp.id}`} className="block">
-                  <div className={cn(
-                    "p-4 transition-all duration-200 active:bg-muted/50 hover:bg-muted/10 group relative flex flex-col gap-3",
-                    isCompleted ? "bg-muted/10" : "bg-white"
-                  )}>
+          filteredCampaigns.map((camp: any) => {
+            const isCompleted = camp.status === 'completed'
+            
+            return (
+              <Link key={camp.id} href={`/campaigns/${camp.id}`} className="block">
+                <Card className={cn(
+                  "border-none shadow-md rounded-[2rem] transition-all active:scale-[0.98] overflow-hidden",
+                  isCompleted ? "bg-muted/40" : "bg-white"
+                )}>
+                  <CardContent className="p-5 flex flex-col gap-4">
                     <div className="flex justify-between items-start">
+                      {/* معلومات الحملة في جهة اليمين */}
+                      <div className="text-right space-y-1.5">
+                        <h3 className={cn(
+                          "font-black text-lg tracking-tight",
+                          isCompleted ? "text-muted-foreground" : "text-primary"
+                        )}>
+                          {camp.name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground/70">
+                          <Calendar className="w-3.5 h-3.5 text-primary/60" />
+                          <span>
+                            {camp.startDate ? format(new Date(camp.startDate), "dd MMMM yyyy", { locale: ar }) : "بدون تاريخ"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* حالة الحملة في جهة اليسار */}
                       <Badge 
                         className={cn(
-                          "rounded-xl px-2.5 py-0.5 font-black text-[9px] shadow-none border-none",
+                          "rounded-xl px-3 py-1 font-black text-[10px] shadow-none border-none",
                           isCompleted 
                             ? "bg-secondary text-secondary-foreground" 
                             : "bg-accent/10 text-accent"
@@ -84,7 +101,7 @@ export default function CampaignsPage() {
                       >
                         {isCompleted ? (
                           <span className="flex items-center gap-1">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            <CheckCircle2 className="w-3 h-3" />
                             مكتملة
                           </span>
                         ) : (
@@ -94,39 +111,25 @@ export default function CampaignsPage() {
                           </span>
                         )}
                       </Badge>
-                      <div className="text-right space-y-1">
-                        <h3 className={cn(
-                          "font-black text-sm leading-tight transition-colors", 
-                          isCompleted ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
-                        )}>
-                          {camp.name}
-                        </h3>
-                        <div className="flex items-center justify-end gap-1.5 text-[9px] font-bold text-muted-foreground/80">
-                          <span>
-                            {camp.startDate ? format(new Date(camp.startDate), "dd MMMM yyyy", { locale: ar }) : "بدون تاريخ"}
-                          </span>
-                          <Calendar className="w-3 h-3 text-primary/70" />
-                        </div>
-                      </div>
                     </div>
                     
-                    <div className="flex justify-between items-center pt-1">
+                    <div className="flex justify-between items-center pt-3 border-t border-dashed border-border/60">
+                      <p className="text-[10px] text-muted-foreground font-bold">
+                        {isCompleted ? 'حملة مؤرشفة' : 'قيد التشغيل والبيع حالياً'}
+                      </p>
                       <div className={cn(
-                        "flex items-center gap-1 font-black text-[10px] transition-transform group-hover:translate-x-[-2px]",
+                        "flex items-center gap-1 font-black text-[11px]",
                         isCompleted ? "text-muted-foreground" : "text-primary"
                       )}>
                         <span>التفاصيل</span>
-                        <ChevronRight className="w-3 h-3 rotate-180" />
+                        <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                       </div>
-                      <p className="text-[9px] text-muted-foreground font-bold">
-                        {isCompleted ? 'حملة مؤرشفة' : 'قيد التشغيل والبيع'}
-                      </p>
                     </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })
         ) : (
           <div className="flex flex-col items-center justify-center p-16 bg-white/50 rounded-[3rem] border-2 border-dashed border-muted-foreground/20 text-center space-y-4">
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center">
