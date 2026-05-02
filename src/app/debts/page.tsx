@@ -355,8 +355,10 @@ export default function DebtsPage() {
                     {/* Row 1: Status and Date */}
                     <div className="flex justify-between items-center">
                       <span className={cn(
-                        "text-[11px] font-black", 
-                        tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700'
+                        "text-[10px] font-black px-2 py-0.5 rounded-lg", 
+                        tr.type === 'customer_payment' 
+                          ? 'text-green-700 bg-green-100' 
+                          : 'text-orange-700 bg-orange-100'
                       )}>
                         {tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}
                       </span>
