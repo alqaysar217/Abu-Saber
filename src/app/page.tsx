@@ -6,8 +6,7 @@ import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { QuickActions } from "@/components/dashboard/QuickActions"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -18,11 +17,11 @@ import {
   Menu, 
   Copy, 
   RefreshCw, 
-  History
+  Sparkles
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
-import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase"
-import { collection, query, orderBy, getDocs, setDoc, doc } from "firebase/firestore"
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
@@ -31,7 +30,6 @@ export default function Home() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [migrating, setMigrating] = useState(false)
-  const [migrationDone, setMigrationDone] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     debtsToMe: false,
@@ -90,15 +88,55 @@ export default function Home() {
     return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
 
+  const setupDemoData = async () => {
+    if (!db || !user) return
+    setMigrating(true)
+    try {
+      const campRef = await addDoc(collection(db, "users", user.uid, "campaigns"), {
+        name: "حملة تجريبية (المكلا - عدن)",
+        startDate: new Date().toISOString(),
+        status: "open",
+        notes: "بيانات تجريبية لاختبار النظام",
+        createdAt: serverTimestamp()
+      })
+      
+      const custRef = await addDoc(collection(db, "users", user.uid, "customers"), {
+        name: "مطعم السعيدة (تجريبي)",
+        phone: "777000000",
+        createdAt: serverTimestamp()
+      })
+
+      await addDoc(collection(db, "users", user.uid, "invoices"), {
+        campaignId: campRef.id,
+        customerId: custRef.id,
+        totalAmount: 1500000,
+        paidAmount: 1000000,
+        remainingAmount: 500000,
+        status: "جزئي",
+        paymentType: "جزئي",
+        invoiceDate: new Date().toISOString(),
+        userId: user.uid,
+        createdAt: serverTimestamp()
+      })
+
+      toast({ title: "تم تجهيز البيانات التجريبية بنجاح" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "فشل تجهيز البيانات" })
+    } finally {
+      setMigrating(false)
+    }
+  }
+
   const copyUid = () => {
     if (user?.uid) {
       navigator.clipboard.writeText(user.uid)
-      toast({ title: "تم نسخ معرف المستخدم", description: "يمكنك الآن استخدامه في لوحة التحكم" })
+      toast({ title: "تم نسخ معرف المستخدم" })
     }
   }
 
   if (!mounted) return null
 
+  const isDataEmpty = (allInvoices?.length === 0 && allPurchases?.length === 0)
   const recentInvoices = allInvoices?.slice(0, 3) || []
 
   return (
@@ -134,7 +172,6 @@ export default function Home() {
 
       <section className="px-4 -mt-14 mb-8 relative z-20">
         <div className="grid grid-cols-2 gap-4">
-          {/* ديون لك */}
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
             <CardContent className="p-5 flex flex-col gap-3">
               <div className="flex items-center gap-2 text-green-700">
@@ -142,10 +179,7 @@ export default function Home() {
                 <span className="text-[10px] font-bold uppercase tracking-wide">ديون لك</span>
               </div>
               <div className="flex justify-between items-center">
-                <button 
-                  onClick={() => toggleVisibility('debtsToMe')}
-                  className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-                >
+                <button onClick={() => toggleVisibility('debtsToMe')} className="p-1.5 rounded-full bg-secondary/50">
                   {visibility['debtsToMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <p className="text-lg font-black text-green-700 tabular-nums">
@@ -155,7 +189,6 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* ديون عليك */}
           <Card className="border-none shadow-xl rounded-[2rem] bg-white/80 backdrop-blur-md">
             <CardContent className="p-5 flex flex-col gap-3">
               <div className="flex items-center gap-2 text-red-700">
@@ -163,10 +196,7 @@ export default function Home() {
                 <span className="text-[10px] font-bold uppercase tracking-wide">ديون عليك</span>
               </div>
               <div className="flex justify-between items-center">
-                <button 
-                  onClick={() => toggleVisibility('debtsByMe')}
-                  className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-                >
+                <button onClick={() => toggleVisibility('debtsByMe')} className="p-1.5 rounded-full bg-secondary/50">
                   {visibility['debtsByMe'] ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <p className="text-lg font-black text-red-700 tabular-nums">
@@ -201,6 +231,30 @@ export default function Home() {
         </Card>
       </section>
 
+      {isDataEmpty && !loadingInvoices && (
+        <section className="px-4 mb-8">
+          <div className="p-6 bg-primary/5 border-2 border-dashed border-primary/20 rounded-[2.5rem] flex flex-col items-center text-center gap-4 animate-in fade-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-black text-primary">أهلاً بك في نظامك الجديد</h3>
+              <p className="text-xs text-muted-foreground font-bold leading-relaxed">
+                يبدو أن حسابك فارغ حالياً. يمكنك البدء بإضافة فواتيرك، أو الضغط بالأسفل لتحميل بيانات "مؤقتة" لتجربة شكل النظام.
+              </p>
+            </div>
+            <button 
+              onClick={setupDemoData}
+              disabled={migrating}
+              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all"
+            >
+              {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              تحميل بيانات تجريبية (مؤقتة)
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="mb-8">
         <h2 className="px-6 text-lg font-black mb-4">روابط سريعة</h2>
         <QuickActions />
@@ -231,7 +285,7 @@ export default function Home() {
             ))
           ) : (
             <div className="text-center py-10 text-muted-foreground text-xs bg-white rounded-[1.5rem] border border-dashed">
-              لا توجد فواتير مسجلة حالياً لهذه الجلسة
+              لا توجد فواتير حقيقية مسجلة بعد.
             </div>
           )}
         </div>
@@ -239,15 +293,11 @@ export default function Home() {
 
       <footer className="px-6 py-8 mt-auto border-t border-dashed opacity-40">
         <div className="flex flex-col items-center gap-2">
-          <p className="text-[8px] font-bold uppercase tracking-widest text-center">معرف الجلسة الحالية (UID)</p>
-          <button 
-            onClick={copyUid}
-            className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full hover:bg-muted/80 transition-colors"
-          >
+          <p className="text-[8px] font-bold uppercase tracking-widest text-center">معرف المستخدم (UID)</p>
+          <button onClick={copyUid} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full">
             <span className="text-[10px] font-mono truncate max-w-[200px]">{user?.uid}</span>
             <Copy className="w-3 h-3" />
           </button>
-          <p className="text-[8px] text-center max-w-xs">هذا الرمز يساعدك في العثور على بياناتك في لوحة تحكم فايربيس.</p>
         </div>
       </footer>
 
