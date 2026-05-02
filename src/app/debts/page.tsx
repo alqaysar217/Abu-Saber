@@ -40,10 +40,6 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: purchases } = useCollection(purchasesQuery)
 
-  // Fetch expenses from all campaigns (this is a bit complex in Firestore, we'll fetch from a denormalized collection if possible or handle simply)
-  // For MVP, let's assume we fetch all expenses. Note: In our current structure, expenses are subcollections.
-  // To keep it working and simple, we will calculate debts primarily from Invoices and Purchases.
-  
   // Calculate Customer Debts (Money owed to me)
   const customerDebts = useMemo(() => {
     if (!invoices || !customers) return []
@@ -149,29 +145,30 @@ export default function DebtsPage() {
               {customerDebts.length > 0 ? (
                 customerDebts.map((c) => (
                   <div key={c.id} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group">
-                    <div className="flex flex-col items-start gap-1">
-                      <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-muted rounded-full text-muted-foreground group-hover:text-primary transition-colors">
-                           <Phone className="w-3 h-3" />
-                        </div>
-                        <span className="text-[11px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
-                      </div>
-                    </div>
+                    {/* جهة اليمين: الاسم والأيقونة */}
                     <div className="flex gap-4 items-center">
-                      <div className="flex flex-col text-right">
-                        <span className="font-black text-sm">{c.name}</span>
-                        <button 
-                          onClick={() => window.open(`tel:${c.phone}`, '_self')}
-                          className="text-[10px] text-primary font-black mt-1 flex items-center justify-end gap-1"
-                        >
-                          اتصال الآن
-                          <MessageCircle className="w-3 h-3" />
-                        </button>
-                      </div>
                       <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
                         <User className="w-6 h-6" />
                       </div>
+                      <div className="flex flex-col text-right">
+                        <span className="font-black text-sm">{c.name}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                           <Phone className="w-3 h-3 text-muted-foreground" />
+                           <span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* جهة اليسار: المبلغ والاتصال */}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>
+                      <button 
+                        onClick={() => window.open(`tel:${c.phone}`, '_self')}
+                        className="text-[10px] text-primary font-black flex items-center gap-1 hover:underline transition-all"
+                      >
+                        اتصال الآن
+                        <MessageCircle className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 ))
@@ -197,18 +194,21 @@ export default function DebtsPage() {
               {supplierDebts.length > 0 ? (
                 supplierDebts.map((s) => (
                   <div key={s.id} className="flex justify-between items-center p-5 bg-white rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group">
-                    <div className="flex flex-col items-start gap-1">
-                      <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
-                      <span className="text-[10px] text-muted-foreground font-bold">باقي حساب مشتريات</span>
-                    </div>
+                    {/* جهة اليمين: الاسم والأيقونة */}
                     <div className="flex gap-4 items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
+                        <Wallet className="w-6 h-6" />
+                      </div>
                       <div className="flex flex-col text-right">
                         <span className="font-black text-sm">{s.name}</span>
                         <span className="text-[10px] text-muted-foreground font-bold">مورد معتمد</span>
                       </div>
-                      <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 shadow-inner">
-                        <Wallet className="w-6 h-6" />
-                      </div>
+                    </div>
+
+                    {/* جهة اليسار: المبلغ والوصف */}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>
+                      <span className="text-[10px] text-muted-foreground font-bold italic">باقي حساب مشتريات</span>
                     </div>
                   </div>
                 ))
