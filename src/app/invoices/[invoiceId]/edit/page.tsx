@@ -80,6 +80,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ invoiceI
 
   const [campaignId, setCampaignId] = useState("")
   const [customerId, setCustomerId] = useState("")
+  const [date, setDate] = useState("")
   const [addedItems, setAddedItems] = useState<InvoiceItem[]>([])
   const [paymentType, setPaymentType] = useState("نقد")
   const [paidAmount, setPaidAmount] = useState("")
@@ -92,6 +93,20 @@ export default function EditInvoicePage({ params }: { params: Promise<{ invoiceI
       setCustomerId(invoice.customerId || "")
       setPaymentType(invoice.paymentType || "نقد")
       setPaidAmount(invoice.paidAmount?.toString() || "")
+      
+      // Prepopulate date correctly
+      const savedDate = invoice.invoiceDate || invoice.date;
+      if (savedDate) {
+        try {
+          const d = new Date(savedDate)
+          if (!isNaN(d.getTime())) {
+            setDate(d.toISOString().split('T')[0])
+          }
+        } catch (e) {
+          console.error("Invalid date", e)
+        }
+      }
+
       if (invoice.items) {
         setAddedItems(invoice.items.map((item: any) => ({
           ...item,
@@ -137,12 +152,23 @@ export default function EditInvoicePage({ params }: { params: Promise<{ invoiceI
   const remainingAmount = grandTotal - numPaidAmount
 
   const handleUpdate = async () => {
-    if (!invoiceRef || !user) return
+    if (!invoiceRef || !user || !date) {
+      toast({ variant: "destructive", title: "يرجى إكمال البيانات المطلوبة" })
+      return
+    }
+
+    const parsedDate = new Date(date)
+    if (isNaN(parsedDate.getTime())) {
+      toast({ variant: "destructive", title: "تاريخ غير صالح" })
+      return
+    }
+
     setSaving(true)
 
     const updateData = {
       campaignId,
       customerId,
+      invoiceDate: parsedDate.toISOString(),
       items: addedItems.map(({ tempId, total, ...rest }) => rest),
       totalAmount: grandTotal,
       paidAmount: numPaidAmount,
@@ -197,6 +223,10 @@ export default function EditInvoicePage({ params }: { params: Promise<{ invoiceI
                   {customers?.map((cust) => <SelectItem key={cust.id} value={cust.id}>{cust.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-muted-foreground">التاريخ</Label>
+              <Input type="date" className="h-11 rounded-xl text-right" value={date} onChange={e => setDate(e.target.value)} />
             </div>
           </CardContent>
         </Card>

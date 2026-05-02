@@ -82,9 +82,12 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
       setPaymentType(expense.paymentType || "نقد")
       setPaidAmount(expense.paidAmount?.toString() || "")
       setPayeeId(expense.payeeId || "")
-      if (expense.expenseDate) {
+      
+      // Prepopulate date correctly from database
+      const savedDate = expense.expenseDate || expense.date;
+      if (savedDate) {
         try {
-          const d = new Date(expense.expenseDate)
+          const d = new Date(savedDate)
           if (!isNaN(d.getTime())) {
             setDate(d.toISOString().split('T')[0])
           }
@@ -92,6 +95,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
           console.error("Invalid date from database", e)
         }
       }
+      
       setNotes(expense.notes || "")
     }
   }, [expense])

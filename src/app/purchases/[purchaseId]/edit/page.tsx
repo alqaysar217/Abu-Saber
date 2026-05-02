@@ -103,9 +103,12 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
     if (purchaseData) {
       setCampaignId(purchaseData.campaignId || "")
       setSupplierId(purchaseData.supplierId || "")
-      if (purchaseData.purchaseDate) {
+      
+      // Prepopulate date correctly
+      const savedDate = purchaseData.purchaseDate || purchaseData.date;
+      if (savedDate) {
         try {
-          const d = new Date(purchaseData.purchaseDate)
+          const d = new Date(savedDate)
           if (!isNaN(d.getTime())) {
             setDate(d.toISOString().split('T')[0])
           }
