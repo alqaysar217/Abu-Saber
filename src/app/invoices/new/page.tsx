@@ -446,7 +446,7 @@ export default function NewInvoicePage() {
                             </div>
                             <div className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
                               <span className="text-xs font-bold text-muted-foreground">المتبقي (دين على العميل):</span>
-                              <span className="text-lg font-black text-destructive tabular-nums">{remainingAmount.toLocaleString('en-US')} ر.ي</span>
+                              <span className="text-lg font-black text-destructive tabular-nums">{(grandTotal - (parseFloat(paidAmount) || 0)).toLocaleString('en-US')} ر.ي</span>
                             </div>
                           </div>
                         )}

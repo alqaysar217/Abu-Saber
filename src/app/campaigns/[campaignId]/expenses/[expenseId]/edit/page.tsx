@@ -132,7 +132,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
       payeeId: paymentType !== "نقد" ? payeeId : null,
       payeeName: paymentType !== "نقد" ? (selectedSupplier?.name || null) : null,
       expenseDate: new Date(date).toISOString(),
-      notes,
+      notes: notes || null,
       updatedAt: serverTimestamp()
     }
 
@@ -238,14 +238,21 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
                   </Select>
                 </div>
                 {paymentType === "جزئي" && (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">المدفوع</Label>
-                    <Input 
-                      type="text"
-                      className="h-12 rounded-xl"
-                      value={formatInputNumber(paidAmount)}
-                      onChange={handlePaidAmountChange}
-                    />
+                  <div className="space-y-4 p-4 bg-muted/20 rounded-2xl border border-dashed animate-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-accent">المبلغ المسدد الآن</Label>
+                      <Input 
+                        type="text" 
+                        inputMode="decimal"
+                        className="h-12 rounded-xl border-accent/30 text-accent font-black text-lg tabular-nums"
+                        value={formatInputNumber(paidAmount)}
+                        onChange={handlePaidAmountChange}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
+                      <span className="text-xs font-bold text-muted-foreground">المتبقي (دين للمورد):</span>
+                      <span className="text-lg font-black text-destructive tabular-nums">{( (parseFloat(amount) || 0) - (parseFloat(paidAmount) || 0) ).toLocaleString('en-US')} ر.ي</span>
+                    </div>
                   </div>
                 )}
               </div>

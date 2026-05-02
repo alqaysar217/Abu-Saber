@@ -155,6 +155,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                     <TableRow>
                       <TableHead className="text-right font-bold text-[10px]">النوع</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الكمية</TableHead>
+                      <TableHead className="text-center font-bold text-[10px]">سعر الكيلو</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الإجمالي</TableHead>
                       <TableHead className="text-center font-bold text-[10px]">الدفع</TableHead>
                     </TableRow>
@@ -164,6 +165,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                       <TableRow key={item.id}>
                         <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
                         <TableCell className="text-center text-xs tabular-nums font-bold">{item.quantity?.toLocaleString('en-US')} kg</TableCell>
+                        <TableCell className="text-center text-xs tabular-nums font-bold">{item.unitPrice?.toLocaleString('en-US')}</TableCell>
                         <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal?.toLocaleString('en-US')}</TableCell>
                         <TableCell className="text-center text-[10px] font-bold">{item.paymentType}</TableCell>
                       </TableRow>

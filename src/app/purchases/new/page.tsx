@@ -237,7 +237,7 @@ export default function NewPurchasePage() {
                 <div className="p-4 bg-accent/5 rounded-2xl border border-dashed border-accent/20 space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-accent">المبلغ المسدد لهذا الصنف</Label>
-                    <Input type="text" inputMode="decimal" placeholder="0" className="h-12 rounded-xl border-accent/30 text-accent font-black tabular-nums" value={formatInputNumber(currentItem.paidAmount)} onChange={e => handleInputNumberChange('paidAmount', e.target.value)} />
+                    <Input type="text" inputMode="decimal" placeholder="0" className="h-12 rounded-xl border-accent/30 text-accent font-black tabular-nums" value={formatInputNumber(currentItem.paidAmount)} onChange={handleInputNumberChange('paidAmount', e.target.value)} />
                   </div>
                   <div className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
                     <span className="text-xs font-bold text-muted-foreground">المتبقي لهذا الصنف:</span>
@@ -254,14 +254,28 @@ export default function NewPurchasePage() {
           <h3 className="text-sm font-black flex items-center gap-2 px-2"><TableIcon className="w-4 h-4 text-primary" />الأصناف المشتراة ({addedItems.length})</h3>
           <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
             <Table dir="rtl">
-              <TableHeader className="bg-muted/50"><TableRow><TableHead className="text-right text-[10px]">النوع</TableHead><TableHead className="text-center text-[10px]">المبلغ</TableHead><TableHead className="text-center text-[10px]">الدفع</TableHead><TableHead className="text-left text-[10px]">إجراءات</TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">الكمية</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">سعر الكيلو</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">الإجمالي</TableHead>
+                  <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {addedItems.map(item => (
                   <TableRow key={item.tempId}>
                     <TableCell className="text-right font-bold text-xs">{item.fishType}</TableCell>
+                    <TableCell className="text-center text-xs tabular-nums">{item.quantity.toLocaleString('en-US')} kg</TableCell>
+                    <TableCell className="text-center text-xs tabular-nums">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
                     <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal.toLocaleString('en-US')}</TableCell>
-                    <TableCell className="text-center"><Badge variant="outline" className={cn("text-[8px] px-1.5 py-0 border-none", item.paymentType === "نقد" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>{item.paymentType}</Badge></TableCell>
-                    <TableCell className="text-left"><div className="flex gap-2"><button onClick={() => handleEditItem(item)} className="text-accent"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleRemoveItem(item.tempId)} className="text-destructive"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                    <TableCell className="text-left">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditItem(item)} className="text-accent"><Edit3 className="w-4 h-4" /></button>
+                        <button onClick={() => handleRemoveItem(item.tempId)} className="text-destructive"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
