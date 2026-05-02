@@ -75,6 +75,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, customers: any[], userId: string }) {
   const db = useFirestore()
@@ -138,7 +139,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex flex-col gap-4 text-right mt-4">
+          <div className="flex flex-col gap-4 text-right mt-4" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المبيعات
@@ -295,7 +296,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
           >
             <X className="w-5 h-5 text-white" />
           </button>
-          <div className="flex flex-col gap-4 text-right mt-4">
+          <div className="flex flex-col gap-4 text-right mt-4" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center justify-start gap-2">
                <TableIcon className="w-5 h-5" />
                تفاصيل فاتورة المشتريات
@@ -590,6 +591,12 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
   const totalCost = totalExpenses + totalPurchases
   const netProfit = totalRevenue - totalCost
 
+  const chartData = [
+    { name: 'التكاليف', value: totalCost, fill: 'hsl(var(--chart-4))' },
+    { name: 'المبيعات', value: totalRevenue, fill: 'hsl(var(--chart-2))' },
+    { name: 'الأرباح', value: netProfit, fill: 'hsl(var(--chart-1))' },
+  ]
+
   if (loadingCampaign || loadingExpenses || loadingPurchases || loadingInvoices) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -756,6 +763,40 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
               <span className="text-xs font-bold text-muted-foreground">إجمالي التكاليف (Costs)</span>
               <span className="text-lg font-black tabular-nums">{totalCost.toLocaleString('en-US')} ر.ي</span>
             </div>
+
+            {/* الرسم البياني للأداء المالي للحملة */}
+            <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white p-4">
+              <CardHeader className="p-0 pb-4 text-right">
+                <CardTitle className="text-sm font-bold flex items-center justify-start gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  تحليل مالي للحملة
+                </CardTitle>
+              </CardHeader>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 11, fontWeight: 'bold', fill: '#666' }}
+                      dy={10}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#f5f5f5' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
+                      formatter={(value: number) => [value.toLocaleString() + " ر.ي", "القيمة"]}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
             
             {campaign.notes && (
               <Card className="border-none shadow-sm rounded-2xl bg-white">
