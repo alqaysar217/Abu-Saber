@@ -70,18 +70,18 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[2.5rem] overflow-hidden">
         <div className="flex flex-col h-full bg-white">
-          <header className="p-8 lux-gradient text-white">
+          <SheetHeader className="p-8 lux-gradient text-white text-right space-y-0">
             <div className="flex justify-between items-center mb-8">
               <button onClick={() => onOpenChange(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
                 <X className="w-6 h-6 text-white" />
               </button>
               <div className="flex items-center gap-2">
-                 <span className="text-[10px] font-bold opacity-70 uppercase tracking-widest">إدارة النظام</span>
+                 <SheetTitle className="text-[10px] font-bold opacity-70 uppercase tracking-widest text-white">إدارة النظام</SheetTitle>
                  <ShieldCheck className="w-4 h-4 opacity-70" />
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-right" dir="rtl">
               <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
                 <AvatarImage src={profile?.photoBase64 || ""} />
                 <AvatarFallback className="bg-white/20 text-white text-xl font-black">
@@ -93,12 +93,12 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
                 <p className="text-xs text-white/70 font-bold">{user?.phoneNumber || user?.email || "جلسة مؤقتة"}</p>
               </div>
             </div>
-          </header>
+          </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
             {categories.map((cat) => (
               <div key={cat} className="space-y-2">
-                <h4 className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-wider">{cat}</h4>
+                <h4 className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-wider text-right">{cat}</h4>
                 <div className="grid gap-1">
                   {menuItems.filter(item => item.category === cat).map((item) => (
                     <Link key={item.href} href={item.href} onClick={() => onOpenChange(false)}>
