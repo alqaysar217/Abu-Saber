@@ -321,9 +321,9 @@ export default function DebtsPage() {
             >
               <X className="w-5 h-5 text-white" />
             </button>
-            <div className="flex flex-col gap-1 items-end mt-4">
-              <SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle>
-              <p className="text-xs text-white/70 font-bold">كشف العمليات غير المسددة</p>
+            <div className="flex flex-col gap-1 items-start mt-4">
+              <SheetTitle className="text-xl font-black text-white text-right w-full">{selectedEntity?.name}</SheetTitle>
+              <p className="text-xs text-white/70 font-bold text-right w-full">كشف العمليات غير المسددة</p>
             </div>
           </SheetHeader>
 
