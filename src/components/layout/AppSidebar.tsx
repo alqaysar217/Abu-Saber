@@ -71,26 +71,20 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
       <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[2.5rem] overflow-hidden">
         <div className="flex flex-col h-full bg-white">
           <SheetHeader className="p-8 lux-gradient text-white text-right space-y-0">
-            <div className="flex justify-between items-center mb-8">
-              <button onClick={() => onOpenChange(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-                <X className="w-6 h-6 text-white" />
-              </button>
-              <div className="flex items-center gap-2">
-                 <SheetTitle className="text-[10px] font-bold opacity-70 uppercase tracking-widest text-white">إدارة النظام</SheetTitle>
-                 <ShieldCheck className="w-4 h-4 opacity-70" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 text-right" dir="rtl">
-              <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
+            <div className="flex items-center gap-4 text-right pt-4" dir="rtl">
+              <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg shrink-0">
                 <AvatarImage src={profile?.photoBase64 || ""} />
                 <AvatarFallback className="bg-white/20 text-white text-xl font-black">
                   {profile?.name?.substring(0, 1) || "أ"}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <h3 className="text-xl font-black">{profile?.name || "صاحب العمل"}</h3>
-                <p className="text-xs text-white/70 font-bold">{user?.phoneNumber || user?.email || "جلسة مؤقتة"}</p>
+              <div className="flex flex-col gap-0.5 overflow-hidden">
+                <SheetTitle className="text-xl font-black text-white m-0 p-0 leading-tight truncate">
+                  {profile?.name || "صاحب العمل"}
+                </SheetTitle>
+                <p className="text-xs text-white/70 font-bold truncate">
+                  {user?.phoneNumber || user?.email || "جلسة مؤقتة"}
+                </p>
               </div>
             </div>
           </SheetHeader>
