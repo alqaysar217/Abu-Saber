@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { BottomNav } from "@/components/layout/BottomNav"
+import { AppSidebar } from "@/components/layout/AppSidebar"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +15,7 @@ import {
   Eye, 
   EyeOff, 
   Loader2, 
-  LogOut, 
+  Menu, 
   Copy, 
   RefreshCw, 
   History
@@ -22,17 +23,16 @@ import {
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase"
 import { collection, query, orderBy, getDocs, setDoc, doc } from "firebase/firestore"
-import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
   const { user } = useUser()
-  const auth = useAuth()
   const db = useFirestore()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migrationDone, setMigrationDone] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     debtsToMe: false,
     debtsByMe: false,
@@ -90,10 +90,6 @@ export default function Home() {
     return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
 
-  const handleLogout = () => {
-    if (auth) signOut(auth)
-  }
-
   const copyUid = () => {
     if (user?.uid) {
       navigator.clipboard.writeText(user.uid)
@@ -101,62 +97,14 @@ export default function Home() {
     }
   }
 
-  const handleRestoreData = async () => {
-    if (!db || !user) return
-    setMigrating(true)
-    
-    const demoUid = 'luJcA2AwKHYdXbeU9GvietyCkeu2'
-    const collectionsToMigrate = ['customers', 'suppliers', 'campaigns', 'expenses', 'invoices', 'purchases']
-    
-    try {
-      let totalDocs = 0
-      for (const colName of collectionsToMigrate) {
-        const demoColRef = collection(db, 'users', demoUid, colName)
-        const snapshot = await getDocs(demoColRef)
-        
-        for (const docSnap of snapshot.docs) {
-          const data = docSnap.data()
-          const newDocRef = doc(db, 'users', user.uid, colName, docSnap.id)
-          await setDoc(newDocRef, { ...data, userId: user.uid, migratedFrom: demoUid })
-          
-          if (colName === 'invoices' || colName === 'purchases') {
-            const subColRef = collection(db, 'users', demoUid, colName, docSnap.id, 'items')
-            const subSnapshot = await getDocs(subColRef)
-            for (const subDocSnap of subSnapshot.docs) {
-              const subData = subDocSnap.data()
-              const newSubDocRef = doc(db, 'users', user.uid, colName, docSnap.id, 'items', subDocSnap.id)
-              await setDoc(newSubDocRef, { ...subData, userId: user.uid })
-            }
-          }
-          totalDocs++
-        }
-      }
-      
-      toast({ 
-        title: "تمت الاستعادة بنجاح", 
-        description: `تم نقل ${totalDocs} سجل من الحساب التجريبي إلى حسابك الحالي.` 
-      })
-      setMigrationDone(true)
-      window.location.reload()
-    } catch (e: any) {
-      console.error(e)
-      toast({ 
-        variant: "destructive", 
-        title: "فشل الاستعادة", 
-        description: "تأكد من اتصالك بالإنترنت وحاول مرة أخرى." 
-      })
-    } finally {
-      setMigrating(false)
-    }
-  }
-
   if (!mounted) return null
 
   const recentInvoices = allInvoices?.slice(0, 3) || []
-  const showRestoreTool = allInvoices && allInvoices.length === 0 && !migrationDone && user?.uid !== 'luJcA2AwKHYdXbeU9GvietyCkeu2'
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
+      <AppSidebar open={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
+      
       <header className="p-6 pb-20 lux-gradient text-white rounded-b-[2.5rem] shadow-2xl mb-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
         <div className="flex justify-between items-center relative z-10">
@@ -176,10 +124,10 @@ export default function Home() {
             <h1 className="text-2xl font-black tracking-tight">أبو صابر</h1>
           </div>
           <button 
-            onClick={handleLogout}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-all active:scale-95"
           >
-            <LogOut className="w-5 h-5" />
+            <Menu className="w-7 h-7" />
           </button>
         </div>
       </header>
@@ -229,41 +177,6 @@ export default function Home() {
           </Card>
         </div>
       </section>
-
-      {showRestoreTool && (
-        <section className="px-4 mb-8 animate-in zoom-in-95 duration-500">
-          <Card className="border-2 border-dashed border-orange-200 bg-orange-50/30 rounded-[2rem] overflow-hidden">
-            <CardHeader className="p-5 pb-2 text-right">
-              <CardTitle className="text-sm font-bold flex items-center justify-end gap-2 text-orange-700">
-                استعادة بياناتك التجريبية
-                <History className="w-4 h-4" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <p className="text-[11px] text-orange-800/80 leading-relaxed font-bold text-right">
-                هل تريد استعادة البيانات التي سجلتها سابقاً؟ يمكننا نقل كافة السجلات من الحساب القديم (luJc...e2) إلى حسابك الحالي فوراً.
-              </p>
-              <Button 
-                onClick={handleRestoreData} 
-                disabled={migrating}
-                className="w-full h-12 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-black shadow-lg gap-2"
-              >
-                {migrating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    جاري نقل البيانات...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    نعم، استعد بياناتي الآن
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
 
       <section className="px-4 mb-8">
         <Card className="border-none shadow-lg rounded-[2rem] bg-gradient-to-r from-accent/20 to-transparent border-r-4 border-accent">
