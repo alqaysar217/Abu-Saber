@@ -2,7 +2,7 @@
 "use client"
 
 import { use, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ChevronLeft, 
   ArrowDownRight, 
@@ -139,18 +139,18 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col gap-4 text-right">
-             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
-               <TableIcon className="w-5 h-5" />
+             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-end">
                تفاصيل فاتورة المبيعات
+               <TableIcon className="w-5 h-5" />
              </DialogTitle>
-             <div className="flex flex-col gap-1 text-xs opacity-90">
+             <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
                 <p className="font-bold flex items-center gap-2">
-                  <User className="w-3 h-3" />
                   <span>العميل: {customer?.name}</span>
+                  <User className="w-3 h-3" />
                 </p>
                 <p className="flex items-center gap-2">
-                  <Calendar className="w-3 h-3" />
                   <span>التاريخ: {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+                  <Calendar className="w-3 h-3" />
                 </p>
              </div>
           </div>
@@ -199,9 +199,9 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
-                      <Trash2 className="w-5 h-5" />
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       حذف فاتورة المبيعات؟
+                      <Trash2 className="w-5 h-5" />
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة؟ سيؤثر ذلك على تقارير الأرباح.
@@ -296,18 +296,18 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col gap-4 text-right">
-             <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
-               <TableIcon className="w-5 h-5" />
+             <DialogTitle className="text-lg font-bold flex items-center justify-end gap-2">
                تفاصيل فاتورة المشتريات
+               <TableIcon className="w-5 h-5" />
              </DialogTitle>
-             <div className="flex flex-col gap-1 text-xs opacity-90">
+             <div className="flex flex-col gap-1 text-xs opacity-90 items-end">
                 <p className="font-bold flex items-center gap-2">
-                  <User className="w-3 h-3" />
                   <span>المورد: {supplier?.name}</span>
+                  <User className="w-3 h-3" />
                 </p>
                 <p className="flex items-center gap-2">
-                  <Calendar className="w-3 h-3" />
                   <span>التاريخ: {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}</span>
+                  <Calendar className="w-3 h-3" />
                 </p>
              </div>
           </div>
@@ -358,9 +358,9 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
-                      <Trash2 className="w-5 h-5" />
+                    <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                       حذف عملية الشراء؟
+                      <Trash2 className="w-5 h-5" />
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
                       هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
@@ -449,9 +449,9 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive font-bold">
-                  <Trash2 className="w-5 h-5" />
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-destructive font-bold">
                   حذف المصروف؟
+                  <Trash2 className="w-5 h-5" />
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-right font-medium">
                   هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
@@ -471,12 +471,22 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
 
 export default function CampaignDetailsPage({ params }: { params: Promise<{ campaignId: string }> }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { campaignId } = use(params)
   const db = useFirestore()
   const { user } = useUser()
   const { toast } = useToast()
   const [archiving, setArchiving] = useState(false)
-  const [activeTab, setActiveTab] = useState("overview")
+  
+  // Get active tab from search params or default to overview
+  const initialTab = searchParams.get('tab') || "overview"
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  // Update active tab if URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
 
   const campaignRef = useMemoFirebase(() => {
     if (!db || !user || !campaignId) return null
@@ -616,9 +626,9 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-right flex items-center gap-2 text-orange-600 font-bold">
-                  <Archive className="w-5 h-5" />
+                <AlertDialogTitle className="text-right flex items-center justify-end gap-2 text-orange-600 font-bold">
                   تأكيد أرشفة الحملة
+                  <Archive className="w-5 h-5" />
                 </AlertDialogTitle>
                 <div className="text-right text-sm leading-relaxed space-y-3">
                   <div className="text-right text-sm">

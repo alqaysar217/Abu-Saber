@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { 
   Search, 
   User, 
@@ -10,7 +11,6 @@ import {
   ArrowDownToLine, 
   ArrowUpFromLine, 
   Loader2, 
-  MessageCircle, 
   ChevronLeft, 
   X, 
   Calendar, 
@@ -18,13 +18,14 @@ import {
   Receipt, 
   ShoppingBag,
   Info,
-  Fish
+  Fish,
+  ExternalLink
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, query } from "firebase/firestore"
+import { collection, query, collectionGroup, where } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import {
   Sheet,
@@ -37,6 +38,7 @@ import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 
 export default function DebtsPage() {
+  const router = useRouter()
   const db = useFirestore()
   const { user } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
@@ -73,6 +75,13 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: purchases } = useCollection(purchasesQuery)
 
+  // Fetch all expenses to find debts to suppliers
+  const expensesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collectionGroup(db, "expenses"), where("userId", "==", user.uid))
+  }, [db, user])
+  const { data: expenses } = useCollection(expensesQuery)
+
   // Calculate Customer Debts (Money owed to me)
   const customerDebts = useMemo(() => {
     if (!invoices || !customers) return []
@@ -97,16 +106,27 @@ export default function DebtsPage() {
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
   }, [invoices, customers, searchTerm])
 
-  // Calculate Supplier Debts (Money I owe)
+  // Calculate Supplier Debts (Money I owe - includes purchases and debts in expenses)
   const supplierDebts = useMemo(() => {
-    if (!purchases || !suppliers) return []
+    if (!purchases || !suppliers || !expenses) return []
     
     const debtsMap = new Map()
+    
+    // Add from purchases
     purchases.forEach(p => {
       const remaining = (p.totalAmount || 0) - (p.paidAmount || 0)
-      if (remaining > 0) {
+      if (remaining > 0 && p.supplierId) {
         const current = debtsMap.get(p.supplierId) || 0
         debtsMap.set(p.supplierId, current + remaining)
+      }
+    })
+
+    // Add from expenses (some expenses are recorded as debt to a supplier/payee)
+    expenses.forEach(e => {
+      const remaining = e.remainingAmount || 0
+      if (remaining > 0 && e.payeeId) {
+        const current = debtsMap.get(e.payeeId) || 0
+        debtsMap.set(e.payeeId, current + remaining)
       }
     })
 
@@ -119,12 +139,12 @@ export default function DebtsPage() {
         amount: amount
       }
     }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  }, [purchases, suppliers, searchTerm])
+  }, [purchases, suppliers, expenses, searchTerm])
 
   const totalCustomerDebts = customerDebts.reduce((acc, curr) => acc + curr.amount, 0)
   const totalSupplierDebts = supplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
 
-  const isLoading = !invoices || !purchases || !campaigns
+  const isLoading = !invoices || !purchases || !campaigns || !expenses
 
   // Filter specific transactions for the selected person
   const entityTransactions = useMemo(() => {
@@ -133,13 +153,35 @@ export default function DebtsPage() {
     if (selectedEntity.type === 'customer') {
       return (invoices || [])
         .filter(inv => inv.customerId === selectedEntity.id && (inv.remainingAmount || 0) > 0)
+        .map(tr => ({ ...tr, trType: 'sale' }))
         .sort((a, b) => new Date(b.invoiceDate || 0).getTime() - new Date(a.invoiceDate || 0).getTime())
     } else {
-      return (purchases || [])
+      const trs = []
+      
+      // Add purchases
+      const relevantPurchases = (purchases || [])
         .filter(p => p.supplierId === selectedEntity.id && ((p.totalAmount || 0) - (p.paidAmount || 0)) > 0)
-        .sort((a, b) => new Date(b.purchaseDate || 0).getTime() - new Date(a.purchaseDate || 0).getTime())
+        .map(tr => ({ ...tr, trType: 'purchase' }))
+      trs.push(...relevantPurchases)
+
+      // Add expenses
+      const relevantExpenses = (expenses || [])
+        .filter(e => e.payeeId === selectedEntity.id && (e.remainingAmount || 0) > 0)
+        .map(tr => ({ ...tr, trType: 'expense' }))
+      trs.push(...relevantExpenses)
+
+      return trs.sort((a, b) => new Date(b.purchaseDate || b.expenseDate || 0).getTime() - new Date(a.purchaseDate || a.expenseDate || 0).getTime())
     }
-  }, [selectedEntity, invoices, purchases])
+  }, [selectedEntity, invoices, purchases, expenses])
+
+  const handleTransactionClick = (tr: any) => {
+    let tab = "overview"
+    if (tr.trType === 'sale') tab = "sales"
+    if (tr.trType === 'purchase') tab = "purchases"
+    if (tr.trType === 'expense') tab = "expenses"
+
+    router.push(`/campaigns/${tr.campaignId}?tab=${tab}`)
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -295,13 +337,17 @@ export default function DebtsPage() {
             {entityTransactions.length > 0 ? (
               entityTransactions.map((tr: any) => {
                 const campaign = campaigns?.find(c => c.id === tr.campaignId)
-                const date = tr.invoiceDate || tr.purchaseDate || tr.createdAt
-                const remaining = selectedEntity?.type === 'customer' 
+                const date = tr.invoiceDate || tr.purchaseDate || tr.expenseDate || tr.createdAt
+                const remaining = (tr.trType === 'sale' || tr.trType === 'expense')
                   ? tr.remainingAmount 
                   : (tr.totalAmount - tr.paidAmount)
 
                 return (
-                  <div key={tr.id} className="p-5 bg-white rounded-[2rem] border border-border/50 shadow-sm space-y-4">
+                  <div 
+                    key={tr.id} 
+                    onClick={() => handleTransactionClick(tr)}
+                    className="p-5 bg-white rounded-[2rem] border border-border/50 shadow-sm space-y-4 active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30 group"
+                  >
                     <div className="flex justify-between items-start border-b border-border/40 pb-3">
                       <div className="flex flex-col gap-1 items-end">
                         <div className="flex items-center gap-1.5 text-primary">
@@ -317,18 +363,20 @@ export default function DebtsPage() {
                       </div>
                       <Badge className={cn(
                         "rounded-xl px-2 py-0.5 text-[9px] font-black border-none",
-                        selectedEntity?.type === 'customer' ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"
+                        tr.trType === 'sale' ? "bg-green-50 text-green-600" : (tr.trType === 'purchase' ? "bg-orange-50 text-orange-600" : "bg-accent/10 text-accent")
                       )}>
-                        {selectedEntity?.type === 'customer' ? (
+                        {tr.trType === 'sale' ? (
                           <span className="flex items-center gap-1"><Receipt className="w-3 h-3" /> مبيعات</span>
-                        ) : (
+                        ) : tr.trType === 'purchase' ? (
                           <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> مشتريات</span>
+                        ) : (
+                          <span className="flex items-center gap-1"><Wallet className="w-3 h-3" /> مصروف: {tr.type}</span>
                         )}
                       </Badge>
                     </div>
 
-                    {/* Items List */}
-                    {tr.items && tr.items.length > 0 && (
+                    {/* Items List for Invoices and Purchases */}
+                    {(tr.items && tr.items.length > 0) && (
                       <div className="space-y-2">
                         <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 justify-end">
                           الأصناف المسجلة
@@ -344,6 +392,11 @@ export default function DebtsPage() {
                       </div>
                     )}
 
+                    {/* Notes for Expenses */}
+                    {tr.trType === 'expense' && tr.notes && (
+                      <p className="text-[10px] text-muted-foreground text-right italic">"{tr.notes}"</p>
+                    )}
+
                     <div className="grid grid-cols-2 gap-3 pt-2">
                        <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
                           <span className="text-[9px] font-bold text-muted-foreground">المبلغ المدفوع</span>
@@ -351,7 +404,7 @@ export default function DebtsPage() {
                        </div>
                        <div className="bg-muted/30 p-3 rounded-2xl flex flex-col items-center gap-1">
                           <span className="text-[9px] font-bold text-muted-foreground">إجمالي القيمة</span>
-                          <span className="text-sm font-black tabular-nums">{tr.totalAmount?.toLocaleString()}</span>
+                          <span className="text-sm font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString()}</span>
                        </div>
                     </div>
 
@@ -359,12 +412,16 @@ export default function DebtsPage() {
                       "p-4 rounded-2xl flex justify-between items-center shadow-inner",
                       selectedEntity?.type === 'customer' ? "bg-green-50/50" : "bg-red-50/50"
                     )}>
-                      <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
+                      <div className="flex items-center gap-2">
+                         <span className="text-lg font-black tabular-nums text-foreground">{remaining.toLocaleString()} ر.ي</span>
+                         <ExternalLink className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                       <span className={cn(
                         "text-[11px] font-black",
                         selectedEntity?.type === 'customer' ? "text-green-700" : "text-red-700"
                       )}>المبلغ المتبقي</span>
                     </div>
+                    <p className="text-[9px] text-center font-bold text-primary/60 opacity-0 group-hover:opacity-100">اضغط للانتقال لتفاصيل الحملة</p>
                   </div>
                 )
               })
