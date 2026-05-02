@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, use } from "react"
@@ -103,7 +104,14 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
       setCampaignId(purchaseData.campaignId || "")
       setSupplierId(purchaseData.supplierId || "")
       if (purchaseData.purchaseDate) {
-        setDate(new Date(purchaseData.purchaseDate).toISOString().split('T')[0])
+        try {
+          const d = new Date(purchaseData.purchaseDate)
+          if (!isNaN(d.getTime())) {
+            setDate(d.toISOString().split('T')[0])
+          }
+        } catch (e) {
+          console.error("Invalid purchase date", e)
+        }
       }
     }
   }, [purchaseData])
@@ -202,20 +210,32 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
   const totalDue = grandTotal - totalPaid
 
   const handleUpdate = async () => {
-    if (!db || !user || !purchaseRef) return
+    if (!db || !user || !purchaseRef || !date) {
+      toast({ variant: "destructive", title: "يرجى إكمال البيانات المطلوبة" })
+      return
+    }
+
+    const parsedDate = new Date(date)
+    if (isNaN(parsedDate.getTime())) {
+      toast({ variant: "destructive", title: "تاريخ غير صالح" })
+      return
+    }
+
     setLoading(true)
 
     // First update the main document
-    updateDoc(purchaseRef, {
+    const updateData = {
       campaignId,
       supplierId,
       totalAmount: grandTotal,
       paidAmount: totalPaid,
       status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
-      purchaseDate: new Date(date).toISOString(),
+      purchaseDate: parsedDate.toISOString(),
       updatedAt: serverTimestamp(),
-    }).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update' }))
+    }
+
+    updateDoc(purchaseRef, updateData).catch(e => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update', requestResourceData: updateData }))
     });
 
     // Handle items update using batch
@@ -291,7 +311,7 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
                   <Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.quantity)} onChange={e => handleInputNumberChange('quantity', e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold">السعر</Label>
+                  <Label className="text-[11px] font-bold">سعر الكيلو</Label>
                   <Input type="text" inputMode="decimal" className="h-12 rounded-xl" value={formatInputNumber(currentItem.pricePerKg)} onChange={e => handleInputNumberChange('pricePerKg', e.target.value)} />
                 </div>
               </div>
@@ -317,18 +337,20 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
             <Table dir="rtl">
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="text-right text-[10px]">النوع</TableHead>
-                  <TableHead className="text-center text-[10px]">الكمية</TableHead>
-                  <TableHead className="text-center text-[10px]">الإجمالي</TableHead>
-                  <TableHead className="text-left text-[10px]">إجراءات</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold">النوع</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">الكمية</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">سعر الكيلو</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold">الإجمالي</TableHead>
+                  <TableHead className="text-left text-[10px] font-bold">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {addedItems.map(item => (
                   <TableRow key={item.tempId}>
                     <TableCell className="text-right text-xs font-bold">{item.fishType}</TableCell>
-                    <TableCell className="text-center text-xs">{item.quantity.toLocaleString('en-US')} kg</TableCell>
-                    <TableCell className="text-center text-xs font-bold text-orange-600">{item.lineTotal.toLocaleString('en-US')}</TableCell>
+                    <TableCell className="text-center text-xs tabular-nums">{item.quantity.toLocaleString('en-US')} kg</TableCell>
+                    <TableCell className="text-center text-xs tabular-nums">{item.pricePerKg.toLocaleString('en-US')}</TableCell>
+                    <TableCell className="text-center text-xs font-black text-orange-600 tabular-nums">{item.lineTotal.toLocaleString('en-US')}</TableCell>
                     <TableCell className="text-left">
                       <div className="flex gap-2">
                         <button onClick={() => handleEditItem(item)} className="text-accent"><Edit3 className="w-4 h-4" /></button>

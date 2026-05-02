@@ -83,7 +83,14 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
       setPaidAmount(expense.paidAmount?.toString() || "")
       setPayeeId(expense.payeeId || "")
       if (expense.expenseDate) {
-        setDate(new Date(expense.expenseDate).toISOString().split('T')[0])
+        try {
+          const d = new Date(expense.expenseDate)
+          if (!isNaN(d.getTime())) {
+            setDate(d.toISOString().split('T')[0])
+          }
+        } catch (e) {
+          console.error("Invalid date from database", e)
+        }
       }
       setNotes(expense.notes || "")
     }
@@ -114,8 +121,14 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
     if (!db || !user || !expenseRef) return
     const numAmount = parseFloat(amount) || 0
     
-    if (!type || numAmount <= 0) {
+    if (!type || numAmount <= 0 || !date) {
       toast({ variant: "destructive", title: "يرجى إكمال البيانات المطلوبة" })
+      return
+    }
+
+    const parsedDate = new Date(date)
+    if (isNaN(parsedDate.getTime())) {
+      toast({ variant: "destructive", title: "تاريخ غير صالح" })
       return
     }
 
@@ -131,7 +144,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ campaign
       remainingAmount: numAmount - numPaid,
       payeeId: paymentType !== "نقد" ? payeeId : null,
       payeeName: paymentType !== "نقد" ? (selectedSupplier?.name || null) : null,
-      expenseDate: new Date(date).toISOString(),
+      expenseDate: parsedDate.toISOString(),
       notes: notes || null,
       updatedAt: serverTimestamp()
     }
