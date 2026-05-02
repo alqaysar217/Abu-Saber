@@ -116,16 +116,16 @@ export default function DebtsPage() {
           </div>
         ) : (
           <Tabs defaultValue="customers" className="w-full" dir="rtl">
-            <TabsList className="grid w-full grid-cols-2 h-16 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner">
+            <TabsList className="grid w-full grid-cols-2 h-16 rounded-2xl p-1.5 mb-6 bg-muted/50 border border-border/50 shadow-inner overflow-hidden">
               <TabsTrigger 
                 value="customers" 
-                className="rounded-xl font-black text-xs transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 ديون لك (عملاء)
               </TabsTrigger>
               <TabsTrigger 
                 value="suppliers" 
-                className="rounded-xl font-black text-xs transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
+                className="rounded-xl font-black text-xs h-full flex items-center justify-center transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 ديون عليك (موردين)
               </TabsTrigger>
