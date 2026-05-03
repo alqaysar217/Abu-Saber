@@ -257,22 +257,22 @@ export default function ReportsPage() {
                 </CardTitle>
                 <p className="text-[10px] text-muted-foreground font-bold">العملاء الذين لديهم أكبر أرصدة آجلة</p>
               </CardHeader>
-              <CardContent className="h-64 p-4">
+              <CardContent className="h-72 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
+                  <BarChart data={customerDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#123524', textAnchor: 'end' }} 
-                      width={120}
-                      dx={-10}
+                      tick={{ fontSize: 10, fontWeight: '900', fill: '#123524' }}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
                     />
+                    <YAxis hide />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
                       {customerDebtsData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045cc'} />
                       ))}
@@ -291,22 +291,22 @@ export default function ReportsPage() {
                 </CardTitle>
                 <p className="text-[10px] text-muted-foreground font-bold">الجهات المستحقة للسداد الآجل</p>
               </CardHeader>
-              <CardContent className="h-64 p-4">
+              <CardContent className="h-72 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      type="category" 
+                  <BarChart data={supplierDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#ea580c', textAnchor: 'end' }} 
-                      width={120} 
-                      dx={-10}
+                      tick={{ fontSize: 10, fontWeight: '900', fill: '#ea580c' }}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
                     />
+                    <YAxis hide />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
                       {supplierDebtsData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316cc'} />
                       ))}
