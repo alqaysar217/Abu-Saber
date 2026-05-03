@@ -32,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AIInvoiceParser } from "@/components/invoice/AIInvoiceParser"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, setDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import {
@@ -183,34 +183,46 @@ function NewInvoiceContent() {
     }
 
     setLoading(true)
-    const invoiceData = {
-      campaignId,
-      customerId,
-      items: addedItems.map(({ tempId, ...rest }) => rest), // Remove tempId before saving
-      totalAmount: grandTotal,
-      paidAmount: numPaidAmount,
-      remainingAmount: remainingAmount,
-      paymentType,
-      status: remainingAmount <= 0 ? "مدفوعة" : (numPaidAmount <= 0 ? "دين" : "جزئي"),
-      invoiceDate: new Date().toISOString(),
-      userId: user.uid,
-      createdAt: serverTimestamp(),
-    }
 
-    addDoc(collection(db, "users", user.uid, "invoices"), invoiceData)
-      .then(() => {
-        toast({ title: "تم حفظ الفاتورة بنجاح" })
-        router.push("/")
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: `users/${user.uid}/invoices`,
-          operation: 'create',
-          requestResourceData: invoiceData,
-        })
-        errorEmitter.emit('permission-error', permissionError)
-      })
-      .finally(() => setLoading(false))
+    try {
+      const invoicesRef = collection(db, "users", user.uid, "invoices")
+      const invoicesSnap = await getDocs(invoicesRef)
+      
+      // منطق ترقيم فاتورة المبيعات (S-0001)
+      const nextSequence = invoicesSnap.size + 1
+      const invoiceNumber = `S-${nextSequence.toString().padStart(4, '0')}`
+
+      const invoiceDocRef = doc(invoicesRef)
+
+      const invoiceData = {
+        id: invoiceDocRef.id,
+        invoiceNumber,
+        campaignId,
+        customerId,
+        items: addedItems.map(({ tempId, ...rest }) => rest),
+        totalAmount: grandTotal,
+        paidAmount: numPaidAmount,
+        remainingAmount: remainingAmount,
+        paymentType,
+        status: remainingAmount <= 0 ? "مدفوعة" : (numPaidAmount <= 0 ? "دين" : "جزئي"),
+        invoiceDate: new Date().toISOString(),
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+      }
+
+      await setDoc(invoiceDocRef, invoiceData)
+
+      toast({ title: "تم إصدار الفاتورة بنجاح", description: `رقم الفاتورة: ${invoiceNumber}` })
+      router.push("/")
+    } catch (error) {
+      console.error(error)
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `users/${user.uid}/invoices`,
+        operation: 'create',
+      }))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

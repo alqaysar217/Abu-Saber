@@ -24,7 +24,8 @@ import {
   User,
   CreditCard,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Hash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,6 +103,7 @@ export default function AllSalesDetailedPage() {
           items.push({
             id: `${inv.id}-${item.fishType}-${item.quantity}-${item.pricePerKg}`,
             invoiceId: inv.id,
+            invoiceNumber: inv.invoiceNumber || "S-OLD",
             fishType: item.fishType || "Unknown",
             quantity: item.quantity || 0,
             pricePerKg: item.pricePerKg || item.unitPrice || 0,
@@ -125,7 +127,8 @@ export default function AllSalesDetailedPage() {
     return items.filter(item => {
       const matchesSearch = 
         item.fishType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+        item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesCampaign = filterCampaign === "all" || item.campaignId === filterCampaign
       const matchesCustomer = filterCustomer === "all" || item.customerId === filterCustomer
@@ -152,8 +155,9 @@ export default function AllSalesDetailedPage() {
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["Fish Type", "Quantity", "Price/Kg", "Line Total", "Customer", "Date", "Campaign", "Payment Type", "Paid", "Remaining", "Notes"]
+    const headers = ["Invoice No", "Fish Type", "Quantity", "Price/Kg", "Line Total", "Customer", "Date", "Campaign", "Payment Type", "Paid", "Remaining", "Notes"]
     const rows = reportData.map(item => [
+      item.invoiceNumber,
       item.fishType,
       item.quantity,
       item.pricePerKg,
@@ -214,7 +218,7 @@ export default function AllSalesDetailedPage() {
           <div className="relative flex-1">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="بحث بنوع السمك أو العميل..." 
+              placeholder="بحث بنوع السمك أو العميل أو رقم الفاتورة..." 
               className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -230,7 +234,6 @@ export default function AllSalesDetailedPage() {
           </Button>
         </div>
 
-        {/* Date Range Filter Section */}
         <div className="bg-muted/20 p-3 rounded-2xl border border-dashed space-y-2" dir="rtl">
           <p className="text-[10px] font-bold text-muted-foreground mr-1 flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -310,9 +313,10 @@ export default function AllSalesDetailedPage() {
         ) : (
           <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[1400px]">
+              <Table dir="rtl" className="min-w-[1500px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
+                    <TableHead className="text-right font-black text-[10px] py-4">رقم الفاتورة</TableHead>
                     <TableHead className="text-right font-black text-[10px] py-4">نوع السمك</TableHead>
                     <TableHead className="text-center font-black text-[10px]">الكمية</TableHead>
                     <TableHead className="text-center font-black text-[10px]">سعر الكجم</TableHead>
@@ -336,6 +340,11 @@ export default function AllSalesDetailedPage() {
                         index % 2 !== 0 ? "bg-muted/10" : "bg-white"
                       )}
                     >
+                      <TableCell className="text-right py-4">
+                        <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary bg-primary/5">
+                          {item.invoiceNumber}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right py-4">
                         <div className="flex items-center gap-2">
                            <Fish className="w-3.5 h-3.5 text-primary/60" />

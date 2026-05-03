@@ -112,10 +112,15 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold">{customer?.name || "عميل غير معروف"}</span>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
-                <Calendar className="w-3 h-3" />
-                {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Badge variant="outline" className="text-[8px] px-1 py-0 border-green-200 text-green-700 font-bold bg-green-50/30">
+                  {invoice.invoiceNumber || "S-OLD"}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
+                  <Calendar className="w-3 h-3" />
+                  {invoice.invoiceDate ? format(new Date(invoice.invoiceDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
+                </span>
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -143,9 +148,13 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
           <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
-               تفاصيل فاتورة المبيعات
+               تفاصيل فاتورة المبيعات ({invoice.invoiceNumber || "بدون رقم"})
              </DialogTitle>
              <div className="flex flex-col gap-1 text-xs opacity-90 items-start">
+                <p className="font-bold flex items-center gap-2">
+                  <Hash className="w-4 h-4" />
+                  <span>رقم الفاتورة: {invoice.invoiceNumber || "غير محدد"}</span>
+                </p>
                 <p className="font-bold flex items-center gap-2">
                   <User className="w-4 h-4" />
                   <span>العميل: {customer?.name}</span>
@@ -272,10 +281,15 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold">{supplier?.name || "مورد غير معروف"}</span>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
-                <Calendar className="w-3 h-3" />
-                {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                 <Badge variant="outline" className="text-[8px] px-1 py-0 border-orange-200 text-orange-700 font-bold bg-orange-50/30">
+                   {purchase.invoiceNumber || "P-OLD"}
+                 </Badge>
+                 <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold">
+                   <Calendar className="w-3 h-3" />
+                   {purchase.purchaseDate ? format(new Date(purchase.purchaseDate), "dd MMM yyyy", { locale: ar }) : "No Date"}
+                 </span>
+              </div>
             </div>
           </div>
           <div className="text-right">
