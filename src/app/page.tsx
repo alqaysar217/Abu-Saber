@@ -26,7 +26,7 @@ import { collection, query, orderBy, getDocs, doc, writeBatch } from "firebase/f
 import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
-  const { user } = userUser()
+  const { user } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
