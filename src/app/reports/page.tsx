@@ -204,7 +204,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-80 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyProfitData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={monthlyProfitData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -262,22 +262,22 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
+                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 10, right: 40, left: 150, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
                     <XAxis type="number" hide />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#444' }} 
-                      width={120}
-                      dx={-15}
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#123524', textAnchor: 'start' }} 
+                      width={140}
+                      dx={-140}
                     />
-                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
                       {customerDebtsData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045aa'} />
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045cc'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -296,22 +296,22 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
+                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 10, right: 40, left: 150, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
                     <XAxis type="number" hide />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#444' }} 
-                      width={120} 
-                      dx={-15}
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#ea580c', textAnchor: 'start' }} 
+                      width={140} 
+                      dx={-140}
                     />
-                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
                       {supplierDebtsData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316aa'} />
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316cc'} />
                       ))}
                     </Bar>
                   </BarChart>
