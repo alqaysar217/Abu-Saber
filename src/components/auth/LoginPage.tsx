@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -35,19 +34,23 @@ export function LoginPage() {
     setLoading(true)
     setError("")
 
+    // تنظيف رقم الهاتف من أي مسافات أو رموز
+    const cleanPhone = phone.trim().replace(/\s/g, "")
     // تحويل الرقم إلى تنسيق الإيميل المستخدم في النظام
-    const email = `${phone.trim()}@abosaber.com`
+    const email = `${cleanPhone}@abosaber.com`
 
     try {
       await signInWithEmailAndPassword(auth, email, password)
       toast({ title: "مرحباً بك مجدداً", description: "تم تسجيل الدخول بنجاح" })
-      localStorage.setItem("last_phone", phone.trim())
+      localStorage.setItem("last_phone", cleanPhone)
     } catch (err: any) {
-      console.error(err)
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError("بيانات الدخول غير صحيحة أو الحساب غير مفعل. يرجى التواصل مع الإدارة.")
+      console.error("Login Error Details:", err.code, err.message)
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
+        setError("بيانات الدخول غير صحيحة. تأكد من الرقم وكلمة السر، أو تواصل مع الإدارة لتفعيل حسابك.")
+      } else if (err.code === 'auth/too-many-requests') {
+        setError("تم حظر الدخول مؤقتاً بسبب محاولات كثيرة خاطئة. حاول مرة أخرى لاحقاً.")
       } else {
-        setError("حدث خطأ في عملية الدخول. يرجى المحاولة لاحقاً.")
+        setError("حدث خطأ غير متوقع أثناء الدخول. يرجى مراجعة الاتصال بالإنترنت.")
       }
     } finally {
       setLoading(false)
@@ -69,20 +72,20 @@ export function LoginPage() {
         </CardHeader>
         <CardContent className="p-8 -mt-8 bg-white rounded-t-[3rem] space-y-6 relative z-20">
           {error && (
-            <div className="p-4 bg-destructive/10 text-destructive rounded-2xl flex items-center gap-3 text-xs font-bold animate-in fade-in slide-in-from-top-2 border border-destructive/20">
+            <div className="p-4 bg-destructive/10 text-destructive rounded-2xl flex items-center gap-3 text-xs font-bold animate-in fade-in slide-in-from-top-2 border border-destructive/20 shadow-inner">
               <AlertCircle className="w-5 h-5 shrink-0" />
-              <p className="leading-relaxed">{error}</p>
+              <p className="leading-relaxed text-right flex-1" dir="rtl">{error}</p>
             </div>
           )}
 
           <div className="text-center space-y-1 mb-2">
-            <p className="text-sm font-bold text-primary">نظام أبو صابر لإدارة الأسماك</p>
-            <p className="text-[10px] text-muted-foreground font-medium">أدخل بيانات الاعتماد الخاصة باشتراكك للبدء</p>
+            <p className="text-sm font-black text-primary">نظام أبو صابر لإدارة الأسماك</p>
+            <p className="text-[10px] text-muted-foreground font-bold">أدخل بيانات الاعتماد الخاصة باشتراكك للبدء</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-xs font-black text-primary mr-1">رقم الهاتف المسجل</Label>
+              <Label className="text-xs font-black text-primary mr-1 block text-right">رقم الهاتف المسجل</Label>
               <div className="relative group">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
@@ -97,7 +100,7 @@ export function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-black text-primary mr-1">كلمة السر</Label>
+              <Label className="text-xs font-black text-primary mr-1 block text-right">كلمة السر</Label>
               <div className="relative group">
                 <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
