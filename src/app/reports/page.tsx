@@ -262,12 +262,20 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
                     <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} width={80} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#444' }} 
+                      width={120}
+                      dx={-15}
+                    />
                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                       {customerDebtsData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045aa'} />
                       ))}
@@ -288,12 +296,20 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
                     <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} width={80} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#444' }} 
+                      width={120} 
+                      dx={-15}
+                    />
                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                       {supplierDebtsData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316aa'} />
                       ))}
