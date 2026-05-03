@@ -22,6 +22,8 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, orderBy } from "firebase/firestore"
 import { smartChat, type ChatMessage } from "@/ai/flows/smart-chat-flow"
 import { cn } from "@/lib/utils"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export default function SmartChatPage() {
   const router = useRouter()
@@ -215,14 +217,37 @@ export default function SmartChatPage() {
               "max-w-[92%] p-4 rounded-3xl shadow-sm text-sm leading-relaxed",
               msg.role === 'user' 
                 ? "lux-gradient text-white rounded-tr-none" 
-                : "bg-white text-foreground border rounded-tl-none font-medium overflow-x-auto"
+                : "bg-white text-foreground border rounded-tl-none font-medium overflow-hidden"
             )}>
               <div className="flex items-center gap-2 mb-2 opacity-50">
                  {msg.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                  <span className="text-[9px] font-black uppercase">{msg.role === 'user' ? 'أنت' : 'المساعد الذكي'}</span>
               </div>
-              <div className="prose prose-sm prose-slate max-w-none dark:prose-invert">
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div className="prose prose-sm prose-slate max-w-none dark:prose-invert text-right" dir="rtl">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({node, ...props}) => <h1 className="text-lg font-black mb-2 text-primary" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-md font-bold mb-2 text-primary" {...props} />,
+                    h3: ({node, ...props}) => <h3 className="text-sm font-black mb-1 text-primary" {...props} />,
+                    p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                    li: ({node, ...props}) => <li className="font-medium" {...props} />,
+                    table: ({node, ...props}) => (
+                      <div className="overflow-x-auto my-3 rounded-xl border border-border/50 bg-muted/20">
+                        <table className="min-w-full divide-y divide-border/50 text-right" {...props} />
+                      </div>
+                    ),
+                    thead: ({node, ...props}) => <thead className="bg-muted/50" {...props} />,
+                    th: ({node, ...props}) => <th className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase" {...props} />,
+                    td: ({node, ...props}) => <td className="px-3 py-2 text-[11px] font-bold border-t border-border/30 tabular-nums" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-black text-primary" {...props} />,
+                    em: ({node, ...props}) => <em className="italic opacity-80" {...props} />,
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
               </div>
             </div>
           </div>
