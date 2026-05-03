@@ -155,6 +155,7 @@ export default function AllSalesDetailedPage() {
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
+    // إضافة BOM لضمان دعم اللغة العربية في Excel
     const headers = ["رقم الفاتورة", "نوع السمك", "الكمية", "سعر الكجم", "إجمالي الصنف", "العميل", "التاريخ", "الحملة", "طريقة الدفع", "المدفوع", "المتبقي", "ملاحظات"]
     const rows = reportData.map(item => [
       item.invoiceNumber,
@@ -393,9 +394,9 @@ export default function AllSalesDetailedPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-left">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=sales`)}>
+                        <button className="text-primary hover:text-primary/70 p-1" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=sales`)}>
                           <Eye className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))}

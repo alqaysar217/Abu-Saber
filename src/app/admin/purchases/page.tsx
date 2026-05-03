@@ -416,9 +416,9 @@ export default function AllPurchasesDetailedPage() {
                         </p>
                       </TableCell>
                       <TableCell className="text-left">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-orange-600" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=purchases`)}>
+                        <button className="text-orange-600 hover:text-orange-600/70 p-1" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=purchases`)}>
                           <Eye className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))}

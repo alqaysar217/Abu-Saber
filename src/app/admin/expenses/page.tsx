@@ -370,9 +370,9 @@ export default function AllExpensesDetailedPage() {
                           </p>
                         </TableCell>
                         <TableCell className="text-left">
-                          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=expenses`)}>
+                          <button className="text-primary hover:text-primary/70 p-1" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=expenses`)}>
                             <Eye className="w-4 h-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     )
