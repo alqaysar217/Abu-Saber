@@ -294,8 +294,10 @@ export default function DebtsPage() {
     setSubmittingPayment(true)
     let collectionName = paymentTarget.trType === 'sale' ? "invoices" : (paymentTarget.trType === 'purchase' ? "purchases" : "expenses")
     const docRef = doc(db, "users", user.uid, collectionName, paymentTarget.id)
+    
+    const previousRemaining = paymentTarget.remainingAmount
     const newPaidAmount = (paymentTarget.paidAmount || 0) + amount
-    const newRemainingAmount = Math.max(0, paymentTarget.remainingAmount - amount)
+    const newRemainingAmount = Math.max(0, previousRemaining - amount)
     
     const updateData = { 
       paidAmount: newPaidAmount, 
@@ -313,6 +315,8 @@ export default function DebtsPage() {
       sourceNumber: paymentTarget.invoiceNumber || null,
       campaignId: paymentTarget.campaignId,
       amount: amount,
+      previousBalance: previousRemaining,
+      remainingBalance: newRemainingAmount,
       transactionDate: new Date(paymentDate).toISOString(),
       notes: paymentNotes || null,
       userId: user.uid,
@@ -444,7 +448,7 @@ export default function DebtsPage() {
                   <SelectValue placeholder="كل الحملات" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="all">كل الحملات</SelectItem>
+                  <SelectItem value="all">الكل</SelectItem>
                   {campaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>

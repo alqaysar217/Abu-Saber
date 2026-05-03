@@ -19,7 +19,8 @@ import {
   Hash,
   User,
   Ship,
-  Banknote
+  Banknote,
+  TrendingDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -79,14 +80,12 @@ export default function AllReceiptsDetailedPage() {
     if (!receipts) return []
 
     // Sorting and creating a sequence for Receipt ID (R-XXXX)
-    // We reverse the receipts to get oldest first for numbering, then re-sort as requested
     const sortedByCreated = [...receipts].sort((a, b) => 
       new Date(a.createdAt?.seconds * 1000 || 0).getTime() - new Date(b.createdAt?.seconds * 1000 || 0).getTime()
     )
 
     return receipts.map((r) => {
       const campaign = campaigns?.find(c => c.id === r.campaignId)
-      // Sequential Receipt Index based on creation time
       const sequenceIndex = sortedByCreated.findIndex(item => item.id === r.id) + 1
       
       return {
@@ -95,7 +94,9 @@ export default function AllReceiptsDetailedPage() {
         campaignName: campaign?.name || "No Campaign",
         date: r.transactionDate,
         amount: r.amount || 0,
-        type: r.type // customer_payment or supplier_payment
+        type: r.type, // customer_payment or supplier_payment
+        previousBalance: r.previousBalance ?? null,
+        remainingBalance: r.remainingBalance ?? null
       }
     }).filter(item => {
       const matchesSearch = 
@@ -127,12 +128,14 @@ export default function AllReceiptsDetailedPage() {
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["رقم الإيصال", "رقم الفاتورة المرجعي", "الجهة (عميل/مورد)", "المبلغ", "نوع العملية", "التاريخ", "الحملة", "ملاحظات"]
+    const headers = ["رقم الإيصال", "رقم الفاتورة المرجعي", "الجهة (عميل/مورد)", "الدين قبل السداد", "المبلغ الواصل", "الدين المتبقي", "نوع العملية", "التاريخ", "الحملة", "ملاحظات"]
     const rows = reportData.map(item => [
       item.receiptNumber,
       item.sourceNumber || "-",
       item.entityName,
+      item.previousBalance ?? "-",
       item.amount,
+      item.remainingBalance ?? "-",
       item.type === 'customer_payment' ? "استلام (قبض)" : "صرف (دفع)",
       format(new Date(item.date), "yyyy-MM-dd"),
       item.campaignName,
@@ -148,7 +151,7 @@ export default function AllReceiptsDetailedPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
     link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `Receipts_Report_${format(new Date(), "yyyy-MM-dd")}.csv`)
+    link.setAttribute("download", `Receipts_Full_Report_${format(new Date(), "yyyy-MM-dd")}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -271,17 +274,19 @@ export default function AllReceiptsDetailedPage() {
         ) : (
           <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[1200px]">
+              <Table dir="rtl" className="min-w-[1400px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="text-right font-black text-[10px] py-4">رقم الإيصال</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">رقم الفاتورة المرجعي</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">الجهة (العميل/المورد)</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">المبلغ (كم وصل)</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المرجع</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">الجهة</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">الدين قبل السداد</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">الواصل (المبلغ)</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">الدين المتبقي</TableHead>
                     <TableHead className="text-center font-black text-[10px]">نوع الإيصال</TableHead>
                     <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
                     <TableHead className="text-right font-black text-[10px]">اسم الحملة</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">ملاحظات / المستلم</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">ملاحظات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -314,10 +319,16 @@ export default function AllReceiptsDetailedPage() {
                              <span className="text-xs font-black text-foreground">{item.entityName}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-center font-bold text-xs tabular-nums text-muted-foreground">
+                          {item.previousBalance !== null ? item.previousBalance.toLocaleString('en-US') : "-"}
+                        </TableCell>
                         <TableCell className="text-center font-black text-sm tabular-nums">
                           <span className={cn(isIncoming ? "text-green-700" : "text-orange-700")}>
                             {item.amount.toLocaleString('en-US')}
                           </span>
+                        </TableCell>
+                        <TableCell className="text-center font-black text-xs tabular-nums text-destructive">
+                          {item.remainingBalance !== null ? item.remainingBalance.toLocaleString('en-US') : "-"}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge className={cn(
@@ -329,7 +340,7 @@ export default function AllReceiptsDetailedPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
-                            {item.date ? format(new Date(item.date), "yyyy-MM-dd") : ""}
+                            {item.date ? format(new Date(item.date), "yyyy/MM/dd") : ""}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
