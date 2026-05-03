@@ -32,7 +32,9 @@ import {
   Coins,
   CreditCard,
   Hash,
-  Eye
+  Eye,
+  Download,
+  ArrowRight
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -40,6 +42,14 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
 import { collection, query, where, doc, updateDoc, addDoc, serverTimestamp, orderBy } from "firebase/firestore"
 import { cn } from "@/lib/utils"
@@ -73,7 +83,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { format, startOfDay, endOfDay } from "date-fns"
 import { ar } from "date-fns/locale"
 import { useToast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
@@ -90,13 +100,11 @@ export default function DebtsPage() {
   // Filtering & Sorting State
   const [activeTab, setActiveTab] = useState("customers")
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState<SortOption>('amount_desc')
-  const [filterStatus, setFilterStatus] = useState<string>("all") 
+  const [sortBy, setSortBy] = useState<SortOption>('date_desc')
   const [filterCampaignId, setFilterCampaignId] = useState<string>("all")
-  const [filterDebtStatus, setFilterDebtStatus] = useState<string>("all") 
-  const [recipientSearch, setRecipientSearch] = useState("")
-  
-  const [selectedEntity, setSelectedEntity] = useState<{ id: string, name: string, type: 'customer' | 'supplier' } | null>(null)
+  const [filterDebtStatus, setFilterDebtStatus] = useState<string>("unpaid") 
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
   
   // Repayment State
   const [paymentTarget, setPaymentTarget] = useState<any>(null)
@@ -126,19 +134,19 @@ export default function DebtsPage() {
 
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "invoices"))
+    return query(collection(db, "users", user.uid, "invoices"), orderBy("invoiceDate", "desc"))
   }, [db, user])
   const { data: invoices } = useCollection(invoicesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "purchases"))
+    return query(collection(db, "users", user.uid, "purchases"), orderBy("purchaseDate", "desc"))
   }, [db, user])
   const { data: purchases } = useCollection(purchasesQuery)
 
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "expenses"))
+    return query(collection(db, "users", user.uid, "expenses"), orderBy("expenseDate", "desc"))
   }, [db, user])
   const { data: expenses } = useCollection(expensesQuery)
 
@@ -148,114 +156,129 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // Apply Sorting Helper
-  const sortData = (data: any[], option: SortOption) => {
-    return [...data].sort((a, b) => {
-      const direction = option.includes('asc') ? 1 : -1;
-      if (option.includes('amount')) return (a.amount - b.amount) * direction;
-      if (option.includes('date')) return (new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()) * direction;
-      return 0;
-    });
+  // Data processing helpers
+  const applyFilters = (data: any[]) => {
+    return data.filter(item => {
+      const matchesSearch = 
+        item.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.type?.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesCampaign = filterCampaignId === "all" || item.campaignId === filterCampaignId
+      
+      const matchesStatus = 
+        filterDebtStatus === "all" || 
+        (filterDebtStatus === "unpaid" && item.remainingAmount > 0) ||
+        (filterDebtStatus === "paid" && item.remainingAmount <= 0)
+
+      let matchesDate = true
+      if (fromDate || toDate) {
+        const itemDate = new Date(item.date)
+        const start = fromDate ? startOfDay(new Date(fromDate)) : new Date(0)
+        const end = toDate ? endOfDay(new Date(toDate)) : new Date(8640000000000000)
+        matchesDate = itemDate >= start && itemDate <= end
+      }
+
+      return matchesSearch && matchesCampaign && matchesStatus && matchesDate
+    }).sort((a, b) => {
+      if (sortBy === 'amount_desc') return b.remainingAmount - a.remainingAmount
+      if (sortBy === 'amount_asc') return a.remainingAmount - b.remainingAmount
+      if (sortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime()
+      if (sortBy === 'date_asc') return new Date(a.date).getTime() - new Date(b.date).getTime()
+      return 0
+    })
   }
 
-  // Calculate Customer Debts (Showing only entities with existing/past debts)
-  const filteredCustomerDebts = useMemo(() => {
-    if (!invoices || !customers) return []
-    const debtsMap = new Map()
-    
-    invoices.forEach(inv => {
-      // Skip purely cash invoices as they aren't debts
-      if (inv.paymentType === "نقد" && (inv.remainingAmount === 0 || !inv.remainingAmount)) return;
-      
-      const customerId = inv.customerId
-      if (!customerId) return
+  const customerDebts = useMemo(() => {
+    if (!invoices) return []
+    return invoices
+      .filter(inv => inv.paymentType !== "نقد")
+      .map(inv => {
+        const customer = customers?.find(c => c.id === inv.customerId)
+        const campaign = campaigns?.find(c => c.id === inv.campaignId)
+        return {
+          ...inv,
+          id: inv.id,
+          entityName: customer?.name || "عميل غير معروف",
+          campaignName: campaign?.name || "حملة غير معروفة",
+          date: inv.invoiceDate,
+          remainingAmount: inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0)),
+          trType: 'sale'
+        }
+      })
+  }, [invoices, customers, campaigns])
 
-      const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
-      const current = debtsMap.get(customerId) || { amount: 0, date: 0 }
-      const invDate = new Date(inv.invoiceDate || 0).getTime()
-      
-      debtsMap.set(customerId, { 
-        amount: current.amount + remaining,
-        date: Math.max(current.date, invDate)
+  const supplierDebts = useMemo(() => {
+    if (!purchases || !expenses) return []
+    const combined: any[] = []
+    
+    purchases.filter(p => p.paymentType !== "نقد").forEach(p => {
+      const supplier = suppliers?.find(s => s.id === p.supplierId)
+      const campaign = campaigns?.find(c => c.id === p.campaignId)
+      combined.push({
+        ...p,
+        id: p.id,
+        entityName: supplier?.name || "مورد غير معروف",
+        campaignName: campaign?.name || "حملة غير معروفة",
+        date: p.purchaseDate,
+        remainingAmount: p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0)),
+        trType: 'purchase'
       })
     })
-    
-    let results = Array.from(debtsMap.entries()).map(([id, info]) => {
-      const c = customers.find(x => x.id === id)
-      return { id, name: c?.name || "Unknown", phone: c?.phone || "", amount: info.amount, date: info.date }
-    }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    if (filterDebtStatus === "unpaid") results = results.filter(d => d.amount > 0)
-    else if (filterDebtStatus === "paid") results = results.filter(d => d.amount <= 0)
-
-    return sortData(results, sortBy)
-  }, [invoices, customers, searchTerm, sortBy, filterDebtStatus])
-
-  // Calculate Supplier Debts
-  const filteredSupplierDebts = useMemo(() => {
-    if (!purchases || !suppliers || !expenses) return []
-    const debtsMap = new Map()
-    
-    purchases.forEach(p => {
-      if (p.paymentType === "نقد" && (p.remainingAmount === 0 || !p.remainingAmount)) return;
-      const supplierId = p.supplierId
-      if (!supplierId) return
-      const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
-      const current = debtsMap.get(supplierId) || { amount: 0, date: 0 }
-      debtsMap.set(supplierId, { amount: current.amount + remaining, date: Math.max(current.date, new Date(p.purchaseDate || 0).getTime()) })
+    expenses.filter(e => e.paymentType !== "نقد").forEach(e => {
+      const supplier = suppliers?.find(s => s.id === e.payeeId)
+      const campaign = campaigns?.find(c => c.id === e.campaignId)
+      combined.push({
+        ...e,
+        id: e.id,
+        entityName: supplier?.name || e.payeeName || "جهة غير معروفة",
+        campaignName: campaign?.name || "حملة غير معروفة",
+        date: e.expenseDate,
+        remainingAmount: e.remainingAmount || 0,
+        totalAmount: e.amount,
+        trType: 'expense',
+        invoiceNumber: "مصروف"
+      })
     })
-    
-    expenses.forEach(e => {
-      if (e.paymentType === "نقد" && (e.remainingAmount === 0 || !e.remainingAmount)) return;
-      const payeeId = e.payeeId
-      if (!payeeId) return
-      const remaining = e.remainingAmount || 0
-      const current = debtsMap.get(payeeId) || { amount: 0, date: 0 }
-      debtsMap.set(payeeId, { amount: current.amount + remaining, date: Math.max(current.date, new Date(e.expenseDate || 0).getTime()) })
+
+    return combined
+  }, [purchases, expenses, suppliers, campaigns])
+
+  const filteredCustomerTable = useMemo(() => applyFilters(customerDebts), [customerDebts, searchTerm, filterCampaignId, filterDebtStatus, fromDate, toDate, sortBy])
+  const filteredSupplierTable = useMemo(() => applyFilters(supplierDebts), [supplierDebts, searchTerm, filterCampaignId, filterDebtStatus, fromDate, toDate, sortBy])
+
+  const exportToCSV = () => {
+    const dataToExport = activeTab === "customers" ? filteredCustomerTable : filteredSupplierTable
+    if (dataToExport.length === 0) return
+
+    const headers = ["رقم الفاتورة", "الجهة / الاسم", "الحملة", "إجمالي المبلغ", "المدفوع", "المتبقي (الدين)", "التاريخ", "الحالة", "ملاحظات"]
+    const rows = dataToExport.map(item => [
+      item.invoiceNumber || "-",
+      item.entityName,
+      item.campaignName,
+      item.totalAmount || item.amount,
+      item.paidAmount || 0,
+      item.remainingAmount,
+      format(new Date(item.date), "yyyy-MM-dd"),
+      item.remainingAmount <= 0 ? "مُسددة" : "ديون قائمة",
+      `"${item.notes || item.description || ""}"`
+    ])
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+    csvContent += headers.join(",") + "\n"
+    rows.forEach(row => {
+      csvContent += row.join(",") + "\n"
     })
-    
-    let results = Array.from(debtsMap.entries()).map(([id, info]) => {
-      const s = suppliers.find(x => x.id === id)
-      return { id, name: s?.name || "Unknown", phone: s?.phone || "", amount: info.amount, date: info.date }
-    }).filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    if (filterDebtStatus === "unpaid") results = results.filter(d => d.amount > 0)
-    else if (filterDebtStatus === "paid") results = results.filter(d => d.amount <= 0)
-
-    return sortData(results, sortBy)
-  }, [purchases, suppliers, expenses, searchTerm, sortBy, filterDebtStatus])
-
-  // Filtered History Transactions
-  const filteredHistory = useMemo(() => {
-    if (!historyTransactions) return []
-    let results = [...historyTransactions]
-    if (filterCampaignId !== "all") results = results.filter(tr => tr.campaignId === filterCampaignId)
-    if (filterStatus !== "all") results = results.filter(tr => tr.type === filterStatus)
-    if (searchTerm) results = results.filter(tr => tr.entityName?.toLowerCase().includes(searchTerm.toLowerCase()))
-    return sortData(results, sortBy)
-  }, [historyTransactions, filterStatus, searchTerm, sortBy, filterCampaignId])
-
-  const totalCustomerDebts = filteredCustomerDebts.reduce((acc, curr) => acc + curr.amount, 0)
-  const totalSupplierDebts = filteredSupplierDebts.reduce((acc, curr) => acc + curr.amount, 0)
-
-  const entityTransactions = useMemo(() => {
-    if (!selectedEntity) return []
-    if (selectedEntity.type === 'customer') {
-      return (invoices || [])
-        .filter(inv => inv.customerId === selectedEntity.id && inv.paymentType !== "نقد")
-        .map(tr => ({ 
-          ...tr, 
-          trType: 'sale', 
-          remainingAmount: tr.remainingAmount !== undefined ? tr.remainingAmount : ((tr.totalAmount || 0) - (tr.paidAmount || 0)) 
-        }))
-        .sort((a, b) => new Date(b.invoiceDate || 0).getTime() - new Date(a.invoiceDate || 0).getTime())
-    } else {
-      const trs: any[] = []
-      trs.push(...(purchases || []).filter(p => p.supplierId === selectedEntity.id && p.paymentType !== "نقد").map(tr => ({ ...tr, trType: 'purchase', remainingAmount: tr.remainingAmount !== undefined ? tr.remainingAmount : ((tr.totalAmount || 0) - (tr.paidAmount || 0)) })))
-      trs.push(...(expenses || []).filter(e => e.payeeId === selectedEntity.id && e.paymentType !== "نقد").map(tr => ({ ...tr, trType: 'expense', remainingAmount: tr.remainingAmount || 0 })))
-      return trs.sort((a, b) => new Date(b.purchaseDate || b.expenseDate || 0).getTime() - new Date(a.purchaseDate || a.expenseDate || 0).getTime())
-    }
-  }, [selectedEntity, invoices, purchases, expenses])
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `Debts_Report_${activeTab}_${format(new Date(), "yyyy-MM-dd")}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const handleSettleDebt = async () => {
     if (!db || !user || !paymentTarget) return
@@ -278,9 +301,9 @@ export default function DebtsPage() {
     }
 
     const transactionData = {
-      type: selectedEntity?.type === 'customer' ? 'customer_payment' : 'supplier_payment',
-      entityId: selectedEntity?.id,
-      entityName: selectedEntity?.name,
+      type: activeTab === 'customers' ? 'customer_payment' : 'supplier_payment',
+      entityId: paymentTarget.customerId || paymentTarget.supplierId || paymentTarget.payeeId,
+      entityName: paymentTarget.entityName,
       sourceType: paymentTarget.trType,
       sourceId: paymentTarget.id,
       sourceNumber: paymentTarget.invoiceNumber || null,
@@ -311,22 +334,39 @@ export default function DebtsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
       <header className="p-6 bg-white border-b sticky top-0 z-30 shadow-sm space-y-4">
-        <h1 className="text-2xl font-black text-primary text-right">إدارة الديون والوصولات</h1>
+        <div className="flex justify-between items-center">
+          <button onClick={() => router.push("/")} className="p-2 -mr-2">
+            <ChevronLeft className="w-6 h-6 rotate-180" />
+          </button>
+          <h1 className="text-xl font-black text-primary flex items-center gap-2">
+            <Wallet className="w-5 h-5" />
+            سجل الديون والوصولات
+          </h1>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="rounded-xl border-none bg-muted/50 text-primary"
+            onClick={exportToCSV}
+          >
+            <Download className="w-5 h-5" />
+          </Button>
+        </div>
         
         <div className="flex gap-2" dir="rtl">
           <div className="relative flex-1 group">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder="بحث بالاسم..."
-              className="pr-11 h-12 rounded-2xl bg-muted/50 border-none focus-visible:ring-primary focus-visible:bg-white transition-all shadow-inner text-right" 
+              placeholder="بحث بالاسم أو رقم الفاتورة..."
+              className="pr-11 h-12 rounded-2xl bg-muted/30 border-none focus-visible:ring-primary focus-visible:bg-white transition-all shadow-inner text-right" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-none bg-muted/50 text-primary">
-                <ArrowUpDown className="w-5 h-5" />
+              <Button variant="outline" className="h-12 rounded-2xl px-4 gap-2 border-none bg-muted/30 text-primary font-bold">
+                <ArrowUpDown className="w-4 h-4" />
+                ترتيب
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-2xl">
@@ -342,31 +382,51 @@ export default function DebtsPage() {
           </DropdownMenu>
         </div>
 
-        <div className="grid grid-cols-2 gap-2" dir="rtl">
-          <div className="space-y-1">
-            <Label className="text-[10px] font-bold mr-1 text-muted-foreground">فلترة حسب الحالة</Label>
-            <Select value={filterDebtStatus} onValueChange={setFilterDebtStatus}>
-              <SelectTrigger className="h-10 rounded-xl bg-muted/30 border-none text-[11px] font-bold">
-                <SelectValue placeholder="الكل" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="unpaid">ديون قائمة</SelectItem>
-                <SelectItem value="paid">حسابات مُصفرة</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* فلاتر متقدمة */}
+        <div className="grid grid-cols-1 gap-3" dir="rtl">
+          <div className="bg-muted/20 p-3 rounded-2xl border border-dashed space-y-2">
+            <p className="text-[10px] font-bold text-muted-foreground mr-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              فلترة حسب المدة الزمنية:
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">من</span>
+                <Input type="date" className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground opacity-30" />
+              <div className="flex-1 relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">إلى</span>
+                <Input type="date" className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" value={toDate} onChange={e => setToDate(e.target.value)} />
+              </div>
+              {(fromDate || toDate) && <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-destructive" onClick={() => { setFromDate(""); setToDate(""); }}><AlertCircle className="w-4 h-4" /></Button>}
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] font-bold mr-1 text-muted-foreground">الحملة</Label>
-            <Select value={filterCampaignId} onValueChange={setFilterCampaignId}>
-              <SelectTrigger className="h-10 rounded-xl bg-muted/30 border-none text-[11px] font-bold">
-                <SelectValue placeholder="كل الحملات" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">كل الحملات</SelectItem>
-                {campaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="min-w-[120px]">
+              <Select value={filterDebtStatus} onValueChange={setFilterDebtStatus}>
+                <SelectTrigger className="h-10 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4">
+                  <SelectValue placeholder="حالة الدين" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="unpaid">ديون قائمة</SelectItem>
+                  <SelectItem value="paid">حسابات مُصفرة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[120px]">
+              <Select value={filterCampaignId} onValueChange={setFilterCampaignId}>
+                <SelectTrigger className="h-10 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4">
+                  <SelectValue placeholder="كل الحملات" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">كل الحملات</SelectItem>
+                  {campaigns?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </header>
@@ -383,146 +443,163 @@ export default function DebtsPage() {
             </TabsList>
             
             <TabsContent value="customers" className="space-y-4 outline-none animate-in fade-in duration-300">
-              <div className="p-6 bg-green-50 text-green-700 rounded-[2rem] border border-green-100 flex items-center justify-between shadow-sm">
-                <div className="space-y-1 text-right"><p className="text-[10px] font-bold uppercase tracking-wider opacity-70">إجمالي مستحقاتك لدى العملاء</p><span className="text-2xl font-black tabular-nums">{totalCustomerDebts.toLocaleString('en-US')} ر.ي</span></div>
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md text-green-600"><ArrowDownToLine className="w-6 h-6" /></div>
-              </div>
-              {filteredCustomerDebts.length === 0 ? <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد ديون مسجلة</div> : filteredCustomerDebts.map((c) => {
-                const isSettled = c.amount <= 0;
-                return (
-                  <div key={c.id} onClick={() => setSelectedEntity({ id: c.id, name: c.name, type: 'customer' })} className={cn("flex justify-between items-center p-5 rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer", isSettled ? "bg-muted/20 opacity-70" : "bg-white")}>
-                    <div className="flex gap-4 items-center text-right">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", isSettled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}><User className="w-6 h-6" /></div>
-                      <div className="flex flex-col"><span className={cn("font-black text-sm", isSettled && "text-muted-foreground")}>{c.name}</span><span className="text-[10px] font-bold text-muted-foreground">{c.phone || "بدون رقم"}</span></div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {isSettled ? <Badge className="bg-green-100 text-green-700 border-none font-black text-[9px] px-2 py-0.5 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> حساب مُصفر</Badge> : <span className="text-lg font-black text-green-600 tabular-nums">{c.amount.toLocaleString('en-US')} ر.ي</span>}
-                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                    </div>
-                  </div>
-                );
-              })}
+               <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table dir="rtl" className="min-w-[1000px]">
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="text-right font-black text-[10px] py-4">رقم الفاتورة</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">اسم العميل</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">الحملة</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">إجمالي المبلغ</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">المتبقي (الدين)</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">الحالة</TableHead>
+                        <TableHead className="text-left font-black text-[10px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCustomerTable.map((item, index) => (
+                        <TableRow key={item.id} className={cn(index % 2 !== 0 ? "bg-muted/5" : "bg-white")}>
+                          <TableCell className="text-right py-4">
+                            <Badge variant="outline" className="text-[10px] font-black border-primary/20 text-primary bg-primary/5">
+                              {item.invoiceNumber || "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-foreground">{item.entityName}</TableCell>
+                          <TableCell className="text-right text-[10px] font-bold text-muted-foreground">{item.campaignName}</TableCell>
+                          <TableCell className="text-center font-bold text-xs tabular-nums text-muted-foreground">{(item.totalAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-bold text-xs tabular-nums text-green-700">{(item.paidAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-black text-xs tabular-nums text-destructive">{(item.remainingAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center text-[10px] tabular-nums font-bold text-muted-foreground">{item.date ? format(new Date(item.date), "yyyy/MM/dd") : "-"}</TableCell>
+                          <TableCell className="text-center">
+                            {item.remainingAmount <= 0 ? (
+                              <Badge className="bg-green-100 text-green-700 border-none font-black text-[8px] px-2 py-0.5 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> حساب مُصفر</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[8px] font-black text-destructive border-destructive/20 bg-destructive/5">دين قائم</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=sales`)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {item.remainingAmount > 0 && (
+                                <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-accent" onClick={() => { setPaymentTarget(item); setPaymentAmount(item.remainingAmount.toString()); }}>
+                                  <Banknote className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredCustomerTable.length === 0 && <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">لا توجد ديون عملاء تطابق الفلاتر</div>}
+               </div>
             </TabsContent>
 
             <TabsContent value="suppliers" className="space-y-4 outline-none animate-in fade-in duration-300">
-              <div className="p-6 bg-red-50 text-red-700 rounded-[2rem] border border-red-100 flex items-center justify-between shadow-sm">
-                <div className="space-y-1 text-right"><p className="text-[10px] font-bold uppercase tracking-wider opacity-70">إجمالي مديونياتك للموردين</p><span className="text-2xl font-black tabular-nums">{totalSupplierDebts.toLocaleString('en-US')} ر.ي</span></div>
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md text-red-600"><ArrowUpFromLine className="w-6 h-6" /></div>
-              </div>
-              {filteredSupplierDebts.length === 0 ? <div className="text-center py-20 text-muted-foreground opacity-50 font-bold">لا توجد مديونيات مسجلة</div> : filteredSupplierDebts.map((s) => {
-                const isSettled = s.amount <= 0;
-                return (
-                  <div key={s.id} onClick={() => setSelectedEntity({ id: s.id, name: s.name, type: 'supplier' })} className={cn("flex justify-between items-center p-5 rounded-[2rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all cursor-pointer", isSettled ? "bg-muted/20 opacity-70" : "bg-white")}>
-                    <div className="flex gap-4 items-center text-right">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner", isSettled ? "bg-muted text-muted-foreground" : "bg-red-50 text-red-500")}><Wallet className="w-6 h-6" /></div>
-                      <div className="flex flex-col"><span className={cn("font-black text-sm", isSettled && "text-muted-foreground")}>{s.name}</span><span className="text-[10px] font-bold text-muted-foreground">مورد معتمد</span></div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {isSettled ? <Badge className="bg-green-100 text-green-700 border-none font-black text-[9px] px-2 py-0.5 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> حساب مُصفر</Badge> : <span className="text-lg font-black text-red-600 tabular-nums">{s.amount.toLocaleString('en-US')} ر.ي</span>}
-                      <div className="text-[9px] text-primary font-black flex items-center gap-1">عرض التفاصيل <ChevronLeft className="w-3 h-3" /></div>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table dir="rtl" className="min-w-[1100px]">
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="text-right font-black text-[10px] py-4">رقم الفاتورة</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">المورد / الجهة</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">الحملة</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">إجمالي المبلغ</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">المتبقي (الدين)</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">الحالة</TableHead>
+                        <TableHead className="text-left font-black text-[10px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSupplierTable.map((item, index) => (
+                        <TableRow key={item.id} className={cn(index % 2 !== 0 ? "bg-muted/5" : "bg-white")}>
+                          <TableCell className="text-right py-4">
+                            <Badge variant="outline" className="text-[10px] font-black border-orange-200 text-orange-700 bg-orange-50/50">
+                              {item.invoiceNumber || "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-foreground">{item.entityName}</TableCell>
+                          <TableCell className="text-right text-[10px] font-bold text-muted-foreground">{item.campaignName}</TableCell>
+                          <TableCell className="text-center font-bold text-xs tabular-nums text-muted-foreground">{(item.totalAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-bold text-xs tabular-nums text-green-700">{(item.paidAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center font-black text-xs tabular-nums text-destructive">{(item.remainingAmount || 0).toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center text-[10px] tabular-nums font-bold text-muted-foreground">{item.date ? format(new Date(item.date), "yyyy/MM/dd") : "-"}</TableCell>
+                          <TableCell className="text-center">
+                            {item.remainingAmount <= 0 ? (
+                              <Badge className="bg-green-100 text-green-700 border-none font-black text-[8px] px-2 py-0.5 rounded-lg flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> حساب مُصفر</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[8px] font-black text-destructive border-destructive/20 bg-destructive/5">دين قائم</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-left">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=${item.trType === 'purchase' ? 'purchases' : 'expenses'}`)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {item.remainingAmount > 0 && (
+                                <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-accent" onClick={() => { setPaymentTarget(item); setPaymentAmount(item.remainingAmount.toString()); }}>
+                                  <Banknote className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredSupplierTable.length === 0 && <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">لا توجد مديونيات للموردين تطابق الفلاتر</div>}
+               </div>
             </TabsContent>
 
             <TabsContent value="history" className="space-y-4 outline-none animate-in fade-in duration-300">
-              {filteredHistory?.length === 0 ? <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-[3rem]"><History className="w-12 h-12 mx-auto mb-3 opacity-20" /><p className="font-black">لا توجد عمليات سداد مسجلة</p></div> : filteredHistory?.map((tr: any) => (
-                <div key={tr.id} className={cn("p-4 rounded-[1.5rem] border shadow-sm space-y-2.5 transition-all relative overflow-hidden bg-white", tr.type === 'customer_payment' ? 'border-green-100' : 'border-orange-100')}>
-                  <div className="flex justify-between items-center">
-                    <Badge className={cn("text-[9px] font-black px-2 py-0.5 rounded-lg border-none shadow-sm", tr.type === 'customer_payment' ? 'text-white bg-green-600' : 'text-white bg-orange-600')}>{tr.type === 'customer_payment' ? 'استلام دفعة' : 'صرف دفعة'}</Badge>
-                    <span className="text-[9px] font-bold text-muted-foreground/70 tabular-nums">{tr.transactionDate ? format(new Date(tr.transactionDate), "dd/MM/yyyy", { locale: ar }) : ""}</span>
-                  </div>
-                  <div className="flex justify-between items-center px-1">
-                    <div className="flex items-center gap-2 max-w-[60%]"><User className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-sm font-black text-foreground/90 truncate">{tr.entityName}</span></div>
-                    {tr.sourceNumber && <Badge variant="outline" className="text-[9px] font-black">{tr.sourceNumber}</Badge>}
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-dashed border-border/30 px-1">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Receipt className="w-3 h-3" />
-                      <span className="text-[10px] font-bold">لصالح: {tr.sourceType === 'sale' ? 'فاتورة مبيعات' : (tr.sourceType === 'purchase' ? 'فاتورة مشتريات' : 'مصروف')}</span>
-                    </div>
-                    <span className={cn("text-lg font-black tabular-nums", tr.type === 'customer_payment' ? 'text-green-700' : 'text-orange-700')}>{tr.amount.toLocaleString('en-US')} <span className="text-[10px] font-bold">ر.ي</span></span>
-                  </div>
-                  {tr.notes && <p className="text-[10px] text-muted-foreground bg-muted/30 p-2 rounded-xl border border-dashed flex items-center gap-2"><Info className="w-3 h-3" /> {tr.notes}</p>}
+              <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table dir="rtl" className="min-w-[900px]">
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="text-right font-black text-[10px] py-4">نوع العملية</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">الاسم / المستلم</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">المبلغ</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">رقم المرجع</TableHead>
+                        <TableHead className="text-center font-black text-[10px]">تاريخ السداد</TableHead>
+                        <TableHead className="text-right font-black text-[10px]">ملاحظات</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {applyFilters(historyTransactions || []).map((tr, index) => (
+                        <TableRow key={tr.id} className={cn(index % 2 !== 0 ? "bg-muted/5" : "bg-white")}>
+                          <TableCell className="text-right py-4">
+                            <Badge className={cn("text-[9px] font-black border-none", tr.type === 'customer_payment' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white')}>
+                              {tr.type === 'customer_payment' ? 'استلام (قبض)' : 'صرف (دفع)'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-foreground">{tr.entityName}</TableCell>
+                          <TableCell className="text-center font-black text-sm tabular-nums text-primary">{tr.amount.toLocaleString('en-US')}</TableCell>
+                          <TableCell className="text-center text-[10px] font-bold text-muted-foreground">{tr.sourceNumber || "-"}</TableCell>
+                          <TableCell className="text-center text-[10px] tabular-nums font-bold text-muted-foreground">{tr.transactionDate ? format(new Date(tr.transactionDate), "yyyy/MM/dd") : "-"}</TableCell>
+                          <TableCell className="text-right text-[10px] font-medium text-muted-foreground italic truncate max-w-[200px]">{tr.notes || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              ))}
+                {(historyTransactions || []).length === 0 && <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">لا توجد عمليات سداد مسجلة</div>}
+              </div>
             </TabsContent>
           </Tabs>
         )}
       </div>
 
-      <Sheet open={!!selectedEntity} onOpenChange={() => setSelectedEntity(null)}>
-        <SheetContent side="bottom" className="h-[90vh] rounded-t-[2.5rem] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
-          <SheetHeader className="p-6 bg-primary text-white relative">
-            <button onClick={() => setSelectedEntity(null)} className="absolute left-6 top-8 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"><X className="w-5 h-5 text-white" /></button>
-            <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl"><SheetTitle className="text-xl font-black text-white">{selectedEntity?.name}</SheetTitle><p className="text-xs text-white/70 font-bold">كشف العمليات والديون الموثقة</p></div>
-          </SheetHeader>
-          <div className="h-full overflow-y-auto p-4 space-y-4 pb-32 bg-muted/20" dir="rtl">
-            {entityTransactions.length > 0 ? entityTransactions.map((tr: any) => {
-              const campaign = campaigns?.find(c => c.id === tr.campaignId)
-              const date = tr.invoiceDate || tr.purchaseDate || tr.expenseDate || (tr.createdAt?.toDate ? tr.createdAt.toDate() : tr.createdAt)
-              const isPaid = tr.remainingAmount <= 0
-              const payments = historyTransactions?.filter(pt => pt.sourceId === tr.id) || [];
-
-              return (
-                <div key={tr.id} className={cn("p-5 bg-white rounded-[2rem] border border-border/60 shadow-md space-y-4 relative overflow-hidden transition-all", isPaid && "bg-muted/40 opacity-80")}>
-                  {isPaid && <div className="absolute top-0 right-0 p-1.5 bg-green-500 text-white rounded-bl-2xl z-10 flex items-center gap-1 px-3 shadow-md"><CheckCircle2 className="w-3.5 h-3.5" /><span className="text-[10px] font-black">مُسددة بالكامل</span></div>}
-                  <div className="flex justify-between items-start">
-                    <div className="flex flex-col gap-1.5 text-right">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Badge variant="secondary" className="font-black text-[10px] rounded-lg border-primary/10">
-                          {tr.invoiceNumber || (tr.trType === 'expense' ? 'مصروف' : 'بدون رقم')}
-                        </Badge>
-                        <span className="text-[11px] font-black max-w-[150px] truncate">{campaign?.name || "حملة غير معروفة"}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {(tr.items && tr.items.length > 0) ? tr.items.slice(0, 3).map((item: any, idx: number) => (
-                          <span key={idx} className="text-[10px] px-2 py-0.5 bg-muted rounded-full font-bold text-muted-foreground flex items-center gap-1 border"><Fish className="w-3 h-3" /> {item.fishType}</span>
-                        )) : tr.trType === 'expense' && <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5"><Receipt className="w-3 h-3" /> {tr.type}</span>}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <Badge className={cn("rounded-xl px-3 py-0.5 text-[9px] font-black border-none shadow-sm", tr.trType === 'sale' ? "bg-green-600 text-white" : (tr.trType === 'purchase' ? "bg-orange-600 text-white" : "bg-accent text-white"))}>{tr.trType === 'sale' ? "مبيعات" : tr.trType === 'purchase' ? "مشتريات" : "مصروف"}</Badge>
-                      <div className="flex items-center gap-1.5 text-muted-foreground"><span className="text-[10px] font-bold tabular-nums">{date ? format(new Date(date), "dd/MM/yyyy", { locale: ar }) : "-"}</span><Calendar className="w-3 h-3" /></div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 py-3 border-y border-dashed border-border/50 text-center bg-muted/20 rounded-2xl">
-                     <div className="flex flex-col gap-0.5"><span className="text-[9px] text-muted-foreground font-black">المتبقي</span><span className={cn("text-sm font-black tabular-nums", isPaid ? "text-muted-foreground line-through" : "text-destructive")}>{tr.remainingAmount.toLocaleString('en-US')}</span></div>
-                     <div className="flex flex-col gap-0.5 border-x border-border/30 px-1"><span className="text-[9px] text-muted-foreground font-black">المدفوع</span><span className={cn("text-sm font-black tabular-nums text-green-700")}>{tr.paidAmount?.toLocaleString('en-US')}</span></div>
-                     <div className="flex flex-col gap-0.5"><span className="text-[9px] text-muted-foreground font-black">الإجمالي</span><span className="text-sm font-black tabular-nums">{(tr.totalAmount || tr.amount)?.toLocaleString('en-US')}</span></div>
-                  </div>
-                  
-                  {/* تتبع الأقساط والوصولات الخاصة بهذه الفاتورة */}
-                  {payments.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-muted-foreground flex items-center gap-2 px-1"><History className="w-3.5 h-3.5 text-primary" /> سجل السداد للفاتورة:</p>
-                      <div className="grid gap-1.5">
-                        {payments.map((p) => (
-                          <div key={p.id} className="flex justify-between items-center bg-primary/5 p-3 rounded-2xl border border-primary/10 transition-all">
-                             <div className="flex flex-col">
-                                <span className="font-black text-xs tabular-nums text-primary">{p.amount.toLocaleString()} ر.ي</span>
-                                <span className="text-[9px] font-bold text-muted-foreground/60">{format(new Date(p.transactionDate), "dd/MM/yyyy", { locale: ar })}</span>
-                             </div>
-                             {p.notes && <span className="text-[9px] font-bold text-primary/70 bg-white px-3 py-1 rounded-full shadow-sm max-w-[120px] truncate">المستلم: {p.notes}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    <Button variant="outline" className="flex-1 h-11 rounded-2xl text-xs font-black gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={() => router.push(`/campaigns/${tr.campaignId}?tab=${tr.trType === 'sale' ? 'sales' : (tr.trType === 'purchase' ? 'purchases' : 'expenses')}`)}><Eye className="w-4 h-4" /> التفاصيل</Button>
-                    {!isPaid && <Button className="flex-1 h-11 rounded-2xl text-xs font-black gap-2 lux-gradient shadow-lg" onClick={() => { setPaymentTarget(tr); setPaymentAmount(tr.remainingAmount.toString()); }}><Banknote className="w-4 h-4" /> تسجيل سداد</Button>}
-                  </div>
-                </div>
-              )
-            }) : <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-40 bg-white rounded-[3rem] border-2 border-dashed mx-2"><CheckCircle2 className="w-16 h-16 text-green-600" /><div className="space-y-1"><p className="text-lg font-black">لا توجد ديون موثقة</p><p className="text-xs font-bold">جميع العمليات لهذه الجهة تمت نقداً أو تم تسويتها بالكامل</p></div></div>}
-          </div>
-        </SheetContent>
-      </Sheet>
-
+      {/* نافذة تسجيل السداد */}
       <Dialog open={!!paymentTarget} onOpenChange={() => setPaymentTarget(null)}>
         <DialogContent className="max-w-[95%] rounded-[2.5rem] mx-auto p-0 overflow-hidden border-none shadow-2xl [&>button]:left-6 [&>button]:right-auto">
           <DialogHeader className="p-8 lux-gradient text-white">
@@ -531,18 +608,18 @@ export default function DebtsPage() {
           <div className="p-6 space-y-6" dir="rtl">
             <div className="grid grid-cols-2 gap-4 p-5 bg-muted/40 rounded-3xl border border-dashed text-right border-primary/20">
               <div className="space-y-1"><span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">المديونية المتبقية</span><p className="text-lg font-black text-destructive tabular-nums">{paymentTarget?.remainingAmount?.toLocaleString('en-US')} ر.ي</p></div>
-              <div className="space-y-1"><span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">رقم المرجع</span><p className="text-xs font-black text-primary truncate bg-white px-2 py-0.5 rounded-lg inline-block border">{paymentTarget?.invoiceNumber || (paymentTarget?.trType === 'expense' ? 'مصروف' : '-')}</p></div>
+              <div className="space-y-1"><span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider">رقم المرجع</span><p className="text-xs font-black text-primary truncate bg-white px-2 py-0.5 rounded-lg inline-block border">{paymentTarget?.invoiceNumber || '-'}</p></div>
             </div>
             
             <div className="space-y-2.5 text-right">
-              <Label className="text-sm font-black mr-1 flex items-center gap-2 text-primary"><Coins className="w-5 h-5" />المبلغ المراد سداده الآن (بالإنجليزي)</Label>
+              <Label className="text-sm font-black mr-1 flex items-center gap-2 text-primary"><Coins className="w-5 h-5" />المبلغ المراد سداده الآن</Label>
               <Input type="text" inputMode="decimal" className="h-16 rounded-[1.5rem] text-center text-2xl font-black tabular-nums border-2 focus:ring-primary shadow-inner" value={paymentAmount} onChange={(e) => { const v = e.target.value.replace(/,/g, ""); if (v === "" || /^\d*\.?\d*$/.test(v)) setPaymentAmount(v); }} placeholder="0.00" />
-              {parseFloat(paymentAmount) > paymentTarget?.remainingAmount && <p className="text-[10px] text-destructive font-black flex items-center gap-1.5 justify-end mt-2 animate-pulse"><AlertCircle className="w-4 h-4" /> خطأ: المبلغ المدخل أكبر من المتبقي في هذه الفاتورة</p>}
+              {parseFloat(paymentAmount) > paymentTarget?.remainingAmount && <p className="text-[10px] text-destructive font-black flex items-center gap-1.5 justify-end mt-2 animate-pulse"><AlertCircle className="w-4 h-4" /> خطأ: المبلغ المدخل أكبر من المتبقي</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-5">
                <div className="space-y-2 text-right"><Label className="text-xs font-black mr-1 flex items-center gap-2 text-muted-foreground"><Calendar className="w-4 h-4 text-primary" />تاريخ السداد</Label><Input type="date" className="h-12 rounded-2xl text-right border-muted-foreground/20" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></div>
-               <div className="space-y-2 text-right"><Label className="text-xs font-black mr-1 flex items-center gap-2 text-muted-foreground"><FileText className="w-4 h-4 text-primary" />اسم المستلم / ملاحظات التوثيق</Label><Textarea placeholder="مثال: تم تسليم الدفعة للأخ فلان بن فلان..." className="rounded-[1.5rem] resize-none text-right h-28 border-muted-foreground/20 focus:ring-primary" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} /></div>
+               <div className="space-y-2 text-right"><Label className="text-xs font-black mr-1 flex items-center gap-2 text-muted-foreground"><FileText className="w-4 h-4 text-primary" />ملاحظات / المستلم</Label><Textarea placeholder="اكتب تفاصيل إضافية..." className="rounded-[1.5rem] resize-none text-right h-28 border-muted-foreground/20 focus:ring-primary" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} /></div>
             </div>
           </div>
           <DialogFooter className="p-6 bg-muted/30 border-t flex flex-row gap-4">
