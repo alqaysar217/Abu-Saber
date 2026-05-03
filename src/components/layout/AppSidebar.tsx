@@ -73,48 +73,48 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[2.5rem] overflow-hidden [&>button]:hidden">
+      <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[1.5rem] overflow-hidden [&>button]:hidden">
         <div className="flex flex-col h-full bg-white">
-          <SheetHeader className="p-8 lux-gradient text-white text-right space-y-0">
+          <SheetHeader className="p-6 lux-gradient text-white text-right space-y-0">
             <div className="flex items-center gap-4 text-right pt-4" dir="rtl">
-              <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg shrink-0">
+              <Avatar className="w-14 h-16 border-2 border-white/30 shadow-lg shrink-0 rounded-2xl">
                 <AvatarImage src={profile?.photoBase64 || ""} />
                 <AvatarFallback className="bg-white/20 text-white text-xl font-black">
                   {profile?.name?.substring(0, 1) || "أ"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-0.5 overflow-hidden">
-                <SheetTitle className="text-xl font-black text-white m-0 p-0 leading-tight truncate">
+                <SheetTitle className="text-lg font-black text-white m-0 p-0 leading-tight truncate">
                   {profile?.name || "صاحب العمل"}
                 </SheetTitle>
-                <p className="text-xs text-white/70 font-bold truncate">
+                <p className="text-[10px] text-white/70 font-bold truncate">
                   {user?.phoneNumber || user?.email || "جلسة مؤقتة"}
                 </p>
               </div>
             </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
+          <div className="flex-1 overflow-y-auto p-3 space-y-4 pb-24">
             {categories.map((cat) => (
-              <div key={cat} className="space-y-2">
-                <h4 className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-wider text-right">{cat}</h4>
+              <div key={cat} className="space-y-1.5">
+                <h4 className="px-3 text-[9px] font-black text-muted-foreground uppercase tracking-wider text-right opacity-60">{cat}</h4>
                 <div className="grid gap-1">
                   {menuItems.filter(item => item.category === cat).map((item) => (
                     <Link key={item.href} href={item.href} onClick={() => onOpenChange(false)}>
                       <div className={cn(
-                        "flex items-center justify-between p-4 rounded-2xl transition-all active:scale-95",
+                        "flex items-center justify-between p-3 rounded-xl transition-all active:scale-95",
                         pathname === item.href ? "bg-primary/5 text-primary" : "hover:bg-muted/50 text-foreground"
                       )}>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <div className={cn(
-                            "p-2 rounded-xl",
+                            "p-2 rounded-lg",
                             pathname === item.href ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                           )}>
-                            <item.icon className="w-5 h-5" />
+                            <item.icon className="w-4 h-4" />
                           </div>
-                          <span className="text-sm font-bold">{item.label}</span>
+                          <span className="text-xs font-bold">{item.label}</span>
                         </div>
-                        <ChevronLeft className={cn("w-4 h-4 opacity-30", pathname === item.href && "text-primary opacity-100")} />
+                        <ChevronLeft className={cn("w-3 h-3 opacity-30", pathname === item.href && "text-primary opacity-100")} />
                       </div>
                     </Link>
                   ))}
@@ -123,13 +123,13 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
             ))}
           </div>
 
-          <div className="p-6 border-t border-dashed mt-auto">
+          <div className="p-4 border-t border-dashed mt-auto">
             <Button 
               variant="destructive" 
-              className="w-full h-14 rounded-2xl font-black gap-2 shadow-xl" 
+              className="w-full h-12 rounded-xl font-black gap-2 shadow-lg text-sm" 
               onClick={handleLogout}
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
               تسجيل الخروج
             </Button>
           </div>
