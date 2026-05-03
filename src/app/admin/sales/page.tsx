@@ -155,7 +155,7 @@ export default function AllSalesDetailedPage() {
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["Invoice No", "Fish Type", "Quantity", "Price/Kg", "Line Total", "Customer", "Date", "Campaign", "Payment Type", "Paid", "Remaining", "Notes"]
+    const headers = ["رقم الفاتورة", "نوع السمك", "الكمية", "سعر الكجم", "إجمالي الصنف", "العميل", "التاريخ", "الحملة", "طريقة الدفع", "المدفوع", "المتبقي", "ملاحظات"]
     const rows = reportData.map(item => [
       item.invoiceNumber,
       item.fishType,
@@ -219,7 +219,7 @@ export default function AllSalesDetailedPage() {
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="بحث بنوع السمك أو العميل أو رقم الفاتورة..." 
-              className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
+              className="pr-11 h-12 rounded-2xl bg-muted/50 border-none text-right" 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />

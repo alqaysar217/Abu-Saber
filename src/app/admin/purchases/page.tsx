@@ -178,7 +178,7 @@ export default function AllPurchasesDetailedPage() {
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["Invoice No", "Fish Type", "Quantity", "Price/Kg", "Line Total", "Supplier", "Date", "Campaign", "Payment Type", "Paid", "Remaining", "Notes"]
+    const headers = ["رقم الفاتورة", "نوع السمك", "الكمية", "سعر الشراء", "إجمالي الصنف", "المورد", "التاريخ", "الحملة", "طريقة الدفع", "المدفوع نقداً", "المتبقي (دين)", "ملاحظات"]
     const rows = reportData.map(item => [
       item.invoiceNumber,
       item.fishType,
