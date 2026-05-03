@@ -16,7 +16,6 @@ import {
   EyeOff, 
   Loader2, 
   Menu, 
-  Copy,
   Sparkles,
   Database
 } from "lucide-react"
@@ -122,13 +121,6 @@ export default function Home() {
       toast({ variant: "destructive", title: "فشل استعادة البيانات" })
     } finally {
       setRestoring(false)
-    }
-  }
-
-  const copyUid = () => {
-    if (user?.uid) {
-      navigator.clipboard.writeText(user.uid)
-      toast({ title: "تم نسخ معرف المستخدم" })
     }
   }
 
@@ -287,16 +279,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      <footer className="px-6 py-8 mt-auto border-t border-dashed opacity-40">
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-[8px] font-bold uppercase tracking-widest text-center">معرف المستخدم (UID)</p>
-          <button onClick={copyUid} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full">
-            <span className="text-[10px] font-mono truncate max-w-[200px]">{user?.uid}</span>
-            <Copy className="w-3 h-3" />
-          </button>
-        </div>
-      </footer>
 
       <BottomNav />
     </div>
