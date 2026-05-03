@@ -4,8 +4,8 @@
 import { useMemo, useState } from "react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { Filter, FileText, Download, TrendingUp, AlertCircle, Calendar, Banknote, PieChart } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts'
+import { TrendingUp, AlertCircle, Banknote, PieChart, Users, ShoppingBag, Ship, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
@@ -14,129 +14,271 @@ import { cn } from "@/lib/utils"
 export default function ReportsPage() {
   const { user } = useUser()
   const db = useFirestore()
-  const [selectedPeriod, setSelectedPeriod] = useState("الشهر")
+  const [activeView, setActiveView] = useState<"performance" | "debts">("performance")
+
+  // Data Subscriptions
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "campaigns"))
+  }, [db, user])
+  const { data: campaigns } = useCollection(campaignsQuery)
 
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "invoices"), orderBy("invoiceDate", "asc"))
+    return query(collection(db, "users", user.uid, "invoices"))
   }, [db, user])
+  const { data: invoices } = useCollection(invoicesQuery)
 
-  const { data: invoices, isLoading } = useCollection(invoicesQuery)
+  const purchasesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "purchases"))
+  }, [db, user])
+  const { data: purchases } = useCollection(purchasesQuery)
 
-  // تجميع البيانات الحقيقية للرسم البياني (شهرياً)
-  const chartData = useMemo(() => {
-    if (!invoices || invoices.length === 0) return []
+  const expensesQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "expenses"))
+  }, [db, user])
+  const { data: expenses } = useCollection(expensesQuery)
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "customers"))
+  }, [db, user])
+  const { data: customers } = useCollection(customersQuery)
+
+  const suppliersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "suppliers"))
+  }, [db, user])
+  const { data: suppliers } = useCollection(suppliersQuery)
+
+  // 1. Campaign Performance Logic (Sales vs Profit)
+  const campaignPerformanceData = useMemo(() => {
+    if (!campaigns || !invoices) return []
     
-    const monthsMap: Record<string, number> = {}
-    const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+    return campaigns.map(camp => {
+      const campInvoices = invoices.filter(inv => inv.campaignId === camp.id)
+      const campPurchases = purchases?.filter(p => p.campaignId === camp.id) || []
+      const campExpenses = expenses?.filter(e => e.campaignId === camp.id) || []
 
+      const totalSales = campInvoices.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0)
+      const totalCosts = 
+        campPurchases.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) + 
+        campExpenses.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+      
+      const profit = totalSales - totalCosts
+
+      return {
+        name: camp.name,
+        sales: totalSales,
+        profit: profit,
+        shortName: camp.name.substring(0, 10) + (camp.name.length > 10 ? '..' : '')
+      }
+    }).sort((a, b) => b.sales - a.sales).slice(0, 6) // Show top 6 campaigns
+  }, [campaigns, invoices, purchases, expenses])
+
+  // 2. Customer Debt Concentration (Top 5 debtors)
+  const customerDebtsData = useMemo(() => {
+    if (!invoices || !customers) return []
+    
+    const debtMap: Record<string, number> = {}
     invoices.forEach(inv => {
-      if (!inv.invoiceDate) return
-      const date = new Date(inv.invoiceDate)
-      const monthName = months[date.getMonth()]
-      monthsMap[monthName] = (monthsMap[monthName] || 0) + (inv.totalAmount || 0)
+      const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
+      if (remaining > 0) {
+        debtMap[inv.customerId] = (debtMap[inv.customerId] || 0) + remaining
+      }
     })
 
-    return Object.entries(monthsMap).map(([name, value]) => ({ name, value }))
-  }, [invoices])
+    return Object.entries(debtMap).map(([id, amount]) => {
+      const cust = customers.find(c => c.id === id)
+      return { name: cust?.name || "عميل غير معروف", value: amount }
+    }).sort((a, b) => b.value - a.value).slice(0, 5)
+  }, [invoices, customers])
+
+  // 3. Supplier Debt Concentration (Top 5 to pay)
+  const supplierDebtsData = useMemo(() => {
+    if (!purchases || !expenses || !suppliers) return []
+    
+    const debtMap: Record<string, number> = {}
+    
+    purchases.forEach(p => {
+      const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
+      if (remaining > 0) {
+        debtMap[p.supplierId] = (debtMap[p.supplierId] || 0) + remaining
+      }
+    })
+
+    expenses.forEach(e => {
+      const remaining = e.remainingAmount || 0
+      if (remaining > 0 && e.payeeId) {
+        debtMap[e.payeeId] = (debtMap[e.payeeId] || 0) + remaining
+      }
+    })
+
+    return Object.entries(debtMap).map(([id, amount]) => {
+      const sup = suppliers.find(s => s.id === id)
+      return { name: sup?.name || "مورد غير معروف", value: amount }
+    }).sort((a, b) => b.value - a.value).slice(0, 5)
+  }, [purchases, expenses, suppliers])
+
+  const isLoading = !campaigns || !invoices
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
       <header className="p-6 bg-white border-b sticky top-0 z-20 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-black text-primary">التحليلات والتقارير</h1>
+          <h1 className="text-2xl font-black text-primary">مركز التحليلات المالي</h1>
           <div className="p-2 bg-primary/5 rounded-xl text-primary">
             <PieChart className="w-6 h-6" />
           </div>
         </div>
         
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" dir="rtl">
-          {["اليوم", "الأسبوع", "الشهر", "السنة"].map((period) => (
-            <Button 
-              key={period} 
-              variant={selectedPeriod === period ? 'default' : 'secondary'} 
-              size="sm" 
-              onClick={() => setSelectedPeriod(period)}
-              className={cn(
-                "rounded-xl px-6 h-10 font-black text-xs transition-all",
-                selectedPeriod === period ? "lux-gradient shadow-md" : "bg-muted/50 text-muted-foreground"
-              )}
-            >
-              {period}
-            </Button>
-          ))}
+        <div className="flex gap-2 p-1 bg-muted/50 rounded-2xl border" dir="rtl">
+          <Button 
+            variant="ghost" 
+            onClick={() => setActiveView("performance")}
+            className={cn(
+              "flex-1 h-11 rounded-xl font-black text-xs transition-all",
+              activeView === "performance" ? "lux-gradient text-white shadow-lg" : "text-muted-foreground"
+            )}
+          >
+            <Ship className="w-4 h-4 ml-2" />
+            أداء المبيعات
+          </Button>
+          <Button 
+            variant="ghost" 
+            onClick={() => setActiveView("debts")}
+            className={cn(
+              "flex-1 h-11 rounded-xl font-black text-xs transition-all",
+              activeView === "debts" ? "lux-gradient text-white shadow-lg" : "text-muted-foreground"
+            )}
+          >
+            <Banknote className="w-4 h-4 ml-2" />
+            تـوزع الـديـون
+          </Button>
         </div>
       </header>
 
-      <div className="p-4 space-y-6">
-        {/* بطاقة الرسم البياني الرئيسية */}
-        <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
-          <CardHeader className="p-6 pb-2 text-right">
-            <CardTitle className="text-sm font-black text-primary flex items-center justify-start gap-2" dir="rtl">
-              <TrendingUp className="w-5 h-5" />
-              أداء المبيعات (حسب الأشهر)
-            </CardTitle>
-            <p className="text-[10px] text-muted-foreground font-bold mt-1">يتم احتساب البيانات من واقع فواتير المبيعات المسجلة</p>
-          </CardHeader>
-          <CardContent className="h-72 p-4 pt-0">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#666', fontWeight: 'bold' }} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 9, fill: '#999', fontWeight: 'bold' }}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f8f8f8' }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
-                    formatter={(value: number) => [value.toLocaleString() + " ر.ي", "إجمالي المبيعات"]}
-                  />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={30}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? '#123524' : '#23604533'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 opacity-30">
-                <TrendingUp className="w-16 h-16" />
-                <p className="text-xs font-black">لا توجد فواتير مبيعات مسجلة لعرضها</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* أدوات التصدير */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-black px-2 text-right text-primary">أدوات إدارية</h3>
-          <div className="grid gap-3">
-            {[
-              { label: "كشف حساب العملاء (PDF)", icon: FileText, color: "bg-blue-50 text-blue-600" },
-              { label: "جرد مبيعات الأصناف", icon: Calendar, color: "bg-green-50 text-green-600" },
-              { label: "تقرير مديونيات الموردين", icon: Banknote, color: "bg-orange-50 text-orange-600" },
-            ].map((report, idx) => (
-              <button key={idx} className="w-full flex items-center justify-between p-5 bg-white rounded-[1.5rem] border border-border/40 shadow-sm active:scale-[0.98] transition-all group">
-                 <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-black text-foreground/90">{report.label}</span>
-                  <div className={cn("p-3 rounded-2xl shadow-inner", report.color)}>
-                    <report.icon className="w-5 h-5" />
-                  </div>
-                </div>
-              </button>
-            ))}
+      <main className="p-4 space-y-6">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-30">
+            <TrendingUp className="w-12 h-12 animate-pulse mb-2" />
+            <p className="font-bold">جاري تحليل البيانات الحية...</p>
           </div>
-        </div>
+        ) : activeView === "performance" ? (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* بطاقة مقارنة المبيعات والارباح */}
+            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-2 text-right">
+                <CardTitle className="text-sm font-black text-primary flex items-center justify-start gap-2" dir="rtl">
+                  <TrendingUp className="w-5 h-5 text-accent" />
+                  تحليل الحملات (مبيعات vs أرباح)
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground font-bold">مقارنة القيمة البيعية مع صافي الربح لكل حملة</p>
+              </CardHeader>
+              <CardContent className="h-80 p-4">
+                {campaignPerformanceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={campaignPerformanceData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }} barGap={5}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="shortName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', textAlign: 'right' }}
+                        formatter={(value: any) => [value.toLocaleString() + " ر.ي"]}
+                      />
+                      <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'bold' }} />
+                      <Bar name="إجمالي المبيعات" dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={20} />
+                      <Bar name="صافي الربح" dataKey="profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs font-bold opacity-30">لا توجد بيانات حملات كافية</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border-none shadow-md rounded-[1.5rem] bg-green-50 text-green-700">
+                <CardContent className="p-5 flex flex-col gap-1 items-center text-center">
+                  <LayoutDashboard className="w-5 h-5 mb-1 opacity-60" />
+                  <span className="text-[9px] font-black uppercase">إجمالي مبيعاتك</span>
+                  <span className="text-sm font-black tabular-nums">{invoices?.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0).toLocaleString()}</span>
+                </CardContent>
+              </Card>
+              <Card className="border-none shadow-md rounded-[1.5rem] bg-primary text-white">
+                <CardContent className="p-5 flex flex-col gap-1 items-center text-center">
+                  <Ship className="w-5 h-5 mb-1 opacity-60" />
+                  <span className="text-[9px] font-black uppercase">عدد الحملات</span>
+                  <span className="text-sm font-black tabular-nums">{campaigns?.length || 0}</span>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* تحليل ديون العملاء */}
+            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-2 text-right border-b border-green-50">
+                <CardTitle className="text-sm font-black text-green-700 flex items-center justify-start gap-2" dir="rtl">
+                  <Users className="w-5 h-5" />
+                  أكبر 5 مدينين لك (عملاء)
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground font-bold">العملاء الذين لديهم أكبر أرصدة متبقية غير مسددة</p>
+              </CardHeader>
+              <CardContent className="h-64 p-4">
+                {customerDebtsData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} width={80} />
+                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+                        {customerDebtsData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045aa'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs font-bold opacity-30">لا توجد ديون عملاء حالية</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* تحليل ديون الموردين */}
+            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-2 text-right border-b border-orange-50">
+                <CardTitle className="text-sm font-black text-orange-700 flex items-center justify-start gap-2" dir="rtl">
+                  <ShoppingBag className="w-5 h-5" />
+                  أكبر مديونياتك لـ (موردين/جهات)
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground font-bold">الجهات التي تطالبك بأكبر مبالغ سداد</p>
+              </CardHeader>
+              <CardContent className="h-64 p-4">
+                {supplierDebtsData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f5" />
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} width={80} />
+                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+                        {supplierDebtsData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316aa'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs font-bold opacity-30">لا توجد مديونيات موردين حالية</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* رسالة توضيحية */}
         <Card className="border-none bg-orange-50 rounded-[2rem] border border-orange-100 p-6 shadow-inner">
@@ -146,11 +288,11 @@ export default function ReportsPage() {
             </div>
             <h4 className="font-black text-orange-900">ملاحظة محاسبية</h4>
             <p className="text-[11px] text-orange-800 font-bold leading-relaxed px-4">
-              التقارير أعلاه هي انعكاس مباشر للفواتير والمصروفات التي تقوم بتسجيلها. لضمان دقة التحليل، احرص على توثيق كافة العمليات المالية فور حدوثها.
+              هذه التقارير حية ومحدثة؛ فهي تعتمد كلياً على الفواتير والوصولات التي تسجلها. لضمان دقة الرسوم البيانية، احرص على توثيق كافة العمليات فور حدوثها.
             </p>
           </div>
         </Card>
-      </div>
+      </main>
       <BottomNav />
     </div>
   )
