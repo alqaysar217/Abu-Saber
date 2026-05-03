@@ -179,17 +179,17 @@ function NewPurchaseContent() {
       const purchasesRef = collection(db, "users", user.uid, "purchases")
       const purchasesSnap = await getDocs(purchasesRef)
       
-      // منطق ترقيم الفاتورة التسلسلي (P-0001)
       const nextSequence = purchasesSnap.size + 1
       const invoiceNumber = `P-${nextSequence.toString().padStart(4, '0')}`
 
-      const purchaseRef = doc(purchasesRef)
+      const purchaseDocRef = doc(purchasesRef)
 
       const purchaseData = {
-        id: purchaseRef.id,
+        id: purchaseDocRef.id,
         invoiceNumber,
         campaignId,
         supplierId,
+        items: addedItems.map(({ tempId, ...rest }) => ({...rest, unitPrice: rest.pricePerKg})),
         totalAmount: grandTotal,
         paidAmount: totalPaid,
         remainingAmount: totalDue,
@@ -200,14 +200,14 @@ function NewPurchaseContent() {
         updatedAt: serverTimestamp(),
       }
 
-      await setDoc(purchaseRef, purchaseData)
+      await setDoc(purchaseDocRef, purchaseData)
 
-      // حفظ أصناف الفاتورة
+      // Also save items to subcollection as defined in backend.json for compatibility
       for (const item of addedItems) {
-        const itemRef = doc(collection(purchaseRef, "items"))
+        const itemRef = doc(collection(purchaseDocRef, "items"))
         await setDoc(itemRef, { 
           ...item, 
-          purchaseId: purchaseRef.id, 
+          purchaseId: purchaseDocRef.id, 
           userId: user.uid, 
           unitPrice: item.pricePerKg 
         })

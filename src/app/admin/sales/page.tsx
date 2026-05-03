@@ -202,7 +202,7 @@ export default function AllSalesDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <Receipt className="w-5 h-5" />
-            سجل المبيعات التفصيلي
+            سجل المبيعات 
           </h1>
           <Button 
             variant="outline" 

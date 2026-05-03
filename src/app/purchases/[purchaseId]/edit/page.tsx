@@ -74,13 +74,6 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
 
   const { data: purchaseData } = useDoc(purchaseRef)
 
-  const itemsQuery = useMemoFirebase(() => {
-    if (!db || !user || !purchaseId) return null
-    return query(collection(db, "users", user.uid, "purchases", purchaseId, "items"))
-  }, [db, user, purchaseId])
-
-  const { data: existingItems } = useCollection(itemsQuery)
-
   const [campaignId, setCampaignId] = useState("")
   const [supplierId, setSupplierId] = useState("")
   const [date, setDate] = useState("")
@@ -105,37 +98,31 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
           console.error("Invalid purchase date", e)
         }
       }
+
+      // Load items from root doc if available, otherwise from subcollection fetch (existingItems)
+      if (purchaseData.items) {
+        setAddedItems(purchaseData.items.map((item: any) => ({
+          tempId: Math.random().toString(36).substr(2, 9),
+          ...item,
+          pricePerKg: item.pricePerKg || item.unitPrice,
+          lineTotal: item.lineTotal || (item.quantity * (item.pricePerKg || item.unitPrice))
+        })))
+        setFetchingData(false)
+      }
     }
   }, [purchaseData])
 
-  useEffect(() => {
-    if (existingItems) {
-      setAddedItems(existingItems.map(item => ({
-        tempId: item.id,
-        id: item.id,
-        fishType: item.fishType,
-        quantity: item.quantity,
-        pricePerKg: item.unitPrice,
-        lineTotal: item.lineTotal,
-        paymentType: item.paymentType || "نقد",
-        paidAmount: item.paidAmount || 0
-      })))
-      setFetchingData(false)
-    }
-  }, [existingItems])
-
+  // Subscriptions for selection
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "campaigns"), where("status", "==", "open"))
   }, [db, user])
-
   const { data: openCampaigns } = useCollection(campaignsQuery)
 
   const suppliersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "suppliers"))
   }, [db, user])
-
   const { data: suppliers } = useCollection(suppliersQuery)
 
   const formatInputNumber = (val: string) => {
@@ -223,6 +210,7 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
     const updateData = {
       campaignId,
       supplierId,
+      items: addedItems.map(({ tempId, ...rest }) => ({...rest, unitPrice: rest.pricePerKg})),
       totalAmount: grandTotal,
       paidAmount: totalPaid,
       remainingAmount: totalDue,
@@ -231,34 +219,15 @@ export default function EditPurchasePage({ params }: { params: Promise<{ purchas
       updatedAt: serverTimestamp(),
     }
 
-    updateDoc(purchaseRef, updateData).catch(e => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update', requestResourceData: updateData }))
-    });
-
-    const batch = writeBatch(db)
-    getDocs(collection(purchaseRef, "items")).then(oldItems => {
-      oldItems.docs.forEach(d => batch.delete(d.ref))
-      addedItems.forEach(item => {
-        const iRef = doc(collection(purchaseRef, "items"))
-        batch.set(iRef, {
-          id: iRef.id, 
-          purchaseId, 
-          userId: user.uid, 
-          fishType: item.fishType, 
-          quantity: item.quantity,
-          unitPrice: item.pricePerKg, 
-          lineTotal: item.lineTotal, 
-          paymentType: item.paymentType, 
-          paidAmount: item.paidAmount
-        })
-      })
-      batch.commit().then(() => {
+    updateDoc(purchaseRef, updateData)
+      .then(() => {
         toast({ title: "تم التحديث بنجاح" })
         router.back()
-      }).catch(e => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path + "/items", operation: 'write' }))
-      }).finally(() => setLoading(false))
-    })
+      })
+      .catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'update', requestResourceData: updateData }))
+      })
+      .finally(() => setLoading(false))
   }
 
   if (fetchingData) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>
