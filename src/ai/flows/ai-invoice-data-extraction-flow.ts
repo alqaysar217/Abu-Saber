@@ -16,7 +16,6 @@ const ExtractInvoiceDataInputSchema = z.object({
     .describe(
       "A photo of a handwritten invoice, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
-  customerId: z.string().describe('The ID of the customer associated with this invoice.').optional(),
 });
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
@@ -41,23 +40,21 @@ const aiInvoiceDataExtractionPrompt = ai.definePrompt({
   name: 'aiInvoiceDataExtractionPrompt',
   input: { schema: ExtractInvoiceDataInputSchema },
   output: { schema: ExtractInvoiceDataOutputSchema },
-  prompt: `You are an AI assistant specialized in extracting data from handwritten invoices.
-Your task is to analyze the provided image of a handwritten invoice and extract the details of fish purchases.
+  prompt: `أنت مساعد ذكاء اصطناعي خبير في تحليل فواتير جرد الأسماك في اليمن.
+مهمتك هي تحليل صورة الفاتورة المرفقة واستخراج البيانات التالية لكل صنف:
+1. نوع السمك (مثل: بياض، ثمد، هامور، إلخ).
+2. الكمية بالكيلو جرام.
+3. سعر الكيلو جرام الواحد بالريال اليمني.
 
-Specifically, identify and extract the following information for each distinct fish item:
-- The type of fish (e.g., Tuna, Salmon, Sardine).
-- The quantity of the fish in kilograms. If units are not specified, assume kilograms.
-- The price per kilogram of that specific fish type.
-- Calculate the total price for each individual fish item (quantity * pricePerKg).
+تحذيرات هامة:
+- إذا كانت الأرقام مكتوبة بالعربية (مثل: ١، ٢، ٣، ٤، ٥، ٦، ٧، ٨، ٩، ٠) قم بتحويلها فوراً إلى أرقام إنجليزية (1, 2, 3...).
+- لا تتجاهل الأرقام الصغيرة أو الكسور.
+- قم بحساب الإجمالي لكل صنف (الكمية × السعر) بدقة.
+- في النهاية، قم بجمع إجمالي كافة الأصناف.
 
-After extracting all individual fish items, calculate the total amount of the entire invoice by summing up the 'totalItemPrice' of all fish items.
+أعد البيانات حصراً بتنسيق JSON.
 
-If any information is unclear or missing for a specific item, make a reasonable inference or leave it as null/empty string if explicit.
-Present the extracted data as a JSON object matching the following structure:
-
-Input Image: {{media url=invoiceImageDataUri}}
-
-`,
+الصورة: {{media url=invoiceImageDataUri}}`,
 });
 
 const aiInvoiceDataExtractionFlow = ai.defineFlow(
@@ -69,7 +66,7 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
   async (input) => {
     const { output } = await aiInvoiceDataExtractionPrompt(input);
     if (!output) {
-      throw new Error('Failed to extract invoice data.');
+      throw new Error('فشل في استخراج البيانات من الصورة. يرجى التأكد من وضوح الفاتورة.');
     }
     return output;
   }
