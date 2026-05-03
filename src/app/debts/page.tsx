@@ -31,7 +31,8 @@ import {
   LayoutDashboard,
   Coins,
   CreditCard,
-  Hash
+  Hash,
+  Eye
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
