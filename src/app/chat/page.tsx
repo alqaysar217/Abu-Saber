@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -19,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query } from "firebase/firestore"
+import { collection, query, orderBy } from "firebase/firestore"
 import { smartChat, type ChatMessage } from "@/ai/flows/smart-chat-flow"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,7 @@ export default function SmartChatPage() {
   const customersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "customers") : null, [db, user])
   const suppliersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "suppliers") : null, [db, user])
   const campaignsQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "campaigns") : null, [db, user])
+  const transactionsQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "paymentTransactions") : null, [db, user])
 
   const { data: invoices } = useCollection(invoicesQuery)
   const { data: purchases } = useCollection(purchasesQuery)
@@ -49,19 +51,77 @@ export default function SmartChatPage() {
   const { data: customers } = useCollection(customersQuery)
   const { data: suppliers } = useCollection(suppliersQuery)
   const { data: campaigns } = useCollection(campaignsQuery)
+  const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // تجهيز "لقطة" من البيانات لإرسالها للشات كـ Context
+  // تجهيز "لقطة" عميقة من البيانات لإرسالها للشات كـ Context
   const contextSnapshot = useMemo(() => {
-    if (!invoices || !purchases || !expenses) return null
+    if (!invoices || !purchases || !expenses || !historyTransactions) return null
+
+    // 1. ملخص الحملات (أرباح ومصاريف كل حملة)
+    const campaignSummaries = campaigns?.map(camp => {
+      const cInvoices = invoices.filter(i => i.campaignId === camp.id)
+      const cPurchases = purchases.filter(p => p.campaignId === camp.id)
+      const cExpenses = expenses.filter(e => e.campaignId === camp.id)
+      
+      const revenue = cInvoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0)
+      const costP = cPurchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0)
+      const costE = cExpenses.reduce((acc, e) => acc + (e.amount || 0), 0)
+      
+      return {
+        name: camp.name,
+        status: camp.status === 'open' ? 'نشطة' : 'مكتملة',
+        revenue,
+        purchaseCost: costP,
+        expenseCost: costE,
+        netProfit: revenue - (costP + costE)
+      }
+    })
+
+    // 2. مبيعات مع أسماء العملاء وحالة الدين
+    const detailedSales = invoices.slice(0, 10).map(inv => {
+      const customer = customers?.find(c => c.id === inv.customerId)
+      return {
+        number: inv.invoiceNumber,
+        customer: customer?.name || "مجهول",
+        total: inv.totalAmount,
+        paid: inv.paidAmount,
+        remaining: inv.remainingAmount,
+        date: inv.invoiceDate,
+        status: inv.status
+      }
+    })
+
+    // 3. سجل وصولات السداد (من سدد ومن استلم)
+    const recentPayments = historyTransactions.slice(0, 10).map(tr => ({
+      name: tr.entityName,
+      amount: tr.amount,
+      type: tr.type === 'customer_payment' ? 'استلام من عميل' : 'دفع لمورد',
+      date: tr.transactionDate,
+      ref: tr.sourceNumber,
+      notes: tr.notes
+    }))
+
+    // 4. مشتريات مع أسماء الموردين
+    const detailedPurchases = purchases.slice(0, 10).map(p => {
+      const supplier = suppliers?.find(s => s.id === p.supplierId)
+      return {
+        number: p.invoiceNumber,
+        supplier: supplier?.name || "مجهول",
+        total: p.totalAmount,
+        date: p.purchaseDate
+      }
+    })
 
     return {
-      stats: {
+      globalStats: {
         totalRevenue: invoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0),
-        totalCollected: invoices.reduce((acc, i) => acc + (i.paidAmount || 0), 0),
         totalPurchases: purchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
         totalExpenses: expenses.reduce((acc, e) => acc + (e.amount || 0), 0),
       },
-      activeCampaigns: campaigns?.filter(c => c.status === 'open').map(c => ({ name: c.name, id: c.id })),
+      campaigns: campaignSummaries,
+      recentSales: detailedSales,
+      recentRepayments: recentPayments,
+      recentPurchases: detailedPurchases,
       customerDebts: customers?.map(c => {
         const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
         return { name: c.name, debt }
@@ -70,10 +130,9 @@ export default function SmartChatPage() {
         const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
         const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
         return { name: s.name, debt: debtP + debtE }
-      }).filter(s => s.debt > 0),
-      lastFiveInvoices: invoices.slice(0, 5).map(i => ({ number: i.invoiceNumber, amount: i.totalAmount, date: i.invoiceDate }))
+      }).filter(s => s.debt > 0)
     }
-  }, [invoices, purchases, expenses, customers, suppliers, campaigns])
+  }, [invoices, purchases, expenses, customers, suppliers, campaigns, historyTransactions])
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -109,7 +168,7 @@ export default function SmartChatPage() {
           </h1>
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[9px] font-bold text-muted-foreground uppercase">متصل بقاعدة البيانات</span>
+            <span className="text-[9px] font-bold text-muted-foreground uppercase">متصل بكافة البيانات</span>
           </div>
         </div>
         <button onClick={() => setMessages([{ role: 'model', content: 'تم مسح المحادثة. كيف يمكنني مساعدتك الآن؟' }])} className="p-2 text-destructive/40 hover:text-destructive transition-colors">
@@ -153,7 +212,7 @@ export default function SmartChatPage() {
       <footer className="p-4 bg-white border-t sticky bottom-0 z-20">
         <div className="flex gap-2 max-w-lg mx-auto" dir="rtl">
           <Input 
-            placeholder="اسألني عن الديون، المبيعات..."
+            placeholder="اسألني عن الديون، مبيعات حملة، أو سجلات السداد..."
             className="flex-1 h-12 rounded-2xl bg-muted/50 border-none pr-4 font-bold focus-visible:ring-primary shadow-inner"
             value={input}
             onChange={(e) => setInput(e.target.value)}
