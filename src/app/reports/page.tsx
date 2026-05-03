@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useState } from "react"
@@ -55,9 +54,8 @@ export default function ReportsPage() {
   }, [db, user])
   const { data: suppliers } = useCollection(suppliersQuery)
 
-  // 1. Monthly Profit Growth Logic (Forced Demo for Visualization as requested)
+  // 1. Monthly Profit Growth Logic (Forced Demo for Visualization)
   const monthlyProfitData = useMemo(() => {
-    // نستخدم بيانات تجريبية غنية لضمان ظهور "المنحنى" وليس مجرد نقطة
     const demoData = [
       { name: 'يناير', profit: 12500000 },
       { name: 'فبراير', profit: 18900000 },
@@ -67,7 +65,6 @@ export default function ReportsPage() {
       { name: 'يونيو', profit: 42800000 },
     ]
 
-    // إذا كانت هناك بيانات حقيقية كافية (أكثر من شهرين) نستخدمها، وإلا نبقى على التجريبي للعرض
     let realResults: any[] = []
     if (invoices && invoices.length > 2) {
       const monthlyMap: Record<string, { sales: number, costs: number }> = {}
@@ -128,7 +125,7 @@ export default function ReportsPage() {
     const demo = [
       { name: 'مصنع الثلج المركز', value: 5400000 },
       { name: 'محطة بترول عدن', value: 3200000 },
-      { name: 'مورد المكلا الرئيسي', value: 2800000 },
+      { name: 'مورد الرئيسي', value: 2800000 },
       { name: 'ورشة الصيانة', value: 950000 },
       { name: 'شركة الأكياس', value: 450000 },
     ]
@@ -262,7 +259,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 10, right: 40, left: 150, bottom: 10 }}>
+                  <BarChart layout="vertical" data={customerDebtsData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
                     <XAxis type="number" hide />
                     <YAxis 
@@ -270,9 +267,9 @@ export default function ReportsPage() {
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#123524', textAnchor: 'start' }} 
-                      width={140}
-                      dx={-140}
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#123524', textAnchor: 'end' }} 
+                      width={120}
+                      dx={-10}
                     />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
@@ -296,7 +293,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 10, right: 40, left: 150, bottom: 10 }}>
+                  <BarChart layout="vertical" data={supplierDebtsData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#f0f0f0" />
                     <XAxis type="number" hide />
                     <YAxis 
@@ -304,9 +301,9 @@ export default function ReportsPage() {
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: '900', fill: '#ea580c', textAnchor: 'start' }} 
-                      width={140} 
-                      dx={-140}
+                      tick={{ fontSize: 9, fontWeight: '900', fill: '#ea580c', textAnchor: 'end' }} 
+                      width={120} 
+                      dx={-10}
                     />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
