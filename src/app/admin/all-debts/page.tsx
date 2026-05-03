@@ -98,14 +98,12 @@ export default function AllDebtsDetailedPage() {
     if (invoices) {
       invoices.forEach(inv => {
         const customer = customers?.find(c => c.id === inv.customerId)
-        const campaign = campaigns?.find(c => c.id === inv.campaignId)
         const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
         
         combined.push({
           ...inv,
           id: inv.id,
           entityName: customer?.name || "عميل غير معروف",
-          campaignName: campaign?.name || "حملة غير معروفة",
           date: inv.invoiceDate,
           remainingAmount: remaining,
           trType: 'sale',
@@ -119,14 +117,12 @@ export default function AllDebtsDetailedPage() {
     if (purchases) {
       purchases.forEach(p => {
         const supplier = suppliers?.find(s => s.id === p.supplierId)
-        const campaign = campaigns?.find(c => c.id === p.campaignId)
         const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
 
         combined.push({
           ...p,
           id: p.id,
           entityName: supplier?.name || "مورد غير معروف",
-          campaignName: campaign?.name || "حملة غير معروفة",
           date: p.purchaseDate,
           remainingAmount: remaining,
           trType: 'purchase',
@@ -139,14 +135,12 @@ export default function AllDebtsDetailedPage() {
     // 3. Expenses (Debts by Me)
     if (expenses) {
       expenses.forEach(e => {
-        const campaign = campaigns?.find(c => c.id === e.campaignId)
         const remaining = e.remainingAmount !== undefined ? e.remainingAmount : ((e.amount || 0) - (e.paidAmount || 0))
 
         combined.push({
           ...e,
           id: e.id,
           entityName: e.payeeName || "جهة غير معروفة",
-          campaignName: campaign?.name || "حملة غير معروفة",
           date: e.expenseDate || e.date,
           remainingAmount: remaining,
           totalAmount: e.amount,
@@ -186,7 +180,7 @@ export default function AllDebtsDetailedPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-10">
-      <header className="p-6 bg-white border-b sticky top-0 z-20 shadow-sm space-y-5">
+      <header className="p-4 bg-white border-b sticky top-0 z-20 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
           <button onClick={() => router.back()} className="p-2 -mr-2">
             <ChevronLeft className="w-6 h-6 rotate-180" />
@@ -199,17 +193,19 @@ export default function AllDebtsDetailedPage() {
         </div>
         
         <Tabs value={activeView} onValueChange={setActiveTab} className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl p-1.5 bg-muted/50 border shadow-inner">
+          <TabsList className="grid w-full grid-cols-2 h-12 rounded-2xl p-1 bg-muted/50 border shadow-inner">
             <TabsTrigger 
               value="to_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-none border-none"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:!bg-none border-none"
+              style={{ padding: '0 12px' }}
             >
               <ArrowDownToLine className="w-4 h-4" />
               ديون لك
             </TabsTrigger>
             <TabsTrigger 
               value="by_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-none border-none"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:!bg-none border-none"
+              style={{ padding: '0 12px' }}
             >
               <ArrowUpFromLine className="w-4 h-4" />
               ديون عليك
@@ -217,39 +213,39 @@ export default function AllDebtsDetailedPage() {
           </TabsList>
         </Tabs>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" dir="rtl">
-          <div className="relative group">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2" dir="rtl">
+          <div className="relative">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="بحث بالاسم أو الرقم..."
-              className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right shadow-inner" 
+              placeholder="بحث بالجهة أو الرقم..."
+              className="pr-11 h-11 rounded-2xl bg-muted/30 border-none text-right" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
-             <select className="h-12 flex-1 rounded-2xl bg-muted/30 border-none text-[11px] font-black px-4 outline-none focus:ring-1 focus:ring-primary shadow-inner" value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)}>
+             <select className="h-11 flex-1 rounded-2xl bg-muted/30 border-none text-[10px] font-black px-3 outline-none" value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)}>
                <option value="date_desc">الأحدث</option>
                <option value="date_asc">الأقدم</option>
                <option value="amount_desc">الأكبر مبلغاً</option>
                <option value="amount_asc">الأقل مبلغاً</option>
              </select>
-             <select className="h-12 flex-1 rounded-2xl bg-muted/30 border-none text-[11px] font-black px-4 outline-none focus:ring-1 focus:ring-primary shadow-inner" value={filterDebtStatus} onChange={e => setFilterDebtStatus(e.target.value)}>
+             <select className="h-11 flex-1 rounded-2xl bg-muted/30 border-none text-[10px] font-black px-3 outline-none" value={filterDebtStatus} onChange={e => setFilterDebtStatus(e.target.value)}>
                <option value="all">كل الحالات</option>
                <option value="unpaid">ديون قائمة</option>
-               <option value="paid">حسابات مُصفرة</option>
+               <option value="paid">مُصفرة</option>
              </select>
           </div>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" dir="rtl">
-           <div className="flex items-center gap-2 bg-muted/20 p-2 rounded-xl border border-dashed shrink-0">
-              <Calendar className="w-4 h-4 text-primary" />
-              <Input type="date" className="h-8 w-32 rounded-lg bg-white border-none text-[10px] font-bold" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+           <div className="flex items-center gap-2 bg-muted/20 p-1.5 rounded-xl border border-dashed shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+              <Input type="date" className="h-7 w-28 rounded-lg bg-white border-none text-[9px] font-bold p-1" value={fromDate} onChange={e => setFromDate(e.target.value)} />
               <ArrowRight className="w-3 h-3 text-muted-foreground" />
-              <Input type="date" className="h-8 w-32 rounded-lg bg-white border-none text-[10px] font-bold" value={toDate} onChange={e => setToDate(e.target.value)} />
+              <Input type="date" className="h-7 w-28 rounded-lg bg-white border-none text-[9px] font-bold p-1" value={toDate} onChange={e => setToDate(e.target.value)} />
            </div>
-           <select className="h-12 rounded-2xl bg-muted/30 border-none text-[11px] font-black px-6 outline-none focus:ring-1 focus:ring-primary shadow-inner shrink-0" value={filterCampaignId} onChange={e => setFilterCampaignId(e.target.value)}>
+           <select className="h-10 rounded-2xl bg-muted/30 border-none text-[10px] font-black px-4 outline-none shrink-0" value={filterCampaignId} onChange={e => setFilterCampaignId(e.target.value)}>
              <option value="all">كل الحملات</option>
              {campaigns?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
            </select>
@@ -262,7 +258,7 @@ export default function AllDebtsDetailedPage() {
         ) : (
           <div className="bg-white rounded-[1.5rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[700px]">
+              <Table dir="rtl" className="min-w-[650px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="text-right font-black text-[9px] py-4 px-2">رقم الفاتورة</TableHead>
@@ -296,19 +292,19 @@ export default function AllDebtsDetailedPage() {
                           "text-[8px] font-black px-1.5",
                           item.remainingAmount <= 0 ? "text-green-600 border-green-200" : "text-destructive border-red-200"
                         )}>
-                          {item.remainingAmount <= 0 ? "مُسددة" : "دين قائم"}
+                          {item.remainingAmount <= 0 ? "مُسددة" : "دين"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right max-w-[120px] px-2">
+                      <TableCell className="text-right max-w-[100px] px-2">
                         <p className="text-[9px] text-muted-foreground truncate" title={item.notes}>{item.notes}</p>
                       </TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-20">
-                        <div className="flex flex-col items-center gap-3 opacity-20">
-                          <FileText className="w-16 h-16" />
-                          <p className="font-black text-sm">لا توجد بيانات متاحة حالياً</p>
+                        <div className="flex flex-col items-center gap-2 opacity-20">
+                          <FileText className="w-12 h-12" />
+                          <p className="font-black text-xs">لا توجد بيانات متاحة</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -320,21 +316,21 @@ export default function AllDebtsDetailedPage() {
         )}
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-md border-t flex justify-between items-center z-30">
+      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t flex justify-between items-center z-30">
          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-muted-foreground">إجمالي المتبقي المفلتر</span>
+            <span className="text-[9px] font-black text-muted-foreground">إجمالي المتبقي المفلتر</span>
             <span className={cn(
-              "text-xl font-black tabular-nums",
+              "text-lg font-black tabular-nums",
               activeView === 'to_me' ? "text-green-700" : "text-orange-700"
             )}>
-               {reportItems.reduce((acc, curr) => acc + (curr.remainingAmount || 0), 0).toLocaleString()} <span className="text-[10px]">ر.ي</span>
+               {reportItems.reduce((acc, curr) => acc + (curr.remainingAmount || 0), 0).toLocaleString()} <span className="text-[9px]">ر.ي</span>
             </span>
          </div>
          <Button 
-          className="rounded-2xl lux-gradient h-12 px-8 font-black gap-2 shadow-xl"
+          className="rounded-2xl lux-gradient h-11 px-6 font-black gap-2 text-white text-xs shadow-xl"
           onClick={() => router.push("/debts")}
          >
-            <Wallet className="w-5 h-5" />
+            <Wallet className="w-4 h-4" />
             السداد السريع
          </Button>
       </footer>
