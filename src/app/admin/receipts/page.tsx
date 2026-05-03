@@ -20,7 +20,8 @@ import {
   User,
   Ship,
   Banknote,
-  TrendingDown
+  TrendingDown,
+  Users
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,6 +59,7 @@ export default function AllReceiptsDetailedPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [filterCampaign, setFilterCampaign] = useState("all")
+  const [filterEntity, setFilterEntity] = useState("all")
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' })
@@ -74,6 +76,18 @@ export default function AllReceiptsDetailedPage() {
     return query(collection(db, "users", user.uid, "campaigns"))
   }, [db, user])
   const { data: campaigns } = useCollection(campaignsQuery)
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "customers"))
+  }, [db, user])
+  const { data: customers } = useCollection(customersQuery)
+
+  const suppliersQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "suppliers"))
+  }, [db, user])
+  const { data: suppliers } = useCollection(suppliersQuery)
 
   // Processing Data
   const reportData = useMemo(() => {
@@ -96,7 +110,8 @@ export default function AllReceiptsDetailedPage() {
         amount: r.amount || 0,
         type: r.type, // customer_payment or supplier_payment
         previousBalance: r.previousBalance ?? null,
-        remainingBalance: r.remainingBalance ?? null
+        remainingBalance: r.remainingBalance ?? null,
+        entityId: r.entityId
       }
     }).filter(item => {
       const matchesSearch = 
@@ -106,6 +121,7 @@ export default function AllReceiptsDetailedPage() {
       
       const matchesType = filterType === "all" || item.type === filterType
       const matchesCampaign = filterCampaign === "all" || item.campaignId === filterCampaign
+      const matchesEntity = filterEntity === "all" || item.entityId === filterEntity
 
       // Date Range Filtering
       let matchesDate = true
@@ -116,14 +132,14 @@ export default function AllReceiptsDetailedPage() {
         matchesDate = itemDate >= start && itemDate <= end
       }
 
-      return matchesSearch && matchesType && matchesCampaign && matchesDate
+      return matchesSearch && matchesType && matchesCampaign && matchesEntity && matchesDate
     }).sort((a, b) => {
       const direction = sortConfig.direction === 'asc' ? 1 : -1
       if (sortConfig.key === 'date') return (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
       if (sortConfig.key === 'amount') return (a.amount - b.amount) * direction
       return 0
     })
-  }, [receipts, campaigns, searchTerm, filterType, filterCampaign, fromDate, toDate, sortConfig])
+  }, [receipts, campaigns, searchTerm, filterType, filterCampaign, filterEntity, fromDate, toDate, sortConfig])
 
   const exportToCSV = () => {
     if (reportData.length === 0) return
@@ -249,7 +265,7 @@ export default function AllReceiptsDetailedPage() {
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
           >
-            <option value="all">كل الإيصالات</option>
+            <option value="all">كل الأنواع</option>
             <option value="customer_payment">استلام (قبض)</option>
             <option value="supplier_payment">صرف (دفع)</option>
           </select>
@@ -261,6 +277,20 @@ export default function AllReceiptsDetailedPage() {
           >
             <option value="all">كل الحملات</option>
             {campaigns?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+
+          <select 
+            className="h-9 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4 outline-none focus:ring-1 focus:ring-primary shrink-0"
+            value={filterEntity}
+            onChange={e => setFilterEntity(e.target.value)}
+          >
+            <option value="all">كل العملاء والموردين</option>
+            <optgroup label="العملاء">
+              {customers?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </optgroup>
+            <optgroup label="الموردين">
+              {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </optgroup>
           </select>
         </div>
       </header>
