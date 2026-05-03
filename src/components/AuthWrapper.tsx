@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -15,7 +14,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (!mounted) {
-    return <div className="min-h-screen bg-[#123524]" />
+    return <div className="min-h-screen bg-slate-50" />
   }
 
   // أولاً: شاشة التحميل أثناء التحقق من المستخدم
