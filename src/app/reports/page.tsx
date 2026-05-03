@@ -16,7 +16,8 @@ import {
   Receipt,
   ShoppingCart,
   ChevronLeft,
-  Ship
+  Ship,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
