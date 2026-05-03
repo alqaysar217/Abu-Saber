@@ -23,7 +23,8 @@ import {
   Ship,
   User,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,7 +44,7 @@ import {
   useMemoFirebase 
 } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
-import { format } from "date-fns"
+import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
@@ -62,6 +63,8 @@ export default function AllSalesDetailedPage() {
   const [filterCampaign, setFilterCampaign] = useState("all")
   const [filterCustomer, setFilterCustomer] = useState("all")
   const [filterPaymentType, setFilterPaymentType] = useState("all")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' })
 
   // Data Fetching
@@ -99,13 +102,13 @@ export default function AllSalesDetailedPage() {
           items.push({
             id: `${inv.id}-${item.fishType}-${item.quantity}-${item.pricePerKg}`,
             invoiceId: inv.id,
-            fishType: item.fishType || "غير محدد",
+            fishType: item.fishType || "Unknown",
             quantity: item.quantity || 0,
             pricePerKg: item.pricePerKg || item.unitPrice || 0,
             lineTotal: (item.quantity * (item.pricePerKg || item.unitPrice)) || item.lineTotal || 0,
-            customerName: customer?.name || "عميل غير معروف",
+            customerName: customer?.name || "Unknown Customer",
             customerId: inv.customerId,
-            campaignName: campaign?.name || "بدون حملة",
+            campaignName: campaign?.name || "No Campaign",
             campaignId: inv.campaignId,
             date: inv.invoiceDate,
             paymentType: inv.paymentType,
@@ -128,19 +131,28 @@ export default function AllSalesDetailedPage() {
       const matchesCustomer = filterCustomer === "all" || item.customerId === filterCustomer
       const matchesPayment = filterPaymentType === "all" || item.paymentType === filterPaymentType
 
-      return matchesSearch && matchesCampaign && matchesCustomer && matchesPayment
+      // Date Range Filtering
+      let matchesDate = true
+      if (fromDate || toDate) {
+        const itemDate = new Date(item.date)
+        const start = fromDate ? startOfDay(new Date(fromDate)) : new Date(0)
+        const end = toDate ? endOfDay(new Date(toDate)) : new Date(8640000000000000)
+        matchesDate = itemDate >= start && itemDate <= end
+      }
+
+      return matchesSearch && matchesCampaign && matchesCustomer && matchesPayment && matchesDate
     }).sort((a, b) => {
       const direction = sortConfig.direction === 'asc' ? 1 : -1
       if (sortConfig.key === 'date') return (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
       if (sortConfig.key === 'amount') return (a.lineTotal - b.lineTotal) * direction
       return 0
     })
-  }, [invoices, customers, campaigns, searchTerm, filterCampaign, filterCustomer, filterPaymentType, sortConfig])
+  }, [invoices, customers, campaigns, searchTerm, filterCampaign, filterCustomer, filterPaymentType, fromDate, toDate, sortConfig])
 
   const exportToCSV = () => {
     if (reportData.length === 0) return
 
-    const headers = ["نوع السمك", "الكمية", "سعر الكيلو", "إجمالي الصنف", "العميل", "التاريخ", "الحملة", "طريقة الدفع", "المدفوع", "المتبقي (دين)", "الملاحظات"]
+    const headers = ["Fish Type", "Quantity", "Price/Kg", "Line Total", "Customer", "Date", "Campaign", "Payment Type", "Paid", "Remaining", "Notes"]
     const rows = reportData.map(item => [
       item.fishType,
       item.quantity,
@@ -164,7 +176,7 @@ export default function AllSalesDetailedPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
     link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `تقرير_مبيعات_تفصيلي_${format(new Date(), "yyyy-MM-dd")}.csv`)
+    link.setAttribute("download", `Sales_Report_${format(new Date(), "yyyy-MM-dd")}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -214,8 +226,47 @@ export default function AllSalesDetailedPage() {
             onClick={() => toggleSort('date')}
           >
             <ArrowUpDown className="w-4 h-4" />
-            تاريخ
+            ترتيب
           </Button>
+        </div>
+
+        {/* Date Range Filter Section */}
+        <div className="bg-muted/20 p-3 rounded-2xl border border-dashed space-y-2" dir="rtl">
+          <p className="text-[10px] font-bold text-muted-foreground mr-1 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            فلترة حسب المدة الزمنية:
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">من</span>
+              <Input 
+                type="date" 
+                className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" 
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+              />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground opacity-30" />
+            <div className="flex-1 relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">إلى</span>
+              <Input 
+                type="date" 
+                className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" 
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+              />
+            </div>
+            {(fromDate || toDate) && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-xl text-destructive"
+                onClick={() => { setFromDate(""); setToDate(""); }}
+              >
+                <AlertCircle className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" dir="rtl">
@@ -277,8 +328,14 @@ export default function AllSalesDetailedPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData.map((item) => (
-                    <TableRow key={item.id} className="active:bg-muted/50 transition-colors border-b-muted/20 even:bg-muted/20">
+                  {reportData.map((item, index) => (
+                    <TableRow 
+                      key={item.id} 
+                      className={cn(
+                        "active:bg-muted/50 transition-colors border-b-muted/20",
+                        index % 2 !== 0 ? "bg-muted/10" : "bg-white"
+                      )}
+                    >
                       <TableCell className="text-right py-4">
                         <div className="flex items-center gap-2">
                            <Fish className="w-3.5 h-3.5 text-primary/60" />
@@ -318,7 +375,7 @@ export default function AllSalesDetailedPage() {
                       <TableCell className="text-center font-black text-xs tabular-nums text-green-700">
                         {item.paidAmount.toLocaleString('en-US')}
                       </TableCell>
-                      <TableCell className="text-center font-black text-xs tabular-nums text-destructive bg-destructive/5">
+                      <TableCell className="text-center font-black text-xs tabular-nums text-destructive">
                         {item.remainingAmount.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-right max-w-[150px]">
