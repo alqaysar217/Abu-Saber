@@ -21,8 +21,8 @@ export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSche
 
 const FishItemSchema = z.object({
   fishType: z.string().describe('نوع السمك المستخرج من الفاتورة.'),
-  quantity: z.number().describe('الكمية المستخرجة بالكيلوجرام.'),
-  pricePerKg: z.number().describe('سعر الكيلو المستخرج بالريال اليمني.'),
+  quantity: z.number().describe('الكمية المستخرجة بالأرقام الإنجليزية.'),
+  pricePerKg: z.number().describe('سعر الكيلو المستخرج بالأرقام الإنجليزية.'),
   totalItemPrice: z.number().describe('إجمالي الصنف (الكمية × السعر).'),
 });
 
@@ -33,7 +33,7 @@ const ExtractInvoiceDataOutputSchema = z.object({
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
 /**
- * دالة استخراج البيانات باستخدام OpenRouter لضمان عمل المفتاح الأمني المزود.
+ * دالة استخراج البيانات باستخدام OpenRouter مع تركيز فائق على دقة الخط اليدوي العربي.
  */
 export async function extractInvoiceData(input: ExtractInvoiceDataInput): Promise<ExtractInvoiceDataOutput> {
   return aiInvoiceDataExtractionFlow(input);
@@ -53,7 +53,6 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
     }
 
     try {
-      // استخدام fetch المباشر كما في الكود المجرب للمستخدم لضمان التوافق مع OpenRouter
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -70,24 +69,28 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
               content: [
                 {
                   type: 'text',
-                  text: `أنت مساعد ذكاء اصطناعي خبير في جرد محلات الأسماك. 
-قم بتحليل صورة الفاتورة المرفقة واستخرج البيانات التالية بدقة عالية: (نوع السمك، الكمية، سعر الكيلو).
+                  text: `أنت خبير محترف في تحليل الفواتير العربية المكتوبة بخط اليد وتدقيق حسابات محلات الأسماك.
 
-قواعد هامة جداً للنتائج:
-1. إذا كانت الأرقام مكتوبة بالخط العربي (مثل: ١، ٢، ٣، ٤، ٥، ٦، ٧، ٨، ٩، ٠) قم بتحويلها فوراً إلى أرقام إنجليزية (1, 2, 3...) لإتمام العمليات الحسابية.
-2. لا تتجاهل الأرقام الصغيرة أو الكسور العشرية.
-3. احسب الإجمالي لكل صنف بدقة (الكمية × السعر).
-4. أعد البيانات حصراً بتنسيق JSON مطابق تماماً لهذا الهيكل:
+مهمتك: استخراج (نوع السمك، الكمية، سعر الكيلو) من الصورة المرفقة بدقة 100%.
+
+قواعد ذهبية للدقة (يجب الالتزام بها حرفياً):
+1. تدقيق رقم ٦: الرقم (٦) في الخط العربي اليدوي يشبه أحياناً الرقم (7) بالإنجليزية. تأكد من سياق الكتابة وقراءته كـ 6 إنجليزية وليس 7.
+2. تدقيق الأصفار: انتبه جيداً للنقاط أو الدوائر الصغيرة التي تمثل الأصفار (٠). لا تتجاهل الأصفار في المبالغ مثل (5000 أو 10000).
+3. تحويل الأرقام: حول فوراً وبشكل إلزامي كافة الأرقام من العربية (١، ٢، ٣، ٤، ٥، ٦، ٧، ٨، ٩، ٠) إلى الإنجليزية (1, 2, 3, 4, 5, 6, 7, 8, 9, 0).
+4. الكسور: حافظ على الكسور العشرية (مثل 10.5) ولا تقربها.
+5. لغة المخرجات: أسماء الأسماك بالعربية، لكن الأرقام يجب أن تكون إنجليزية بحتة داخل ملف JSON.
+
+صيغة الرد المطلوبة (JSON فقط):
 {
   "fishItems": [
     {
-      "fishType": "نوع السمك",
-      "quantity": 10.5,
+      "fishType": "اسم السمك",
+      "quantity": 12.5,
       "pricePerKg": 5000,
-      "totalItemPrice": 52500
+      "totalItemPrice": 62500
     }
   ],
-  "totalInvoiceAmount": 52500
+  "totalInvoiceAmount": 62500
 }`
                 },
                 {
@@ -106,7 +109,7 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
       if (!response.ok) {
         const errorText = await response.text();
         console.error('AI Provider Error:', errorText);
-        throw new Error('حدث خطأ في الاتصال بمزود الذكاء الاصطناعي. يرجى التأكد من صلاحية المفتاح.');
+        throw new Error('حدث خطأ في الاتصال بمزود الذكاء الاصطناعي.');
       }
 
       const result = await response.json();

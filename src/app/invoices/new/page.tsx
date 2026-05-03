@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -55,6 +54,13 @@ interface InvoiceItem {
   total: number
 }
 
+// دالة لتحويل الأرقام العربية المكتوبة يدوياً إلى إنجليزية لضمان الحسابات
+function parseArNum(val: string): string {
+  const map: Record<string, string> = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+  let str = String(val).replace(/[٠-٩]/g, d => map[d]);
+  return str.replace(/[^\d.]/g, '');
+}
+
 function NewInvoiceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -100,20 +106,22 @@ function NewInvoiceContent() {
 
   const formatInputNumber = (val: string) => {
     if (!val) return ""
-    const parts = val.split('.')
+    // تنظيف المدخلات من أي أرقام غير إنجليزية أولاً
+    const cleaned = parseArNum(val);
+    const parts = cleaned.split('.')
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
     return parts.join('.')
   }
 
   const handleInputNumberChange = (field: string, value: string) => {
-    const rawValue = value.replace(/,/g, "")
+    const rawValue = parseArNum(value);
     if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
       setCurrentItem(prev => ({ ...prev, [field]: rawValue }))
     }
   }
 
   const handlePaidAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/,/g, "")
+    const rawValue = parseArNum(e.target.value);
     if (rawValue === "" || /^\d*\.?\d*$/.test(rawValue)) {
       setPaidAmount(rawValue)
     }
@@ -224,19 +232,18 @@ function NewInvoiceContent() {
     }
   }
 
-  // دالة استقبال البيانات من مكون الذكاء الاصطناعي
   const handleAIResult = (data: any) => {
     const mappedItems = data.fishItems.map((item: any) => ({
       tempId: Math.random().toString(36).substring(2, 9),
       fishType: item.fishType,
-      quantity: item.quantity,
-      pricePerKg: item.pricePerKg,
+      quantity: parseFloat(parseArNum(item.quantity)),
+      pricePerKg: parseFloat(parseArNum(item.pricePerKg)),
       total: item.totalItemPrice
     }))
     
     setAddedItems([...mappedItems, ...addedItems])
-    setUseAI(false) // العودة لوضع الإدخال اليدوي للمراجعة النهائية
-    toast({ title: "تم استخراج البيانات بذكاء", description: "يمكنك الآن مراجعة الفاتورة وإضافة طريقة الدفع" })
+    setUseAI(false)
+    toast({ title: "تم الاستخراج بنجاح", description: "تم تحويل كافة الأرقام للصيغة الإنجليزية لضمان دقة الحساب." })
   }
 
   return (
@@ -478,7 +485,7 @@ function NewInvoiceContent() {
                             </div>
                             <div className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
                               <span className="text-xs font-bold text-muted-foreground">المتبقي (دين على العميل):</span>
-                              <span className="text-lg font-black text-destructive tabular-nums">{(grandTotal - (parseFloat(paidAmount) || 0)).toLocaleString('en-US')} ر.ي</span>
+                              <span className="text-lg font-black text-destructive tabular-nums">{(grandTotal - (parseFloat(parseArNum(paidAmount)) || 0)).toLocaleString('en-US')} ر.ي</span>
                             </div>
                           </div>
                         )}

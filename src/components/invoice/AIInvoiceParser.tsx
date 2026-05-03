@@ -17,6 +17,14 @@ interface EditableItem {
   totalItemPrice: number
 }
 
+// دالة لتحويل الأرقام العربية إلى إنجليزية وضمان صحة الأرقام
+function parseArNum(val: any): string {
+  if (val === undefined || val === null) return "0";
+  const map: Record<string, string> = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+  let str = String(val).replace(/[٠-٩]/g, d => map[d]);
+  return str.replace(/[^\d.]/g, '');
+}
+
 export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataOutput) => void }) {
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<EditableItem[]>([])
@@ -30,7 +38,6 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
     const file = e.target.files?.[0]
     if (!file) return
 
-    // فحص حجم الملف قبل الرفع (تنبيه المستخدم إذا تجاوز 10 ميجا)
     if (file.size > 10 * 1024 * 1024) {
       toast({ variant: "destructive", title: "حجم الصورة كبير جداً", description: "يرجى اختيار صورة أصغر من 10 ميجابايت." })
       return
@@ -48,11 +55,14 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
           
           const mappedItems = result.fishItems.map(item => ({
             ...item,
+            // التأكد من تحويل أي أرقام راجعة من الذكاء الاصطناعي إلى إنجليزية
+            quantity: parseArNum(item.quantity),
+            pricePerKg: parseArNum(item.pricePerKg),
             tempId: Math.random().toString(36).substring(2, 9)
           }))
           
           setItems(mappedItems)
-          toast({ title: "تم التحليل بنجاح", description: "يمكنك الآن مراجعة وتعديل البيانات." })
+          toast({ title: "تم التحليل بنجاح", description: "تم استخراج الأرقام وتحويلها للصيغة الإنجليزية." })
         } catch (error: any) {
           toast({ variant: "destructive", title: "فشل استخراج البيانات", description: error.message })
         } finally {
@@ -67,11 +77,12 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
   }
 
   const updateItem = (tempId: string, field: keyof EditableItem, value: string) => {
+    const cleanVal = field === 'fishType' ? value : parseArNum(value);
+    
     setItems(prev => prev.map(item => {
       if (item.tempId === tempId) {
-        const updatedItem = { ...item, [field]: value }
+        const updatedItem = { ...item, [field]: cleanVal }
         
-        // إعادة حساب الإجمالي عند تغيير الكمية أو السعر
         if (field === 'quantity' || field === 'pricePerKg') {
           const qty = parseFloat(String(updatedItem.quantity)) || 0
           const price = parseFloat(String(updatedItem.pricePerKg)) || 0
@@ -143,7 +154,7 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
               <RefreshCcw className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-[10px] text-white/70 font-bold mt-1">اضغط على أي خانة للتعديل اليدوي</p>
+          <p className="text-[10px] text-white/70 font-bold mt-1">تنبيه: كافة الأرقام تظهر بالإنجليزية للحسابات الدقيقة</p>
         </CardHeader>
         
         <CardContent className="p-0">
@@ -171,7 +182,8 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
                     </TableCell>
                     <TableCell className="p-0">
                       <input 
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="w-full bg-transparent border-none text-center text-xs font-black tabular-nums focus:ring-0"
                         value={item.quantity}
                         onChange={(e) => updateItem(item.tempId, 'quantity', e.target.value)}
@@ -179,14 +191,15 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
                     </TableCell>
                     <TableCell className="p-0">
                       <input 
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="w-full bg-transparent border-none text-center text-xs font-black tabular-nums focus:ring-0 text-accent"
                         value={item.pricePerKg}
                         onChange={(e) => updateItem(item.tempId, 'pricePerKg', e.target.value)}
                       />
                     </TableCell>
                     <TableCell className="text-center text-[11px] font-black tabular-nums text-primary/80">
-                      {(item.totalItemPrice || 0).toLocaleString()}
+                      {(item.totalItemPrice || 0).toLocaleString('en-US')}
                     </TableCell>
                     <TableCell className="pl-4">
                       <button onClick={() => removeRow(item.tempId)} className="p-2 text-destructive/30 hover:text-destructive">
@@ -206,7 +219,7 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
             <div className="flex flex-col items-end">
                <span className="text-[9px] font-black text-muted-foreground uppercase">الإجمالي النهائي</span>
                <span className="text-xl font-black text-primary tabular-nums">
-                 {calculateGrandTotal(items).toLocaleString()} <span className="text-[10px]">ر.ي</span>
+                 {calculateGrandTotal(items).toLocaleString('en-US')} <span className="text-[10px]">ر.ي</span>
                </span>
             </div>
           </div>
@@ -234,7 +247,7 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
         <div className="text-center space-y-2">
           <p className="font-black text-xl text-primary">رفع صورة الفاتورة</p>
           <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-[200px] mx-auto">
-            سيتعرف النظام على الأرقام العربية والخط اليدوي تلقائياً
+            سيتعرف النظام على الأرقام العربية والخط اليدوي بدقة ويحولها لأرقام إنجليزية تلقائياً
           </p>
         </div>
         <Button variant="outline" className="rounded-2xl gap-2 pointer-events-none h-11 px-8 font-black border-primary/20 text-primary">
