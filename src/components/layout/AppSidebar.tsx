@@ -60,7 +60,7 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
     { label: "كل المبيعات", icon: Receipt, href: "/admin/sales", category: "الإدارة المالية" },
     { label: "كل المشتريات", icon: ShoppingBag, href: "/admin/purchases", category: "الإدارة المالية" },
     { label: "كل المصروفات", icon: ShoppingCart, href: "/admin/expenses", category: "الإدارة المالية" },
-    { label: "كل الديون", icon: Wallet, href: "/debts", category: "الإدارة المالية" },
+    { label: "سجل الديون (الجدول)", icon: Wallet, href: "/admin/all-debts", category: "الإدارة المالية" },
     { label: "كل الإيصالات", icon: FileText, href: "/admin/receipts", category: "الإدارة المالية" },
   ]
 
