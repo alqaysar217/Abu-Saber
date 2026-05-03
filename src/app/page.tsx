@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -16,14 +15,11 @@ import {
   EyeOff, 
   Loader2, 
   Menu, 
-  Sparkles,
-  Database,
   Info
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, getDocs, doc, writeBatch } from "firebase/firestore"
-import { useToast } from "@/hooks/use-toast"
+import { collection, query, orderBy } from "firebase/firestore"
 import { 
   Tooltip,
   TooltipContent,
@@ -34,11 +30,8 @@ import {
 export default function Home() {
   const { user } = useUser()
   const db = useFirestore()
-  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [showRestore, setShowRestore] = useState(false)
-  const [restoring, setRestoring] = useState(false)
   const [visibility, setVisibility] = useState<Record<string, boolean>>({
     debtsToMe: false,
     debtsByMe: false,
@@ -78,16 +71,6 @@ export default function Home() {
   }, [db, user])
   const { data: allExpenses } = useCollection(expensesQuery)
 
-  useEffect(() => {
-    if (mounted && allInvoices && allPurchases && allExpenses) {
-      if (allInvoices.length === 0 && allPurchases.length === 0 && allExpenses.length === 0) {
-        setShowRestore(true)
-      } else {
-        setShowRestore(false)
-      }
-    }
-  }, [mounted, allInvoices, allPurchases, allExpenses])
-
   const stats = useMemo(() => {
     const totalRevPaid = allInvoices?.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0) || 0
     const totalRev = allInvoices?.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0) || 0
@@ -104,32 +87,6 @@ export default function Home() {
     
     return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
-
-  const restoreDemoData = async () => {
-    if (!db || !user) return
-    setRestoring(true)
-    const SHARED_UID = "luJcA2AwKHYdXbeU9GvietyCkeu2"
-    const collectionsToCopy = ["campaigns", "customers", "suppliers", "fishTypes", "invoices", "purchases", "expenses", "paymentTransactions"]
-    
-    try {
-      const batch = writeBatch(db)
-      for (const colName of collectionsToCopy) {
-        const sharedRef = collection(db, "users", SHARED_UID, colName)
-        const snap = await getDocs(sharedRef)
-        snap.docs.forEach(docSnap => {
-          const newDocRef = doc(db, "users", user.uid, colName, docSnap.id)
-          batch.set(newDocRef, { ...docSnap.data(), userId: user.uid })
-        })
-      }
-      await batch.commit()
-      toast({ title: "تم استعادة بيانات العرض بنجاح" })
-      setShowRestore(false)
-    } catch (e) {
-      toast({ variant: "destructive", title: "فشل استعادة البيانات" })
-    } finally {
-      setRestoring(false)
-    }
-  }
 
   if (!mounted) return null
 
@@ -165,30 +122,6 @@ export default function Home() {
           </button>
         </div>
       </header>
-
-      {showRestore && (
-        <section className="px-4 -mt-12 mb-8 relative z-30 animate-in fade-in slide-in-from-top-4 duration-500">
-          <Card className="border-none shadow-xl rounded-[2.5rem] bg-orange-50 border border-orange-100 overflow-hidden">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-orange-600 shadow-sm">
-                <Database className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-black text-orange-900 text-lg">تجربة النظام ببيانات جاهزة؟</h3>
-                <p className="text-xs text-orange-700 font-bold leading-relaxed">يمكنك استيراد بيانات ديمو (حملات، مبيعات، مشتريات) لتبدأ بتجربة كافة ميزات النظام فوراً.</p>
-              </div>
-              <Button 
-                onClick={restoreDemoData} 
-                disabled={restoring}
-                className="w-full h-14 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black shadow-lg gap-2"
-              >
-                {restoring ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                استعادة بيانات العرض الآن
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
 
       <section className="px-4 -mt-14 mb-8 relative z-20">
         <div className="grid grid-cols-2 gap-4">

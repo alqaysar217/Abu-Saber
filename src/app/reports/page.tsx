@@ -11,18 +11,17 @@ import {
   PieChart, 
   Users, 
   ShoppingBag, 
-  Ship, 
   LayoutDashboard, 
   Calendar,
   Receipt,
   ShoppingCart,
   ChevronLeft,
-  ArrowRight
+  Ship
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy } from "firebase/firestore"
-import { format } from "date-fns"
+import { collection, query } from "firebase/firestore"
+import { format, startOfMonth, subMonths, isSameMonth } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -40,53 +39,74 @@ export default function ReportsPage() {
   const [activeView, setActiveView] = useState<"performance" | "debts">("performance")
 
   // Data Subscriptions
-  const campaignsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "campaigns"))
-  }, [db, user])
-  const { data: campaigns } = useCollection(campaignsQuery)
+  const invoicesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "invoices") : null, [db, user])
+  const purchasesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "purchases") : null, [db, user])
+  const expensesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "expenses") : null, [db, user])
+  const customersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "customers") : null, [db, user])
+  const suppliersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "suppliers") : null, [db, user])
 
-  const invoicesQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "invoices"))
-  }, [db, user])
   const { data: invoices } = useCollection(invoicesQuery)
+  const { data: purchases } = useCollection(purchasesQuery)
+  const { data: expenses } = useCollection(expensesQuery)
+  const { data: customers } = useCollection(customersQuery)
+  const { data: suppliers } = useCollection(suppliersQuery)
 
-  // Monthly Profit Growth Logic (Demo for Visualization)
+  // Real Monthly Profit Growth Logic
   const monthlyProfitData = useMemo(() => {
-    return [
-      { name: 'يناير', profit: 12500000 },
-      { name: 'فبراير', profit: 18900000 },
-      { name: 'مارس', profit: 14200000 },
-      { name: 'أبريل', profit: 24500000 },
-      { name: 'مايو', profit: 31000000 },
-      { name: 'يونيو', profit: 42800000 },
-    ]
-  }, [])
+    if (!invoices || !purchases || !expenses) return []
 
-  // Customer Debt Concentration (Demo Fallback)
+    const last6Months = Array.from({ length: 6 }).map((_, i) => {
+      const monthDate = subMonths(new Date(), 5 - i)
+      return {
+        date: monthDate,
+        name: format(monthDate, "MMM", { locale: ar }),
+        profit: 0
+      }
+    })
+
+    last6Months.forEach(month => {
+      const mInvoices = invoices.filter(inv => isSameMonth(new Date(inv.invoiceDate), month.date))
+      const mPurchases = purchases.filter(p => isSameMonth(new Date(p.purchaseDate), month.date))
+      const mExpenses = expenses.filter(e => isSameMonth(new Date(e.expenseDate), month.date))
+
+      const revenue = mInvoices.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0)
+      const costs = mPurchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0) + mExpenses.reduce((acc, e) => acc + (e.amount || 0), 0)
+      
+      month.profit = revenue - costs
+    })
+
+    return last6Months
+  }, [invoices, purchases, expenses])
+
+  // Real Customer Debt Concentration
   const customerDebtsData = useMemo(() => {
-    return [
-      { name: 'مطعم السلمون', value: 8500000 },
-      { name: 'شركة التوريد', value: 6200000 },
-      { name: 'فندق الخليج', value: 4800000 },
-      { name: 'أسماك الطازج', value: 3100000 },
-      { name: 'مطعم الشاطئ', value: 1200000 },
-    ]
-  }, [])
+    if (!invoices || !customers) return []
+    
+    const debtorList = customers.map(c => {
+      const debt = invoices.filter(inv => inv.customerId === c.id).reduce((acc, inv) => acc + (inv.remainingAmount || 0), 0)
+      return { name: c.name, value: debt }
+    }).filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 5)
 
-  // Supplier Debt Concentration (Demo Fallback)
+    return debtorList
+  }, [invoices, customers])
+
+  // Real Supplier Debt Concentration
   const supplierDebtsData = useMemo(() => {
-    return [
-      { name: 'مصنع الثلج', value: 5400000 },
-      { name: 'محطة بترول', value: 3200000 },
-      { name: 'مورد الرئيسي', value: 2800000 },
-      { name: 'ورشة صيانة', value: 950000 },
-      { name: 'شركة أكياس', value: 450000 },
-    ]
-  }, [])
+    if (!purchases || !expenses || !suppliers) return []
 
-  const isLoading = !campaigns || !invoices
+    const creditorList = suppliers.map(s => {
+      const pDebt = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
+      const eDebt = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
+      return { name: s.name, value: pDebt + eDebt }
+    }).filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 5)
+
+    return creditorList
+  }, [purchases, expenses, suppliers])
+
+  const isLoading = !invoices || !purchases || !expenses
+
+  const hasPerformanceData = monthlyProfitData.some(d => d.profit !== 0)
+  const hasDebtData = customerDebtsData.length > 0 || supplierDebtsData.length > 0
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-32">
@@ -127,137 +147,141 @@ export default function ReportsPage() {
       <main className="p-4 space-y-8">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-30">
-            <TrendingUp className="w-12 h-12 animate-pulse mb-2" />
-            <p className="font-bold">جاري تحليل البيانات...</p>
+            <Loader2 className="w-12 h-12 animate-spin mb-2" />
+            <p className="font-bold">جاري تحليل البيانات الفعلية...</p>
           </div>
         ) : activeView === "performance" ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-              <CardHeader className="p-6 pb-2 text-right">
-                <CardTitle className="text-sm font-black text-primary flex items-center justify-start gap-2" dir="rtl">
-                  <TrendingUp className="w-5 h-5 text-accent" />
-                  منحنى نمو الأرباح الصافي
-                </CardTitle>
-                <p className="text-[10px] text-muted-foreground font-bold italic">ملاحظة: تظهر بيانات تجريبية لتوضيح شكل المنحنى</p>
-              </CardHeader>
-              <CardContent className="h-80 p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyProfitData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#666' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
-                      formatter={(value: any) => [value.toLocaleString() + " ر.ي", "صافي الربح"]}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="profit" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={4}
-                      fillOpacity={1} 
-                      fill="url(#colorProfit)" 
-                      animationDuration={1500}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="border-none shadow-md rounded-[1.5rem] bg-green-50 text-green-700">
-                <CardContent className="p-5 flex flex-col gap-1 items-center text-center">
-                  <LayoutDashboard className="w-5 h-5 mb-1 opacity-60" />
-                  <span className="text-[9px] font-black uppercase">أداء المبيعات</span>
-                  <span className="text-sm font-black tabular-nums">ممتاز</span>
+            {!hasPerformanceData ? (
+              <Card className="border-none shadow-md rounded-[2.5rem] p-12 flex flex-col items-center text-center gap-4 bg-white/50 border-2 border-dashed">
+                <TrendingUp className="w-16 h-16 text-muted-foreground/20" />
+                <div className="space-y-1">
+                  <p className="font-black text-muted-foreground">لا توجد بيانات نمو حالياً</p>
+                  <p className="text-[10px] text-muted-foreground/60 font-bold">ابدأ بتسجيل المبيعات والمشتريات لعرض منحنى الأرباح</p>
+                </div>
+              </Card>
+            ) : (
+              <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+                <CardHeader className="p-6 pb-2 text-right">
+                  <CardTitle className="text-sm font-black text-primary flex items-center justify-start gap-2" dir="rtl">
+                    <TrendingUp className="w-5 h-5 text-accent" />
+                    منحنى نمو الأرباح الصافي (6 شهور)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-80 p-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyProfitData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#666' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
+                        formatter={(value: any) => [value.toLocaleString() + " ر.ي", "صافي الربح"]}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="profit" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={4}
+                        fillOpacity={1} 
+                        fill="url(#colorProfit)" 
+                        animationDuration={1500}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-              <Card className="border-none shadow-md rounded-[1.5rem] bg-primary text-white">
-                <CardContent className="p-5 flex flex-col gap-1 items-center text-center">
-                  <Calendar className="w-5 h-5 mb-1 opacity-60" />
-                  <span className="text-[9px] font-black uppercase">الشهور المكتملة</span>
-                  <span className="text-sm font-black tabular-nums">6 شهور</span>
-                </CardContent>
-              </Card>
-            </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* تحليل ديون العملاء */}
-            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
-              <CardHeader className="p-6 pb-2 text-right border-b border-green-50">
-                <CardTitle className="text-sm font-black text-green-700 flex items-center justify-start gap-2" dir="rtl">
-                  <Users className="w-5 h-5" />
-                  أكبر 5 مدينين لك (عملاء)
-                </CardTitle>
-                <p className="text-[10px] text-muted-foreground font-bold">العملاء الذين لديهم أكبر أرصدة آجلة</p>
-              </CardHeader>
-              <CardContent className="h-72 p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={customerDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fontWeight: '900', fill: '#123524' }}
-                      interval={0}
-                      angle={-35}
-                      textAnchor="end"
-                      height={50}
-                    />
-                    <YAxis hide />
-                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
-                      {customerDebtsData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045cc'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            {!hasDebtData ? (
+              <Card className="border-none shadow-md rounded-[2.5rem] p-12 flex flex-col items-center text-center gap-4 bg-white/50 border-2 border-dashed">
+                <Banknote className="w-16 h-16 text-muted-foreground/20" />
+                <div className="space-y-1">
+                  <p className="font-black text-muted-foreground">سجل الديون فارغ</p>
+                  <p className="text-[10px] text-muted-foreground/60 font-bold">لا يوجد مبالغ مستحقة للتحصيل أو السداد حالياً</p>
+                </div>
+              </Card>
+            ) : (
+              <>
+                {customerDebtsData.length > 0 && (
+                  <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+                    <CardHeader className="p-6 pb-2 text-right border-b border-green-50">
+                      <CardTitle className="text-sm font-black text-green-700 flex items-center justify-start gap-2" dir="rtl">
+                        <Users className="w-5 h-5" />
+                        أكبر مدينين لك (تحصيل مالي)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-72 p-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={customerDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fontWeight: '900', fill: '#123524' }}
+                            interval={0}
+                            angle={-35}
+                            textAnchor="end"
+                            height={50}
+                          />
+                          <YAxis hide />
+                          <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                          <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
+                            {customerDebtsData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={index === 0 ? '#123524' : '#236045cc'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
 
-            {/* تحليل ديون الموردين */}
-            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
-              <CardHeader className="p-6 pb-2 text-right border-b border-orange-50">
-                <CardTitle className="text-sm font-black text-orange-700 flex items-center justify-start gap-2" dir="rtl">
-                  <ShoppingBag className="w-5 h-5" />
-                  أكبر مديونياتك لـ (موردين)
-                </CardTitle>
-                <p className="text-[10px] text-muted-foreground font-bold">الجهات المستحقة للسداد الآجل</p>
-              </CardHeader>
-              <CardContent className="h-72 p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={supplierDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fontWeight: '900', fill: '#ea580c' }}
-                      interval={0}
-                      angle={-35}
-                      textAnchor="end"
-                      height={50}
-                    />
-                    <YAxis hide />
-                    <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
-                      {supplierDebtsData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316cc'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+                {supplierDebtsData.length > 0 && (
+                  <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+                    <CardHeader className="p-6 pb-2 text-right border-b border-orange-50">
+                      <CardTitle className="text-sm font-black text-orange-700 flex items-center justify-start gap-2" dir="rtl">
+                        <ShoppingBag className="w-5 h-5" />
+                        مديونياتك للموردين (سداد آجـل)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-72 p-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={supplierDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fontWeight: '900', fill: '#ea580c' }}
+                            interval={0}
+                            angle={-35}
+                            textAnchor="end"
+                            height={50}
+                          />
+                          <YAxis hide />
+                          <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
+                          <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
+                            {supplierDebtsData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f97316cc'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -288,19 +312,6 @@ export default function ReportsPage() {
             ))}
           </div>
         </section>
-
-        {/* رسالة توضيحية */}
-        <Card className="border-none bg-orange-50 rounded-[2rem] border border-orange-100 p-6 shadow-inner">
-          <div className="flex flex-col items-center text-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-orange-500 shadow-sm">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <h4 className="font-black text-orange-900">نظام محاكاة البيانات</h4>
-            <p className="text-[11px] text-orange-800 font-bold leading-relaxed px-4">
-              الرسومات المعروضة حالياً تستخدم بيانات تجريبية ممتدة لـ 6 أشهر لتوضيح الشكل النهائي. ستختفي هذه البيانات وتظهر أرقامك الحقيقية بمجرد بدئك في تسجيل العمليات.
-            </p>
-          </div>
-        </Card>
       </main>
       <BottomNav />
     </div>
