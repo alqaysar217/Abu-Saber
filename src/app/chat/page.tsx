@@ -98,7 +98,7 @@ export default function SmartChatPage() {
         paid: inv.paidAmount,
         rem: inv.remainingAmount,
         date: inv.invoiceDate,
-        items: inv.items || [] // التأكد من إرسال الأصناف كاملة
+        items: inv.items || []
       }
     })
 
@@ -112,7 +112,7 @@ export default function SmartChatPage() {
         paid: p.paidAmount,
         rem: p.remainingAmount,
         date: p.purchaseDate,
-        items: p.items || [] // التأكد من إرسال الأصناف كاملة
+        items: p.items || []
       }
     })
 
@@ -166,10 +166,16 @@ export default function SmartChatPage() {
 
     try {
       const history = [...messages, userMsg]
-      const response = await smartChat(history, contextSnapshot)
+      
+      // CRITICAL: Sanitize the snapshot to remove non-serializable objects (like Firestore Timestamps)
+      // and ensure a clean JSON payload for the Server Action.
+      const sanitizedContext = JSON.parse(JSON.stringify(contextSnapshot));
+      
+      const response = await smartChat(history, sanitizedContext)
       setMessages(prev => [...prev, { role: 'model', content: response }])
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'model', content: `عذراً، حدث خطأ فني: ${e.message}` }])
+      console.error("Chat Error:", e);
+      setMessages(prev => [...prev, { role: 'model', content: `عذراً، حدث خطأ فني أثناء معالجة الطلب. يرجى إعادة المحاولة.` }])
     } finally {
       setLoading(false)
     }

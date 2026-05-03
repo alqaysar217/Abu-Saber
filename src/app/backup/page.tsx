@@ -90,7 +90,7 @@ export default function BackupPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <DatabaseBackup className="w-5 h-5" />
-             الأمان والنسخ الاحتياطي
+              النسخ الاحتياطي
           </h1>
           <div className="w-10" />
         </div>
