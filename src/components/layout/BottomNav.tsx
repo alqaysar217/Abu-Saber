@@ -36,12 +36,6 @@ export function BottomNav() {
                 )}>
                   <Icon className={cn("w-7 h-7", isActive && "animate-pulse")} />
                 </div>
-                <span className={cn(
-                  "absolute -bottom-6 text-[9px] font-black uppercase tracking-tight",
-                  isActive ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.label}
-                </span>
               </Link>
             )
           }
