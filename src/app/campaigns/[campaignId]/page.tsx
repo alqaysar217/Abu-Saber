@@ -33,7 +33,8 @@ import {
   Banknote,
   DollarSign,
   Plus,
-  Info
+  Info,
+  Hash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -299,9 +300,13 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
           <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center justify-start gap-2">
                <TableIcon className="w-5 h-5" />
-               تفاصيل فاتورة المشتريات
+               فاتورة مشتريات ({purchase.invoiceNumber || "بدون رقم"})
              </DialogTitle>
              <div className="flex flex-col gap-1 text-xs opacity-90 items-start">
+                <p className="font-bold flex items-center gap-2">
+                  <Hash className="w-4 h-4" />
+                  <span>رقم الفاتورة: {purchase.invoiceNumber || "غير محدد"}</span>
+                </p>
                 <p className="font-bold flex items-center gap-2">
                   <User className="w-4 h-4" />
                   <span>المورد: {supplier?.name}</span>

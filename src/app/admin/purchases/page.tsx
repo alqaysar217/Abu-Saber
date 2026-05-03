@@ -12,7 +12,8 @@ import {
   Calendar, 
   User, 
   Download,
-  Eye
+  Eye,
+  Hash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,7 +62,8 @@ export default function AllPurchasesPage() {
     return purchases.filter(p => {
       const supplier = suppliers?.find(s => s.id === p.supplierId)
       const matchesSearch = supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           p.id?.toLowerCase().includes(searchTerm.toLowerCase())
+                           p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           p.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesStatus = statusFilter === "all" || p.status === statusFilter
       return matchesSearch && matchesStatus
     })
@@ -87,7 +89,7 @@ export default function AllPurchasesPage() {
           <div className="relative flex-1">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="بحث باسم المورد أو الفاتورة..." 
+              placeholder="بحث باسم المورد أو رقم الفاتورة..." 
               className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -133,14 +135,19 @@ export default function AllPurchasesPage() {
                       <TableCell className="text-right py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-black text-foreground truncate max-w-[120px]">{supplier?.name || "مورد غير معروف"}</span>
-                          <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                            <Calendar className="w-2.5 h-2.5" />
-                            {p.purchaseDate ? format(new Date(p.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                             <Badge variant="outline" className="text-[8px] px-1 py-0 border-orange-200 text-orange-700 font-bold bg-orange-50/30">
+                               {p.invoiceNumber || "P-OLD"}
+                             </Badge>
+                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                               <Calendar className="w-2.5 h-2.5" />
+                               {p.purchaseDate ? format(new Date(p.purchaseDate), "dd MMM yyyy", { locale: ar }) : ""}
+                             </span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-center font-black text-xs tabular-nums text-orange-700">
-                        {p.totalAmount?.toLocaleString()}
+                        {p.totalAmount?.toLocaleString('en-US')}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge className={cn(

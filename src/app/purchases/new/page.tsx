@@ -175,8 +175,14 @@ function NewPurchaseContent() {
 
     setLoading(true)
     const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
+    
+    // Generate a unique integer for invoice number
+    const uniqueInt = Math.floor(Date.now() / 1000);
+    const invoiceNumber = `P-${uniqueInt}`;
+
     const purchaseData = {
       id: purchaseRef.id,
+      invoiceNumber,
       campaignId,
       supplierId,
       totalAmount: grandTotal,
@@ -195,7 +201,7 @@ function NewPurchaseContent() {
           const itemRef = doc(collection(purchaseRef, "items"))
           setDoc(itemRef, { ...item, purchaseId: purchaseRef.id, userId: user.uid, unitPrice: item.pricePerKg })
         })
-        toast({ title: "تم الحفظ بنجاح" })
+        toast({ title: "تم الحفظ بنجاح", description: `رقم الفاتورة: ${invoiceNumber}` })
         router.push("/campaigns/" + campaignId)
       })
       .catch((error) => {
