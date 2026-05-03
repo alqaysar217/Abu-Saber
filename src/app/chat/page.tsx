@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -53,11 +52,11 @@ export default function SmartChatPage() {
   const { data: campaigns } = useCollection(campaignsQuery)
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // تجهيز "لقطة" عميقة من البيانات لإرسالها للشات كـ Context
+  // تجهيز "لقطة" عميقة جداً من البيانات لإرسالها للشات كـ Context
   const contextSnapshot = useMemo(() => {
     if (!invoices || !purchases || !expenses || !historyTransactions) return null
 
-    // 1. ملخص الحملات (أرباح ومصاريف كل حملة)
+    // 1. ملخص الحملات (مع التواريخ والملاحظات والأرباح)
     const campaignSummaries = campaigns?.map(camp => {
       const cInvoices = invoices.filter(i => i.campaignId === camp.id)
       const cPurchases = purchases.filter(p => p.campaignId === camp.id)
@@ -68,8 +67,11 @@ export default function SmartChatPage() {
       const costE = cExpenses.reduce((acc, e) => acc + (e.amount || 0), 0)
       
       return {
+        id: camp.id,
         name: camp.name,
-        status: camp.status === 'open' ? 'نشطة' : 'مكتملة',
+        status: camp.status === 'open' ? 'نشطة' : 'مكتملة/مؤرشفة',
+        startDate: camp.startDate,
+        notes: camp.notes || "لا توجد ملاحظات",
         revenue,
         purchaseCost: costP,
         expenseCost: costE,
@@ -77,60 +79,84 @@ export default function SmartChatPage() {
       }
     })
 
-    // 2. مبيعات مع أسماء العملاء وحالة الدين
-    const detailedSales = invoices.slice(0, 10).map(inv => {
+    // 2. مبيعات تفصيلية (تشمل الأصناف والكميات)
+    const detailedSales = invoices.slice(0, 20).map(inv => {
       const customer = customers?.find(c => c.id === inv.customerId)
+      const campaign = campaigns?.find(c => c.id === inv.campaignId)
       return {
-        number: inv.invoiceNumber,
-        customer: customer?.name || "مجهول",
+        invoiceNumber: inv.invoiceNumber,
+        customerName: customer?.name || "مجهول",
+        campaignName: campaign?.name || "عامة",
         total: inv.totalAmount,
         paid: inv.paidAmount,
         remaining: inv.remainingAmount,
         date: inv.invoiceDate,
-        status: inv.status
+        status: inv.status,
+        items: inv.items?.map((it: any) => `${it.fishType} (${it.quantity} كجم)`).join(", ")
       }
     })
 
-    // 3. سجل وصولات السداد (من سدد ومن استلم)
-    const recentPayments = historyTransactions.slice(0, 10).map(tr => ({
-      name: tr.entityName,
+    // 3. مشتريات تفصيلية (تشمل الموردين والأصناف)
+    const detailedPurchases = purchases.slice(0, 20).map(p => {
+      const supplier = suppliers?.find(s => s.id === p.supplierId)
+      const campaign = campaigns?.find(c => c.id === p.campaignId)
+      return {
+        invoiceNumber: p.invoiceNumber,
+        supplierName: supplier?.name || "مجهول",
+        campaignName: campaign?.name || "عامة",
+        total: p.totalAmount,
+        paid: p.paidAmount,
+        remaining: p.remainingAmount,
+        date: p.purchaseDate,
+        status: p.status,
+        items: p.items?.map((it: any) => `${it.fishType} (${it.quantity} كجم)`).join(", ")
+      }
+    })
+
+    // 4. سجل المصاريف (الفئات والمبالغ)
+    const detailedExpenses = expenses.slice(0, 20).map(e => {
+      const campaign = campaigns?.find(c => c.id === e.campaignId)
+      return {
+        type: e.type,
+        amount: e.amount,
+        paymentType: e.paymentType,
+        payee: e.payeeName || "-",
+        campaign: campaign?.name || "عامة",
+        date: e.expenseDate || e.date,
+        notes: e.notes || ""
+      }
+    })
+
+    // 5. سجل السداد (من دفع لمن)
+    const recentPayments = historyTransactions.slice(0, 20).map(tr => ({
+      entityName: tr.entityName,
       amount: tr.amount,
-      type: tr.type === 'customer_payment' ? 'استلام من عميل' : 'دفع لمورد',
+      type: tr.type === 'customer_payment' ? 'قبض من عميل' : 'دفع لمورد',
       date: tr.transactionDate,
-      ref: tr.sourceNumber,
+      referenceInvoice: tr.sourceNumber,
       notes: tr.notes
     }))
 
-    // 4. مشتريات مع أسماء الموردين
-    const detailedPurchases = purchases.slice(0, 10).map(p => {
-      const supplier = suppliers?.find(s => s.id === p.supplierId)
-      return {
-        number: p.invoiceNumber,
-        supplier: supplier?.name || "مجهول",
-        total: p.totalAmount,
-        date: p.purchaseDate
-      }
-    })
-
     return {
-      globalStats: {
+      globalTotals: {
         totalRevenue: invoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0),
         totalPurchases: purchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
         totalExpenses: expenses.reduce((acc, e) => acc + (e.amount || 0), 0),
       },
       campaigns: campaignSummaries,
-      recentSales: detailedSales,
-      recentRepayments: recentPayments,
-      recentPurchases: detailedPurchases,
-      customerDebts: customers?.map(c => {
+      sales: detailedSales,
+      purchases: detailedPurchases,
+      expenses: detailedExpenses,
+      repayments: recentPayments,
+      customersBalances: customers?.map(c => {
         const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
-        return { name: c.name, debt }
-      }).filter(c => c.debt > 0),
-      supplierDebts: suppliers?.map(s => {
+        return { name: c.name, phone: c.phone || "-", currentDebt: debt }
+      }).filter(c => c.currentDebt !== 0),
+      suppliersBalances: suppliers?.map(s => {
         const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
         const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
-        return { name: s.name, debt: debtP + debtE }
-      }).filter(s => s.debt > 0)
+        return { name: s.name, currentDebtToThem: debtP + debtE }
+      }).filter(s => s.currentDebtToThem !== 0)
     }
   }, [invoices, purchases, expenses, customers, suppliers, campaigns, historyTransactions])
 
@@ -150,8 +176,8 @@ export default function SmartChatPage() {
       const history = [...messages, userMsg]
       const response = await smartChat(history, contextSnapshot)
       setMessages(prev => [...prev, { role: 'model', content: response }])
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'model', content: 'عذراً، حدث خطأ فني في معالجة طلبك.' }])
+    } catch (e: any) {
+      setMessages(prev => [...prev, { role: 'model', content: `عذراً، حدث خطأ فني: ${e.message}` }])
     } finally {
       setLoading(false)
     }
@@ -186,16 +212,18 @@ export default function SmartChatPage() {
             msg.role === 'user' ? "justify-end" : "justify-start"
           )}>
             <div className={cn(
-              "max-w-[85%] p-4 rounded-3xl shadow-sm text-sm leading-relaxed",
+              "max-w-[92%] p-4 rounded-3xl shadow-sm text-sm leading-relaxed",
               msg.role === 'user' 
                 ? "lux-gradient text-white rounded-tr-none" 
-                : "bg-white text-foreground border rounded-tl-none font-medium"
+                : "bg-white text-foreground border rounded-tl-none font-medium overflow-x-auto"
             )}>
-              <div className="flex items-center gap-2 mb-1 opacity-50">
+              <div className="flex items-center gap-2 mb-2 opacity-50">
                  {msg.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                  <span className="text-[9px] font-black uppercase">{msg.role === 'user' ? 'أنت' : 'المساعد الذكي'}</span>
               </div>
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div className="prose prose-sm prose-slate max-w-none dark:prose-invert">
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
             </div>
           </div>
         ))}
@@ -203,7 +231,7 @@ export default function SmartChatPage() {
           <div className="flex justify-start animate-in fade-in duration-300">
              <div className="bg-white border p-4 rounded-3xl rounded-tl-none flex items-center gap-3">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-xs font-bold text-muted-foreground">جاري تحليل البيانات...</span>
+                <span className="text-xs font-bold text-muted-foreground">جاري تحليل البيانات وصياغة التقرير...</span>
              </div>
           </div>
         )}
@@ -212,7 +240,7 @@ export default function SmartChatPage() {
       <footer className="p-4 bg-white border-t sticky bottom-0 z-20">
         <div className="flex gap-2 max-w-lg mx-auto" dir="rtl">
           <Input 
-            placeholder="اسألني عن الديون، مبيعات حملة، أو سجلات السداد..."
+            placeholder="اسألني عن مبيعات حملة، ديون عملاء، أو جداول المشتريات..."
             className="flex-1 h-12 rounded-2xl bg-muted/50 border-none pr-4 font-bold focus-visible:ring-primary shadow-inner"
             value={input}
             onChange={(e) => setInput(e.target.value)}
