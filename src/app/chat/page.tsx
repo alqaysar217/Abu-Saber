@@ -54,11 +54,11 @@ export default function SmartChatPage() {
   const { data: campaigns } = useCollection(campaignsQuery)
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // تجهيز "لقطة" عميقة جداً من البيانات لإرسالها للشات كـ Context
+  // تجهيز "لقطة" ذكية ومختصرة لضمان الأداء وتوفير التكلفة
   const contextSnapshot = useMemo(() => {
     if (!invoices || !purchases || !expenses || !historyTransactions) return null
 
-    // 1. ملخص الحملات (مع التواريخ والملاحظات والأرباح)
+    // 1. ملخص الحملات (مع الأرباح الصافية فقط لتقليل الحجم)
     const campaignSummaries = campaigns?.map(camp => {
       const cInvoices = invoices.filter(i => i.campaignId === camp.id)
       const cPurchases = purchases.filter(p => p.campaignId === camp.id)
@@ -69,96 +69,75 @@ export default function SmartChatPage() {
       const costE = cExpenses.reduce((acc, e) => acc + (e.amount || 0), 0)
       
       return {
-        id: camp.id,
         name: camp.name,
-        status: camp.status === 'open' ? 'نشطة' : 'مكتملة/مؤرشفة',
-        startDate: camp.startDate,
-        notes: camp.notes || "لا توجد ملاحظات",
+        status: camp.status === 'open' ? 'نشطة' : 'مؤرشفة',
         revenue,
-        purchaseCost: costP,
-        expenseCost: costE,
+        totalCost: costP + costE,
         netProfit: revenue - (costP + costE)
       }
     })
 
-    // 2. مبيعات تفصيلية (تشمل الأصناف والكميات)
-    const detailedSales = invoices.slice(0, 20).map(inv => {
+    // 2. مبيعات تفصيلية (آخر 15 فاتورة فقط للحفاظ على Context Window)
+    const detailedSales = invoices.slice(0, 15).map(inv => {
       const customer = customers?.find(c => c.id === inv.customerId)
-      const campaign = campaigns?.find(c => c.id === inv.campaignId)
       return {
-        invoiceNumber: inv.invoiceNumber,
-        customerName: customer?.name || "مجهول",
-        campaignName: campaign?.name || "عامة",
+        no: inv.invoiceNumber,
+        client: customer?.name || "مجهول",
         total: inv.totalAmount,
         paid: inv.paidAmount,
-        remaining: inv.remainingAmount,
+        rem: inv.remainingAmount,
         date: inv.invoiceDate,
-        status: inv.status,
-        items: inv.items?.map((it: any) => `${it.fishType} (${it.quantity} كجم)`).join(", ")
+        items: inv.items?.map((it: any) => `${it.fishType}(${it.quantity}kg)`).join(", ")
       }
     })
 
-    // 3. مشتريات تفصيلية (تشمل الموردين والأصناف)
-    const detailedPurchases = purchases.slice(0, 20).map(p => {
+    // 3. مشتريات تفصيلية (آخر 15 فقط)
+    const detailedPurchases = purchases.slice(0, 15).map(p => {
       const supplier = suppliers?.find(s => s.id === p.supplierId)
-      const campaign = campaigns?.find(c => c.id === p.campaignId)
       return {
-        invoiceNumber: p.invoiceNumber,
-        supplierName: supplier?.name || "مجهول",
-        campaignName: campaign?.name || "عامة",
+        no: p.invoiceNumber,
+        supp: supplier?.name || "مجهول",
         total: p.totalAmount,
         paid: p.paidAmount,
-        remaining: p.remainingAmount,
+        rem: p.remainingAmount,
         date: p.purchaseDate,
-        status: p.status,
-        items: p.items?.map((it: any) => `${it.fishType} (${it.quantity} كجم)`).join(", ")
+        items: p.items?.map((it: any) => `${it.fishType}(${it.quantity}kg)`).join(", ")
       }
     })
 
-    // 4. سجل المصاريف (الفئات والمبالغ)
-    const detailedExpenses = expenses.slice(0, 20).map(e => {
-      const campaign = campaigns?.find(c => c.id === e.campaignId)
-      return {
-        type: e.type,
-        amount: e.amount,
-        paymentType: e.paymentType,
-        payee: e.payeeName || "-",
-        campaign: campaign?.name || "عامة",
-        date: e.expenseDate || e.date,
-        notes: e.notes || ""
-      }
-    })
-
-    // 5. سجل السداد (من دفع لمن)
-    const recentPayments = historyTransactions.slice(0, 20).map(tr => ({
-      entityName: tr.entityName,
-      amount: tr.amount,
-      type: tr.type === 'customer_payment' ? 'قبض من عميل' : 'دفع لمورد',
+    // 4. سجل السداد (آخر 15 وصولات)
+    const recentPayments = historyTransactions.slice(0, 15).map(tr => ({
+      name: tr.entityName,
+      amt: tr.amount,
+      type: tr.type === 'customer_payment' ? 'استلام' : 'صرف',
       date: tr.transactionDate,
-      referenceInvoice: tr.sourceNumber,
-      notes: tr.notes
+      ref: tr.sourceNumber
     }))
 
+    // 5. ديون العملاء والموردين (المدينين فعلياً فقط)
+    const debtClients = customers?.map(c => {
+      const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
+      return { name: c.name, debt }
+    }).filter(c => c.debt > 0).sort((a,b) => b.debt - a.debt).slice(0, 10)
+
+    const debtSuppliers = suppliers?.map(s => {
+      const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
+      const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
+      return { name: s.name, debt: debtP + debtE }
+    }).filter(s => s.debt > 0).sort((a,b) => b.debt - a.debt).slice(0, 10)
+
     return {
-      globalTotals: {
-        totalRevenue: invoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0),
-        totalPurchases: purchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-        totalExpenses: expenses.reduce((acc, e) => acc + (e.amount || 0), 0),
+      stats: {
+        totalRev: invoices.reduce((acc, i) => acc + (i.totalAmount || 0), 0),
+        totalPur: purchases.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
+        totalExp: expenses.reduce((acc, e) => acc + (e.amount || 0), 0),
       },
       campaigns: campaignSummaries,
-      sales: detailedSales,
-      purchases: detailedPurchases,
-      expenses: detailedExpenses,
+      recentSales: detailedSales,
+      recentPurchases: detailedPurchases,
       repayments: recentPayments,
-      customersBalances: customers?.map(c => {
-        const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
-        return { name: c.name, phone: c.phone || "-", currentDebt: debt }
-      }).filter(c => c.currentDebt !== 0),
-      suppliersBalances: suppliers?.map(s => {
-        const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
-        const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
-        return { name: s.name, currentDebtToThem: debtP + debtE }
-      }).filter(s => s.currentDebtToThem !== 0)
+      topDebtors: debtClients,
+      topCreditors: debtSuppliers
     }
   }, [invoices, purchases, expenses, customers, suppliers, campaigns, historyTransactions])
 
@@ -196,7 +175,7 @@ export default function SmartChatPage() {
           </h1>
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[9px] font-bold text-muted-foreground uppercase">متصل بكافة البيانات</span>
+            <span className="text-[9px] font-bold text-muted-foreground uppercase">مساعد مالي لحظي</span>
           </div>
         </div>
         <button onClick={() => setMessages([{ role: 'model', content: 'تم مسح المحادثة. كيف يمكنني مساعدتك الآن؟' }])} className="p-2 text-destructive/40 hover:text-destructive transition-colors">
