@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
   Search, 
-  Filter, 
   ShoppingCart, 
   Loader2, 
   Calendar, 
+  ArrowUpDown,
   Download,
   Eye,
   Fuel,
@@ -19,7 +19,14 @@ import {
   Utensils,
   MoreHorizontal,
   Car,
-  Package
+  Package,
+  AlertCircle,
+  ArrowRight,
+  History,
+  Wallet,
+  Receipt,
+  Ship,
+  FileText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,7 +46,7 @@ import {
   useMemoFirebase 
 } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
-import { format } from "date-fns"
+import { format, startOfDay, endOfDay } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
@@ -54,137 +61,350 @@ const expenseIcons: Record<string, any> = {
   "أخرى": MoreHorizontal,
 }
 
-export default function AllExpensesPage() {
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
+export default function AllExpensesDetailedPage() {
   const router = useRouter()
   const db = useFirestore()
   const { user } = useUser()
+  
+  // States
   const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
+  const [filterCampaign, setFilterCampaign] = useState("all")
+  const [filterType, setFilterType] = useState("all")
+  const [filterPaymentType, setFilterPaymentType] = useState("all")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' })
 
+  // Data Fetching
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "expenses"), orderBy("expenseDate", "desc"))
   }, [db, user])
-
   const { data: expenses, isLoading } = useCollection(expensesQuery)
 
-  const filteredExpenses = useMemo(() => {
-    if (!expenses) return []
-    return expenses.filter(e => {
-      const matchesSearch = e.type?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           e.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           e.payeeName?.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesType = typeFilter === "all" || e.type === typeFilter
-      return matchesSearch && matchesType
-    })
-  }, [expenses, searchTerm, typeFilter])
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(collection(db, "users", user.uid, "campaigns"))
+  }, [db, user])
+  const { data: campaigns } = useCollection(campaignsQuery)
 
-  const expenseTypes = ["all", ...Array.from(new Set((expenses || []).map(e => e.type)))]
+  // Filtering Logic
+  const reportData = useMemo(() => {
+    if (!expenses) return []
+
+    return expenses.map(e => {
+      const campaign = campaigns?.find(c => c.id === e.campaignId)
+      return {
+        ...e,
+        campaignName: campaign?.name || "No Campaign",
+        date: e.expenseDate || e.date,
+        amount: e.amount || 0,
+        paidAmount: e.paidAmount || 0,
+        remainingAmount: e.remainingAmount !== undefined ? e.remainingAmount : ((e.amount || 0) - (e.paidAmount || 0))
+      }
+    }).filter(item => {
+      const matchesSearch = 
+        item.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.payeeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesCampaign = filterCampaign === "all" || item.campaignId === filterCampaign
+      const matchesType = filterType === "all" || item.type === filterType
+      const matchesPayment = filterPaymentType === "all" || item.paymentType === filterPaymentType
+
+      // Date Range Filtering
+      let matchesDate = true
+      if (fromDate || toDate) {
+        const itemDate = new Date(item.date)
+        const start = fromDate ? startOfDay(new Date(fromDate)) : new Date(0)
+        const end = toDate ? endOfDay(new Date(toDate)) : new Date(8640000000000000)
+        matchesDate = itemDate >= start && itemDate <= end
+      }
+
+      return matchesSearch && matchesCampaign && matchesType && matchesPayment && matchesDate
+    }).sort((a, b) => {
+      const direction = sortConfig.direction === 'asc' ? 1 : -1
+      if (sortConfig.key === 'date') return (new Date(a.date).getTime() - new Date(b.date).getTime()) * direction
+      if (sortConfig.key === 'amount') return (a.amount - b.amount) * direction
+      return 0
+    })
+  }, [expenses, campaigns, searchTerm, filterCampaign, filterType, filterPaymentType, fromDate, toDate, sortConfig])
+
+  const expenseTypes = Array.from(new Set((expenses || []).map(e => e.type))).filter(Boolean)
+
+  const exportToCSV = () => {
+    if (reportData.length === 0) return
+
+    // إضافة BOM لضمان دعم اللغة العربية في Excel
+    const headers = ["نوع المصروف", "المبلغ", "طريقة الدفع", "المبلغ المدفوع", "المتبقي (دين)", "المورد/المستلم", "التاريخ", "الحملة", "ملاحظات"]
+    const rows = reportData.map(item => [
+      item.type,
+      item.amount,
+      item.paymentType,
+      item.paidAmount,
+      item.remainingAmount,
+      item.payeeName || "-",
+      format(new Date(item.date), "yyyy-MM-dd"),
+      item.campaignName,
+      `"${item.notes || ""}"`
+    ])
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+    csvContent += headers.join(",") + "\n"
+    rows.forEach(row => {
+      csvContent += row.join(",") + "\n"
+    })
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `Expenses_Report_${format(new Date(), "yyyy-MM-dd")}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const toggleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }))
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="p-6 bg-white border-b sticky top-0 z-20 shadow-sm space-y-4">
+    <div className="flex flex-col min-h-screen bg-background pb-24">
+      <header className="p-6 bg-white border-b sticky top-0 z-30 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
           <button onClick={() => router.push("/")} className="p-2 -mr-2">
             <ChevronLeft className="w-6 h-6 rotate-180" />
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            كافة المصروفات
+            سجل المصروفات التفصيلي
           </h1>
-          <Button variant="outline" size="icon" className="rounded-xl border-none bg-muted/50">
-            <Download className="w-5 h-5 text-primary" />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="rounded-xl border-none bg-muted/50 text-primary"
+            onClick={exportToCSV}
+          >
+            <Download className="w-5 h-5" />
           </Button>
         </div>
 
-        <div className="relative" dir="rtl">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="بحث في المصاريف أو الملاحظات..." 
-            className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+        <div className="flex gap-2" dir="rtl">
+          <div className="relative flex-1">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder="بحث بالنوع أو المورد أو الملاحظات..." 
+              className="pr-11 h-12 rounded-2xl bg-muted/30 border-none text-right" 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button 
+            variant="outline" 
+            className="h-12 rounded-2xl px-4 gap-2 border-none bg-muted/30 text-primary font-bold"
+            onClick={() => toggleSort('date')}
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            ترتيب
+          </Button>
         </div>
 
+        {/* فلاتر التاريخ */}
+        <div className="bg-muted/20 p-3 rounded-2xl border border-dashed space-y-2" dir="rtl">
+          <p className="text-[10px] font-bold text-muted-foreground mr-1 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            فلترة حسب مدة المصروف:
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">من</span>
+              <Input 
+                type="date" 
+                className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" 
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+              />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground opacity-30" />
+            <div className="flex-1 relative">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-primary/50">إلى</span>
+              <Input 
+                type="date" 
+                className="h-10 rounded-xl bg-white border-none pr-8 text-[11px] font-bold text-left" 
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+              />
+            </div>
+            {(fromDate || toDate) && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-xl text-destructive"
+                onClick={() => { setFromDate(""); setToDate(""); }}
+              >
+                <AlertCircle className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* القوائم المنسدلة للفلاتر */}
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" dir="rtl">
-          {expenseTypes.map((st) => (
-            <button
-              key={st}
-              onClick={() => setTypeFilter(st)}
-              className={cn(
-                "px-5 py-2 rounded-full text-[10px] font-black shrink-0 transition-all border",
-                typeFilter === st ? "lux-gradient text-white border-transparent shadow-md" : "bg-white text-muted-foreground border-muted-foreground/10"
-              )}
-            >
-              {st === "all" ? "الكل" : st}
-            </button>
-          ))}
+          <select 
+            className="h-9 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4 outline-none focus:ring-1 focus:ring-primary shrink-0"
+            value={filterCampaign}
+            onChange={e => setFilterCampaign(e.target.value)}
+          >
+            <option value="all">كل الحملات</option>
+            {campaigns?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+
+          <select 
+            className="h-9 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4 outline-none focus:ring-1 focus:ring-primary shrink-0"
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+          >
+            <option value="all">كل الأنواع</option>
+            {expenseTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+
+          <select 
+            className="h-9 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4 outline-none focus:ring-1 focus:ring-primary shrink-0"
+            value={filterPaymentType}
+            onChange={e => setFilterPaymentType(e.target.value)}
+          >
+            <option value="all">طريقة الدفع</option>
+            <option value="نقد">نقد</option>
+            <option value="دين">دين</option>
+            <option value="جزئي">جزئي</option>
+          </select>
         </div>
       </header>
 
-      <main className="flex-1 p-4 pb-10">
+      <main className="flex-1 p-4">
         {isLoading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" /></div>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
+            <p className="text-xs font-bold text-muted-foreground">جاري تحميل سجل المصروفات...</p>
+          </div>
         ) : (
           <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
-            <Table dir="rtl">
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="text-right font-black text-[10px]">النوع / التاريخ</TableHead>
-                  <TableHead className="text-center font-black text-[10px]">المبلغ</TableHead>
-                  <TableHead className="text-center font-black text-[10px]">الدفع</TableHead>
-                  <TableHead className="text-left font-black text-[10px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredExpenses.map((e) => {
-                  const Icon = expenseIcons[e.type] || MoreHorizontal
-                  return (
-                    <TableRow key={e.id} className="active:bg-muted/50 transition-colors">
-                      <TableCell className="text-right py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-muted rounded-xl text-primary/70">
-                            <Icon className="w-4 h-4" />
+            <div className="overflow-x-auto">
+              <Table dir="rtl" className="min-w-[1200px]">
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="text-right font-black text-[10px] py-4">نوع المصروف</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المبلغ الإجمالي</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">طريقة الدفع</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المتبقي (دين)</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">المورد / المستلم</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">الحملة</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">ملاحظات</TableHead>
+                    <TableHead className="text-left font-black text-[10px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.map((item, index) => {
+                    const Icon = expenseIcons[item.type] || Receipt
+                    return (
+                      <TableRow 
+                        key={item.id} 
+                        className={cn(
+                          "active:bg-muted/50 transition-colors border-b-muted/20",
+                          index % 2 !== 0 ? "bg-muted/5" : "bg-white"
+                        )}
+                      >
+                        <TableCell className="text-right py-4">
+                          <div className="flex items-center gap-2">
+                             <div className="p-1.5 bg-muted rounded-lg text-primary/60">
+                               <Icon className="w-3.5 h-3.5" />
+                             </div>
+                             <span className="text-xs font-black text-foreground">{item.type}</span>
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-black text-foreground">{e.type}</span>
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5" />
-                              {e.expenseDate ? format(new Date(e.expenseDate), "dd/MM/yyyy", { locale: ar }) : ""}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center font-black text-xs tabular-nums text-accent">
-                        {e.amount?.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge className={cn(
-                          "text-[8px] px-1.5 py-0 border-none font-black",
-                          e.paymentType === "نقد" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"
-                        )}>
-                          {e.paymentType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-left">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg" onClick={() => router.push(`/campaigns/${e.campaignId}?tab=expenses`)}>
-                          <Eye className="w-4 h-4 text-primary" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-            {filteredExpenses.length === 0 && (
-              <div className="text-center py-20 text-muted-foreground font-bold text-sm">
-                لا توجد مصروفات مسجلة مطابقة
+                        </TableCell>
+                        <TableCell className="text-center font-black text-xs tabular-nums text-accent">
+                          {item.amount.toLocaleString('en-US')}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={cn(
+                            "text-[8px] px-1.5 py-0 border-none font-black shadow-none",
+                            item.paymentType === "نقد" ? "bg-green-50 text-green-600" : (item.paymentType === "دين" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")
+                          )}>
+                            {item.paymentType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center font-black text-xs tabular-nums text-green-700">
+                          {item.paidAmount.toLocaleString('en-US')}
+                        </TableCell>
+                        <TableCell className="text-center font-black text-xs tabular-nums text-destructive">
+                          {item.remainingAmount.toLocaleString('en-US')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-xs font-bold text-foreground truncate max-w-[120px] inline-block">
+                            {item.payeeName || "-"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
+                            {item.date ? format(new Date(item.date), "yyyy/MM/dd") : ""}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-[9px] font-black text-primary/70 truncate max-w-[100px] inline-block">
+                            {item.campaignName}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right max-w-[150px]">
+                          <p className="text-[9px] text-muted-foreground font-medium truncate italic" title={item.notes}>
+                            {item.notes || "-"}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-left">
+                          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}?tab=expenses`)}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {reportData.length === 0 && (
+              <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">
+                <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                لا توجد مصروفات تطابق الفلاتر المختارة
               </div>
             )}
           </div>
         )}
       </main>
+
+      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t flex justify-between items-center z-40">
+         <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-muted-foreground">إجمالي المصروفات الحالية</span>
+            <span className="text-lg font-black text-accent tabular-nums">
+               {reportData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString('en-US')} <span className="text-[10px]">ر.ي</span>
+            </span>
+         </div>
+         <Button 
+          className="rounded-2xl bg-accent hover:bg-accent/90 h-12 px-6 font-black gap-2 shadow-lg text-white"
+          onClick={() => router.push("/expenses/new")}
+         >
+            <Receipt className="w-5 h-5" />
+            مصروف جديد
+         </Button>
+      </footer>
     </div>
   )
 }
