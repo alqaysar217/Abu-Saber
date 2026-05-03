@@ -27,7 +27,7 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, orderBy, deleteDoc, doc, setDoc, serverTimestamp, writeBatch } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
-import { ar } from "ar-SA"
+import { ar } from "date-fns/locale"
 import {
   AlertDialog,
   AlertDialogAction,
