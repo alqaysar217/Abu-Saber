@@ -28,7 +28,8 @@ import {
   Eye,
   Check,
   CreditCard,
-  Users
+  Users,
+  Coins
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -168,7 +169,7 @@ export default function DebtsPage() {
   const handleSettleDebt = async () => {
     if (!db || !user || !paymentTarget) return
     const amount = parseFloat(paymentAmount.replace(/,/g, ""))
-    if (isNaN(amount) || amount <= 0 || amount > (paymentTarget.totalRemaining || paymentTarget.remainingAmount + 1)) {
+    if (isNaN(amount) || amount <= 0 || amount > (paymentTarget.totalRemaining || (paymentTarget.remainingAmount !== undefined ? paymentTarget.remainingAmount : (paymentTarget.totalAmount - paymentTarget.paidAmount)) + 1)) {
       toast({ variant: "destructive", title: "مبلغ غير صالح" })
       return
     }
@@ -177,7 +178,7 @@ export default function DebtsPage() {
     let collectionName = paymentTarget.trType === 'sale' ? "invoices" : (paymentTarget.trType === 'purchase' ? "purchases" : "expenses")
     const docRef = doc(db, "users", user.uid, collectionName, paymentTarget.id)
     
-    const previousRemaining = paymentTarget.remainingAmount
+    const previousRemaining = paymentTarget.remainingAmount !== undefined ? paymentTarget.remainingAmount : (paymentTarget.totalAmount - paymentTarget.paidAmount)
     const newPaidAmount = (paymentTarget.paidAmount || 0) + amount
     const newRemainingAmount = Math.max(0, previousRemaining - amount)
     
