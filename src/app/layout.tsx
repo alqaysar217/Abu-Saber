@@ -16,6 +16,21 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "أبو صابر - لتجارة الأسماك",
   description: "نظام إدارة تجارة الأسماك المتكامل",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "أبو صابر",
+  },
 };
 
 export const viewport: Viewport = {
