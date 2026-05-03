@@ -15,7 +15,8 @@ import {
   Eye,
   FileText,
   ArrowDownToLine,
-  ArrowUpFromLine
+  ArrowUpFromLine,
+  AlertCircle
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -134,13 +135,12 @@ export default function AllDebtsDetailedPage() {
 
     // 3. Expenses (Debts by Me)
     expenses.forEach(e => {
-      const payee = suppliers?.find(s => s.id === e.payeeId)
       const campaign = campaigns?.find(c => c.id === e.campaignId)
       const remaining = e.remainingAmount !== undefined ? e.remainingAmount : ((e.amount || 0) - (e.paidAmount || 0))
 
       combined.push({
         ...e,
-        entityName: payee?.name || e.payeeName || "جهة غير معروفة",
+        entityName: e.payeeName || "جهة غير معروفة",
         campaignName: campaign?.name || "حملة غير معروفة",
         date: e.expenseDate || e.date,
         remainingAmount: remaining,
@@ -196,14 +196,14 @@ export default function AllDebtsDetailedPage() {
           <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl p-1.5 bg-muted/50 border shadow-inner">
             <TabsTrigger 
               value="to_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none border-none"
             >
               <ArrowDownToLine className="w-4 h-4" />
               ديون لك
             </TabsTrigger>
             <TabsTrigger 
               value="by_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none border-none"
             >
               <ArrowUpFromLine className="w-4 h-4" />
               ديون عليك
@@ -256,18 +256,17 @@ export default function AllDebtsDetailedPage() {
         ) : (
           <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[900px]">
+              <Table dir="rtl" className="min-w-[800px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="text-right font-black text-[11px] py-5">رقم الفاتورة</TableHead>
-                    <TableHead className="text-right font-black text-[11px]">الجهة</TableHead>
-                    <TableHead className="text-center font-black text-[11px]">الإجمالي</TableHead>
-                    <TableHead className="text-center font-black text-[11px]">المدفوع</TableHead>
-                    <TableHead className="text-center font-black text-[11px]">المتبقي</TableHead>
-                    <TableHead className="text-center font-black text-[11px]">التاريخ</TableHead>
-                    <TableHead className="text-center font-black text-[11px]">الحالة</TableHead>
-                    <TableHead className="text-right font-black text-[11px]">الملاحظات</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="text-right font-black text-[10px] py-5">رقم الفاتورة</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">الجهة</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المبلغ</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">المتبقي</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">الحالة</TableHead>
+                    <TableHead className="text-right font-black text-[10px]">الملاحظات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -275,16 +274,16 @@ export default function AllDebtsDetailedPage() {
                     <TableRow key={index} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-right py-4">
                         <Badge className={cn(
-                          "font-black text-[10px] rounded-lg px-2 shadow-none border-none",
+                          "font-black text-[9px] rounded-lg px-2 shadow-none border-none",
                           item.trType === 'sale' ? "bg-green-100 text-green-700" : (item.trType === 'purchase' ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700")
                         )}>
                           {item.invoiceNumber || "-"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right text-xs font-bold">{item.entityName}</TableCell>
-                      <TableCell className="text-center font-bold text-xs tabular-nums">{(item.totalAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-center font-bold text-xs tabular-nums text-green-700">{(item.paidAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-center font-black text-xs tabular-nums text-destructive">{(item.remainingAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-[11px] font-bold">{item.entityName}</TableCell>
+                      <TableCell className="text-center font-bold text-[11px] tabular-nums">{(item.totalAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-bold text-[11px] tabular-nums text-green-700">{(item.paidAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-black text-[11px] tabular-nums text-destructive">{(item.remainingAmount || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-center text-[10px] font-bold tabular-nums text-muted-foreground">{item.date ? format(new Date(item.date), "yyyy/MM/dd") : "-"}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className={cn(
@@ -297,15 +296,10 @@ export default function AllDebtsDetailedPage() {
                       <TableCell className="text-right max-w-[150px]">
                         <p className="text-[10px] text-muted-foreground truncate" title={item.notes}>{item.notes}</p>
                       </TableCell>
-                      <TableCell className="text-left">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-primary" onClick={() => router.push(`/campaigns/${item.campaignId}`)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-20">
+                      <TableCell colSpan={8} className="text-center py-20">
                         <div className="flex flex-col items-center gap-3 opacity-20">
                           <FileText className="w-16 h-16" />
                           <p className="font-black">لا توجد بيانات متاحة حالياً</p>
