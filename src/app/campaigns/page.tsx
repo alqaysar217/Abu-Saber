@@ -44,11 +44,12 @@ function CampaignsContent() {
     <div className="flex flex-col min-h-screen bg-background pb-24">
       <header className="p-6 bg-white border-b sticky top-0 z-30 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
-          {isArchiveView && (
-            <button onClick={() => router.push("/campaigns")} className="p-2 -mr-2">
-              <ChevronLeft className="w-6 h-6 rotate-180" />
-            </button>
-          )}
+          <button 
+            onClick={() => isArchiveView ? router.push("/campaigns") : router.push("/")} 
+            className="p-2 -mr-2"
+          >
+            <ChevronLeft className="w-6 h-6 rotate-180" />
+          </button>
           <div className="flex flex-col text-right flex-1">
             <h1 className="text-2xl font-black text-primary flex items-center gap-2">
               {isArchiveView ? (
