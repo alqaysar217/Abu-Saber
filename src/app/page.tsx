@@ -17,12 +17,19 @@ import {
   Loader2, 
   Menu, 
   Sparkles,
-  Database
+  Database,
+  Info
 } from "lucide-react"
 import { PlaceHolderImages } from "@/lib/placeholder-images"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy, getDocs, doc, writeBatch } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function Home() {
   const { user } = useUser()
@@ -82,15 +89,15 @@ export default function Home() {
   }, [mounted, allInvoices, allPurchases, allExpenses])
 
   const stats = useMemo(() => {
-    const totalRev = allInvoices?.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0) || 0
     const totalRevPaid = allInvoices?.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0) || 0
+    const totalRev = allInvoices?.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0) || 0
     const debtsToMe = totalRev - totalRevPaid
 
-    const totalPurCost = allPurchases?.reduce((acc, p) => acc + (p.totalAmount || 0), 0) || 0
     const totalPurPaid = allPurchases?.reduce((acc, p) => acc + (p.paidAmount || 0), 0) || 0
+    const totalPurCost = allPurchases?.reduce((acc, p) => acc + (p.totalAmount || 0), 0) || 0
     
-    const totalExpCost = allExpenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0
     const totalExpPaid = allExpenses?.reduce((acc, e) => acc + (e.paidAmount || 0), 0) || 0
+    const totalExpCost = allExpenses?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0
     
     const debtsByMe = (totalPurCost - totalPurPaid) + (totalExpCost - totalExpPaid)
     const liquidity = totalRevPaid - (totalPurPaid + totalExpPaid)
@@ -231,6 +238,19 @@ export default function Home() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">السيولة الحالية</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-0.5 opacity-50"><Info className="w-3 h-3 text-primary" /></button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-primary text-white border-none rounded-xl p-3 text-right" dir="rtl">
+                        <p className="text-[10px] font-bold leading-relaxed">
+                          السيولة = (الكاش المستلم من المبيعات) - (الكاش المدفوع للمشتريات + المصاريف). <br/>
+                          تمثل المال الفعلي المتوفر معك الآن بعيداً عن الديون.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <button onClick={() => toggleVisibility('liquidity')} className="p-0.5 opacity-50">
                     {visibility['liquidity'] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
