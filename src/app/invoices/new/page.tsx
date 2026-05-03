@@ -188,7 +188,6 @@ function NewInvoiceContent() {
       const invoicesRef = collection(db, "users", user.uid, "invoices")
       const invoicesSnap = await getDocs(invoicesRef)
       
-      // منطق ترقيم فاتورة المبيعات (S-0001)
       const nextSequence = invoicesSnap.size + 1
       const invoiceNumber = `S-${nextSequence.toString().padStart(4, '0')}`
 
@@ -223,6 +222,21 @@ function NewInvoiceContent() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // دالة استقبال البيانات من مكون الذكاء الاصطناعي
+  const handleAIResult = (data: any) => {
+    const mappedItems = data.fishItems.map((item: any) => ({
+      tempId: Math.random().toString(36).substring(2, 9),
+      fishType: item.fishType,
+      quantity: item.quantity,
+      pricePerKg: item.pricePerKg,
+      total: item.totalItemPrice
+    }))
+    
+    setAddedItems([...mappedItems, ...addedItems])
+    setUseAI(false) // العودة لوضع الإدخال اليدوي للمراجعة النهائية
+    toast({ title: "تم استخراج البيانات بذكاء", description: "يمكنك الآن مراجعة الفاتورة وإضافة طريقة الدفع" })
   }
 
   return (
@@ -313,7 +327,7 @@ function NewInvoiceContent() {
         ) : (
           <div className="space-y-6 animate-in fade-in duration-300">
             {useAI ? (
-              <AIInvoiceParser onSave={() => router.push("/")} />
+              <AIInvoiceParser onSave={handleAIResult} />
             ) : (
               <div className="space-y-6">
                 <Card className={cn("border-2 shadow-md rounded-2xl bg-white", editingId ? "border-accent" : "border-primary/10")}>
