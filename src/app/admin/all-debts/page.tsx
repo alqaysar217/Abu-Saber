@@ -10,9 +10,7 @@ import {
   ChevronLeft, 
   Calendar, 
   ArrowUpDown,
-  Download,
   ArrowRight,
-  Eye,
   FileText,
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -94,63 +92,71 @@ export default function AllDebtsDetailedPage() {
   const { data: expenses } = useCollection(expensesQuery)
 
   const reportItems = useMemo(() => {
-    if (!invoices || !purchases || !expenses) return []
     const combined: any[] = []
     
     // 1. Invoices (Debts to Me)
-    invoices.forEach(inv => {
-      const customer = customers?.find(c => c.id === inv.customerId)
-      const campaign = campaigns?.find(c => c.id === inv.campaignId)
-      const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
-      
-      combined.push({
-        ...inv,
-        entityName: customer?.name || "عميل غير معروف",
-        campaignName: campaign?.name || "حملة غير معروفة",
-        date: inv.invoiceDate,
-        remainingAmount: remaining,
-        trType: 'sale',
-        category: 'to_me',
-        notes: inv.notes || inv.description || "-"
+    if (invoices) {
+      invoices.forEach(inv => {
+        const customer = customers?.find(c => c.id === inv.customerId)
+        const campaign = campaigns?.find(c => c.id === inv.campaignId)
+        const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
+        
+        combined.push({
+          ...inv,
+          id: inv.id,
+          entityName: customer?.name || "عميل غير معروف",
+          campaignName: campaign?.name || "حملة غير معروفة",
+          date: inv.invoiceDate,
+          remainingAmount: remaining,
+          trType: 'sale',
+          category: 'to_me',
+          notes: inv.notes || inv.description || "-"
+        })
       })
-    })
+    }
 
     // 2. Purchases (Debts by Me)
-    purchases.forEach(p => {
-      const supplier = suppliers?.find(s => s.id === p.supplierId)
-      const campaign = campaigns?.find(c => c.id === p.campaignId)
-      const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
+    if (purchases) {
+      purchases.forEach(p => {
+        const supplier = suppliers?.find(s => s.id === p.supplierId)
+        const campaign = campaigns?.find(c => c.id === p.campaignId)
+        const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
 
-      combined.push({
-        ...p,
-        entityName: supplier?.name || "مورد غير معروف",
-        campaignName: campaign?.name || "حملة غير معروفة",
-        date: p.purchaseDate,
-        remainingAmount: remaining,
-        trType: 'purchase',
-        category: 'by_me',
-        notes: p.notes || p.description || "-"
+        combined.push({
+          ...p,
+          id: p.id,
+          entityName: supplier?.name || "مورد غير معروف",
+          campaignName: campaign?.name || "حملة غير معروفة",
+          date: p.purchaseDate,
+          remainingAmount: remaining,
+          trType: 'purchase',
+          category: 'by_me',
+          notes: p.notes || p.description || "-"
+        })
       })
-    })
+    }
 
     // 3. Expenses (Debts by Me)
-    expenses.forEach(e => {
-      const campaign = campaigns?.find(c => c.id === e.campaignId)
-      const remaining = e.remainingAmount !== undefined ? e.remainingAmount : ((e.amount || 0) - (e.paidAmount || 0))
+    if (expenses) {
+      expenses.forEach(e => {
+        const campaign = campaigns?.find(c => c.id === e.campaignId)
+        const remaining = e.remainingAmount !== undefined ? e.remainingAmount : ((e.amount || 0) - (e.paidAmount || 0))
 
-      combined.push({
-        ...e,
-        entityName: e.payeeName || "جهة غير معروفة",
-        campaignName: campaign?.name || "حملة غير معروفة",
-        date: e.expenseDate || e.date,
-        remainingAmount: remaining,
-        totalAmount: e.amount,
-        trType: 'expense',
-        category: 'by_me',
-        invoiceNumber: "مصروف",
-        notes: e.notes || "-"
+        combined.push({
+          ...e,
+          id: e.id,
+          entityName: e.payeeName || "جهة غير معروفة",
+          campaignName: campaign?.name || "حملة غير معروفة",
+          date: e.expenseDate || e.date,
+          remainingAmount: remaining,
+          totalAmount: e.amount,
+          trType: 'expense',
+          category: 'by_me',
+          invoiceNumber: "مصروف",
+          notes: e.notes || "-"
+        })
       })
-    })
+    }
 
     return combined.filter(item => {
       const matchesCategory = item.category === activeView
@@ -196,14 +202,14 @@ export default function AllDebtsDetailedPage() {
           <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl p-1.5 bg-muted/50 border shadow-inner">
             <TabsTrigger 
               value="to_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none border-none"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-none border-none"
             >
               <ArrowDownToLine className="w-4 h-4" />
               ديون لك
             </TabsTrigger>
             <TabsTrigger 
               value="by_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none border-none"
+              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-none border-none"
             >
               <ArrowUpFromLine className="w-4 h-4" />
               ديون عليك
@@ -250,51 +256,51 @@ export default function AllDebtsDetailedPage() {
         </div>
       </header>
 
-      <main className="p-4">
+      <main className="p-2">
         {isLoading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" /></div>
         ) : (
-          <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
+          <div className="bg-white rounded-[1.5rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[800px]">
+              <Table dir="rtl" className="min-w-[700px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="text-right font-black text-[10px] py-5">رقم الفاتورة</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">الجهة</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">المبلغ</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">المدفوع</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">المتبقي</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">التاريخ</TableHead>
-                    <TableHead className="text-center font-black text-[10px]">الحالة</TableHead>
-                    <TableHead className="text-right font-black text-[10px]">الملاحظات</TableHead>
+                    <TableHead className="text-right font-black text-[9px] py-4 px-2">رقم الفاتورة</TableHead>
+                    <TableHead className="text-right font-black text-[9px] px-2">الجهة</TableHead>
+                    <TableHead className="text-center font-black text-[9px] px-2">المبلغ</TableHead>
+                    <TableHead className="text-center font-black text-[9px] px-2">المدفوع</TableHead>
+                    <TableHead className="text-center font-black text-[9px] px-2">المتبقي</TableHead>
+                    <TableHead className="text-center font-black text-[9px] px-2">التاريخ</TableHead>
+                    <TableHead className="text-center font-black text-[9px] px-2">الحالة</TableHead>
+                    <TableHead className="text-right font-black text-[9px] px-2">الملاحظات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reportItems.length > 0 ? reportItems.map((item, index) => (
-                    <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="text-right py-4">
+                    <TableRow key={item.id || index} className="hover:bg-muted/50 transition-colors">
+                      <TableCell className="text-right py-3 px-2">
                         <Badge className={cn(
-                          "font-black text-[9px] rounded-lg px-2 shadow-none border-none",
+                          "font-black text-[8px] rounded-lg px-1.5 shadow-none border-none",
                           item.trType === 'sale' ? "bg-green-100 text-green-700" : (item.trType === 'purchase' ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700")
                         )}>
                           {item.invoiceNumber || "-"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right text-[11px] font-bold">{item.entityName}</TableCell>
-                      <TableCell className="text-center font-bold text-[11px] tabular-nums">{(item.totalAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-center font-bold text-[11px] tabular-nums text-green-700">{(item.paidAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-center font-black text-[11px] tabular-nums text-destructive">{(item.remainingAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-center text-[10px] font-bold tabular-nums text-muted-foreground">{item.date ? format(new Date(item.date), "yyyy/MM/dd") : "-"}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-right text-[10px] font-bold px-2">{item.entityName}</TableCell>
+                      <TableCell className="text-center font-bold text-[10px] tabular-nums px-2">{(item.totalAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-bold text-[10px] tabular-nums text-green-700 px-2">{(item.paidAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-black text-[10px] tabular-nums text-destructive px-2">{(item.remainingAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-center text-[9px] font-bold tabular-nums text-muted-foreground px-2">{item.date ? format(new Date(item.date), "yyyy/MM/dd") : "-"}</TableCell>
+                      <TableCell className="text-center px-2">
                         <Badge variant="outline" className={cn(
-                          "text-[9px] font-black",
+                          "text-[8px] font-black px-1.5",
                           item.remainingAmount <= 0 ? "text-green-600 border-green-200" : "text-destructive border-red-200"
                         )}>
                           {item.remainingAmount <= 0 ? "مُسددة" : "دين قائم"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right max-w-[150px]">
-                        <p className="text-[10px] text-muted-foreground truncate" title={item.notes}>{item.notes}</p>
+                      <TableCell className="text-right max-w-[120px] px-2">
+                        <p className="text-[9px] text-muted-foreground truncate" title={item.notes}>{item.notes}</p>
                       </TableCell>
                     </TableRow>
                   )) : (
@@ -302,7 +308,7 @@ export default function AllDebtsDetailedPage() {
                       <TableCell colSpan={8} className="text-center py-20">
                         <div className="flex flex-col items-center gap-3 opacity-20">
                           <FileText className="w-16 h-16" />
-                          <p className="font-black">لا توجد بيانات متاحة حالياً</p>
+                          <p className="font-black text-sm">لا توجد بيانات متاحة حالياً</p>
                         </div>
                       </TableCell>
                     </TableRow>
