@@ -1,12 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Camera, Upload, Loader2, Save, X, Edit3, Plus, Trash2, Table as TableIcon, CheckCircle2, AlertCircle } from "lucide-react"
+import { useState } from "react"
+import { Camera, Upload, Loader2, Save, X, Trash2, Plus, CheckCircle2, AlertCircle, RefreshCcw } from "lucide-react"
 import { extractInvoiceData, type ExtractInvoiceDataOutput } from "@/ai/flows/ai-invoice-data-extraction-flow"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -14,8 +12,8 @@ import { cn } from "@/lib/utils"
 interface EditableItem {
   tempId: string
   fishType: string
-  quantity: number
-  pricePerKg: number
+  quantity: number | string
+  pricePerKg: number | string
   totalItemPrice: number
 }
 
@@ -25,12 +23,18 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
   const { toast } = useToast()
 
   const calculateGrandTotal = (currentItems: EditableItem[]) => {
-    return currentItems.reduce((acc, item) => acc + item.totalItemPrice, 0)
+    return currentItems.reduce((acc, item) => acc + (item.totalItemPrice || 0), 0)
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // فحص حجم الملف قبل الرفع (تنبيه المستخدم إذا تجاوز 10 ميجا)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "حجم الصورة كبير جداً", description: "يرجى اختيار صورة أصغر من 10 ميجابايت." })
+      return
+    }
 
     setLoading(true)
     try {
@@ -48,7 +52,7 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
           }))
           
           setItems(mappedItems)
-          toast({ title: "تم التحليل بنجاح", description: "يمكنك الآن مراجعة وتعديل البيانات المستخرجة." })
+          toast({ title: "تم التحليل بنجاح", description: "يمكنك الآن مراجعة وتعديل البيانات." })
         } catch (error: any) {
           toast({ variant: "destructive", title: "فشل استخراج البيانات", description: error.message })
         } finally {
@@ -67,7 +71,7 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
       if (item.tempId === tempId) {
         const updatedItem = { ...item, [field]: value }
         
-        // إعادة حساب الإجمالي الفرعي إذا تغيرت الكمية أو السعر
+        // إعادة حساب الإجمالي عند تغيير الكمية أو السعر
         if (field === 'quantity' || field === 'pricePerKg') {
           const qty = parseFloat(String(updatedItem.quantity)) || 0
           const price = parseFloat(String(updatedItem.pricePerKg)) || 0
@@ -97,15 +101,15 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
 
   const handleFinalSubmit = () => {
     if (items.length === 0) {
-      toast({ variant: "destructive", title: "قائمة فارغة", description: "يرجى إضافة أصناف أولاً." })
+      toast({ variant: "destructive", title: "القائمة فارغة" })
       return
     }
 
     const output: ExtractInvoiceDataOutput = {
       fishItems: items.map(({ tempId, ...rest }) => ({
         ...rest,
-        quantity: parseFloat(String(rest.quantity)),
-        pricePerKg: parseFloat(String(rest.pricePerKg))
+        quantity: parseFloat(String(rest.quantity)) || 0,
+        pricePerKg: parseFloat(String(rest.pricePerKg)) || 0
       })),
       totalInvoiceAmount: calculateGrandTotal(items)
     }
@@ -133,13 +137,13 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-green-400" />
-              <CardTitle className="text-lg font-black">مراجعة بيانات الجرد الذكي</CardTitle>
+              <CardTitle className="text-lg font-black">مراجعة الجرد الذكي</CardTitle>
             </div>
             <button onClick={() => setItems([])} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-              <X className="w-5 h-5" />
+              <RefreshCcw className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-[10px] text-white/70 font-bold mt-1">يمكنك الضغط على أي خلية لتعديل البيانات قبل الحفظ النهائي</p>
+          <p className="text-[10px] text-white/70 font-bold mt-1">اضغط على أي خانة للتعديل اليدوي</p>
         </CardHeader>
         
         <CardContent className="p-0">
@@ -182,13 +186,10 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
                       />
                     </TableCell>
                     <TableCell className="text-center text-[11px] font-black tabular-nums text-primary/80">
-                      {item.totalItemPrice.toLocaleString()}
+                      {(item.totalItemPrice || 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="pl-4">
-                      <button 
-                        onClick={() => removeRow(item.tempId)}
-                        className="p-2 text-destructive/30 hover:text-destructive transition-colors"
-                      >
+                      <button onClick={() => removeRow(item.tempId)} className="p-2 text-destructive/30 hover:text-destructive">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </TableCell>
@@ -199,17 +200,11 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
           </div>
 
           <div className="p-4 border-t border-dashed bg-muted/10 flex justify-between items-center">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="rounded-xl border-dashed border-primary/30 text-primary font-black gap-2 h-10 px-4"
-              onClick={addNewRow}
-            >
-              <Plus className="w-4 h-4" />
-              إضافة صنف يدوياً
+            <Button variant="outline" size="sm" className="rounded-xl border-dashed border-primary/30 text-primary font-black gap-2 h-10 px-4" onClick={addNewRow}>
+              <Plus className="w-4 h-4" /> إضافة صنف
             </Button>
             <div className="flex flex-col items-end">
-               <span className="text-[9px] font-black text-muted-foreground uppercase">إجمالي الفاتورة النهائية</span>
+               <span className="text-[9px] font-black text-muted-foreground uppercase">الإجمالي النهائي</span>
                <span className="text-xl font-black text-primary tabular-nums">
                  {calculateGrandTotal(items).toLocaleString()} <span className="text-[10px]">ر.ي</span>
                </span>
@@ -217,12 +212,8 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
           </div>
 
           <div className="p-6 bg-white border-t">
-            <Button 
-              className="w-full h-14 rounded-2xl text-lg font-black shadow-xl lux-gradient gap-3" 
-              onClick={handleFinalSubmit}
-            >
-              <Save className="w-6 h-6" />
-              اعتماد البيانات الموضحة أعلاه
+            <Button className="w-full h-14 rounded-2xl text-lg font-black shadow-xl lux-gradient gap-3" onClick={handleFinalSubmit}>
+              <Save className="w-6 h-6" /> اعتماد وحفظ الفاتورة
             </Button>
           </div>
         </CardContent>
@@ -232,30 +223,22 @@ export function AIInvoiceParser({ onSave }: { onSave: (data: ExtractInvoiceDataO
 
   return (
     <div className="relative group">
-      <input
-        type="file"
-        accept="image/*"
-        id="ai-upload-detailed"
-        className="hidden"
-        onChange={handleFileUpload}
-      />
+      <input type="file" accept="image/*" id="ai-upload-detailed" className="hidden" onChange={handleFileUpload} />
       <label
         htmlFor="ai-upload-detailed"
         className="flex flex-col items-center justify-center p-12 gap-6 bg-white rounded-[2.5rem] border-2 border-dashed border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all cursor-pointer group shadow-inner"
       >
-        <div className="w-20 h-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
-          <Camera className="w-10 h-10 text-primary relative z-10" />
+        <div className="w-20 h-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+          <Camera className="w-10 h-10 text-primary" />
         </div>
         <div className="text-center space-y-2">
           <p className="font-black text-xl text-primary">رفع صورة الفاتورة</p>
           <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-[200px] mx-auto">
-            سيقوم النظام بقراءة الخط اليدوي وتحويل الأرقام العربية تلقائياً
+            سيتعرف النظام على الأرقام العربية والخط اليدوي تلقائياً
           </p>
         </div>
         <Button variant="outline" className="rounded-2xl gap-2 pointer-events-none h-11 px-8 font-black border-primary/20 text-primary">
-          <Upload className="w-4 h-4" />
-          اختر صورة من الألبوم
+          <Upload className="w-4 h-4" /> اختر من الألبوم
         </Button>
       </label>
     </div>
