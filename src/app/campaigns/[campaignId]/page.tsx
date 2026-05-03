@@ -148,7 +148,7 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
           <div className="flex flex-col gap-1 items-start mt-4 text-right w-full pr-2" dir="rtl">
              <DialogTitle className="text-lg font-bold flex items-center gap-2 justify-start">
                <TableIcon className="w-5 h-5" />
-               تفاصيل فاتورة المبيعات ({invoice.invoiceNumber || "بدون رقم"})
+               فاتورة المبيعات ({invoice.invoiceNumber || "بدون رقم"})
              </DialogTitle>
              <div className="flex flex-col gap-1 text-xs opacity-90 items-start">
                 <p className="font-bold flex items-center gap-2">
@@ -629,7 +629,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
     },
     { 
       name: 'الأرباح', 
-      primary: netProfit, 
+      primary: netProfit > 0 ? netProfit : 0, 
       secondary: 0,
       pLabel: 'الأرباح',
       type: 'profit'
@@ -826,7 +826,7 @@ export default function CampaignDetailsPage({ params }: { params: Promise<{ camp
                       cursor={{ fill: '#f5f5f5' }}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right', direction: 'rtl' }}
                       formatter={(value: number, name: string, props: any) => {
-                        if (!value) return null;
+                        if (!value && value !== 0) return null;
                         const entry = props.payload;
                         const label = name === 'primary' ? entry.pLabel : entry.sLabel;
                         return [value.toLocaleString() + " ر.ي", label]
