@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -17,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { BottomNav } from "@/components/layout/BottomNav"
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
 import { smartChat, type ChatMessage } from "@/ai/flows/smart-chat-flow"
@@ -186,7 +186,7 @@ export default function SmartChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background pb-20">
+    <div className="flex flex-col h-screen bg-background">
       <header className="p-4 bg-white border-b flex items-center justify-between sticky top-0 z-20 shadow-sm">
         <button onClick={() => router.back()} className="p-2 -mr-2"><ChevronLeft className="w-6 h-6 rotate-180" /></button>
         <div className="flex flex-col items-center">
@@ -262,10 +262,10 @@ export default function SmartChatPage() {
         )}
       </main>
 
-      <footer className="p-4 bg-white border-t sticky bottom-0 z-20">
+      <footer className="p-4 bg-white border-t sticky bottom-0 z-20 pb-safe">
         <div className="flex gap-2 max-w-lg mx-auto" dir="rtl">
           <Input 
-            placeholder="اسألني عن مبيعات حملة، ديون عملاء، أو جداول المشتريات..."
+            placeholder="اسألني عن مبيعات حملة، ديون عملاء..."
             className="flex-1 h-12 rounded-2xl bg-muted/50 border-none pr-4 font-bold focus-visible:ring-primary shadow-inner"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -281,7 +281,6 @@ export default function SmartChatPage() {
           </Button>
         </div>
       </footer>
-      <BottomNav />
     </div>
   )
 }
