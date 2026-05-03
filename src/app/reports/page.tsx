@@ -4,11 +4,13 @@
 import { useMemo, useState } from "react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts'
-import { TrendingUp, AlertCircle, Banknote, PieChart, Users, ShoppingBag, Ship, LayoutDashboard } from "lucide-react"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, BarChart, Bar } from 'recharts'
+import { TrendingUp, AlertCircle, Banknote, PieChart, Users, ShoppingBag, Ship, LayoutDashboard, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
+import { format } from "date-fns"
+import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 export default function ReportsPage() {
@@ -53,30 +55,35 @@ export default function ReportsPage() {
   }, [db, user])
   const { data: suppliers } = useCollection(suppliersQuery)
 
-  // 1. Campaign Performance Logic (Sales vs Profit)
-  const campaignPerformanceData = useMemo(() => {
-    if (!campaigns || !invoices) return []
+  // 1. Monthly Profit Growth Logic
+  const monthlyProfitData = useMemo(() => {
+    if (!invoices || !purchases || !expenses) return []
     
-    return campaigns.map(camp => {
-      const campInvoices = invoices.filter(inv => inv.campaignId === camp.id)
-      const campPurchases = purchases?.filter(p => p.campaignId === camp.id) || []
-      const campExpenses = expenses?.filter(e => e.campaignId === camp.id) || []
+    const monthlyMap: Record<string, { sales: number, costs: number }> = {}
+    
+    const processItem = (dateSource: any, amount: number, isSale: boolean) => {
+      if (!dateSource) return;
+      const d = dateSource?.toDate ? dateSource.toDate() : new Date(dateSource);
+      if (isNaN(d.getTime())) return;
+      const key = format(d, 'yyyy-MM');
+      if (!monthlyMap[key]) monthlyMap[key] = { sales: 0, costs: 0 };
+      if (isSale) monthlyMap[key].sales += amount;
+      else monthlyMap[key].costs += amount;
+    }
 
-      const totalSales = campInvoices.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0)
-      const totalCosts = 
-        campPurchases.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) + 
-        campExpenses.reduce((acc, curr) => acc + (curr.amount || 0), 0)
-      
-      const profit = totalSales - totalCosts
+    invoices.forEach(inv => processItem(inv.invoiceDate || inv.createdAt, inv.totalAmount || 0, true));
+    purchases.forEach(p => processItem(p.purchaseDate || p.createdAt, p.totalAmount || 0, false));
+    expenses.forEach(e => processItem(e.expenseDate || e.createdAt, e.amount || 0, false));
 
-      return {
-        name: camp.name,
-        sales: totalSales,
-        profit: profit,
-        shortName: camp.name.substring(0, 10) + (camp.name.length > 10 ? '..' : '')
-      }
-    }).sort((a, b) => b.sales - a.sales).slice(0, 6) // Show top 6 campaigns
-  }, [campaigns, invoices, purchases, expenses])
+    return Object.entries(monthlyMap)
+      .map(([key, data]) => ({
+        key,
+        name: format(new Date(key + '-01'), 'MMM yyyy', { locale: ar }),
+        profit: data.sales - data.costs
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .slice(-6); // Last 6 months
+  }, [invoices, purchases, expenses])
 
   // 2. Customer Debt Concentration (Top 5 debtors)
   const customerDebtsData = useMemo(() => {
@@ -143,8 +150,8 @@ export default function ReportsPage() {
               activeView === "performance" ? "lux-gradient text-white shadow-lg" : "text-muted-foreground"
             )}
           >
-            <Ship className="w-4 h-4 ml-2" />
-            أداء المبيعات
+            <TrendingUp className="w-4 h-4 ml-2" />
+            نمو الأرباح
           </Button>
           <Button 
             variant="ghost" 
@@ -168,33 +175,44 @@ export default function ReportsPage() {
           </div>
         ) : activeView === "performance" ? (
           <div className="space-y-6 animate-in fade-in duration-500">
-            {/* بطاقة مقارنة المبيعات والارباح */}
+            {/* بطاقة نمو الأرباح الشهرية */}
             <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
               <CardHeader className="p-6 pb-2 text-right">
                 <CardTitle className="text-sm font-black text-primary flex items-center justify-start gap-2" dir="rtl">
                   <TrendingUp className="w-5 h-5 text-accent" />
-                  تحليل الحملات (مبيعات vs أرباح)
+                  منحنى نمو الأرباح (شهرياً)
                 </CardTitle>
-                <p className="text-[10px] text-muted-foreground font-bold">مقارنة القيمة البيعية مع صافي الربح لكل حملة</p>
+                <p className="text-[10px] text-muted-foreground font-bold">صافي الربح الفعلي بعد خصم كافة التكاليف والمشتريات</p>
               </CardHeader>
               <CardContent className="h-80 p-4">
-                {campaignPerformanceData.length > 0 ? (
+                {monthlyProfitData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={campaignPerformanceData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }} barGap={5}>
+                    <AreaChart data={monthlyProfitData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis dataKey="shortName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} dy={10} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999' }} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', textAlign: 'right' }}
-                        formatter={(value: any) => [value.toLocaleString() + " ر.ي"]}
+                        formatter={(value: any) => [value.toLocaleString() + " ر.ي", "صافي الربح"]}
                       />
-                      <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Bar name="إجمالي المبيعات" dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={20} />
-                      <Bar name="صافي الربح" dataKey="profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} barSize={20} />
-                    </BarChart>
+                      <Area 
+                        type="monotone" 
+                        dataKey="profit" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={4}
+                        fillOpacity={1} 
+                        fill="url(#colorProfit)" 
+                      />
+                    </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs font-bold opacity-30">لا توجد بيانات حملات كافية</div>
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs font-bold opacity-30">لا توجد بيانات كافية لتحليل الشهور</div>
                 )}
               </CardContent>
             </Card>
@@ -209,9 +227,9 @@ export default function ReportsPage() {
               </Card>
               <Card className="border-none shadow-md rounded-[1.5rem] bg-primary text-white">
                 <CardContent className="p-5 flex flex-col gap-1 items-center text-center">
-                  <Ship className="w-5 h-5 mb-1 opacity-60" />
-                  <span className="text-[9px] font-black uppercase">عدد الحملات</span>
-                  <span className="text-sm font-black tabular-nums">{campaigns?.length || 0}</span>
+                  <Calendar className="w-5 h-5 mb-1 opacity-60" />
+                  <span className="text-[9px] font-black uppercase">الشهور النشطة</span>
+                  <span className="text-sm font-black tabular-nums">{monthlyProfitData.length}</span>
                 </CardContent>
               </Card>
             </div>
@@ -288,7 +306,7 @@ export default function ReportsPage() {
             </div>
             <h4 className="font-black text-orange-900">ملاحظة محاسبية</h4>
             <p className="text-[11px] text-orange-800 font-bold leading-relaxed px-4">
-              هذه التقارير حية ومحدثة؛ فهي تعتمد كلياً على الفواتير والوصولات التي تسجلها. لضمان دقة الرسوم البيانية، احرص على توثيق كافة العمليات فور حدوثها.
+              الرسوم البيانية تعتمد على بيانات "تاريخ الفاتورة". لضمان دقة تحليل النمو الشهري، احرص على تسجيل كل عملية في تاريخها الفعلي.
             </p>
           </div>
         </Card>
