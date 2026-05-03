@@ -54,12 +54,11 @@ export default function Home() {
     return visibility[key] ? amount.toLocaleString('en-US') : "*****"
   }
 
-  // استعلامات البيانات للوحة التحكم
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
     return query(collection(db, "users", user.uid, "invoices"), orderBy("createdAt", "desc"))
   }, [db, user])
-  const { data: allInvoices, isLoading: loadingInvoices } = useCollection(invoicesQuery)
+  const { data: allInvoices } = useCollection(invoicesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -73,7 +72,6 @@ export default function Home() {
   }, [db, user])
   const { data: allExpenses } = useCollection(expensesQuery)
 
-  // إظهار قسم استعادة البيانات إذا كان النظام فارغاً
   useEffect(() => {
     if (mounted && allInvoices && allPurchases && allExpenses) {
       if (allInvoices.length === 0 && allPurchases.length === 0 && allExpenses.length === 0) {
@@ -101,7 +99,6 @@ export default function Home() {
     return { debtsToMe, debtsByMe, liquidity }
   }, [allInvoices, allPurchases, allExpenses])
 
-  // وظيفة استعادة بيانات الديمو
   const restoreDemoData = async () => {
     if (!db || !user) return
     setRestoring(true)
@@ -170,7 +167,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* قسم استعادة البيانات (بدون زر إغلاق) */}
       {showRestore && (
         <section className="px-4 -mt-12 mb-8 relative z-30 animate-in fade-in slide-in-from-top-4 duration-500">
           <Card className="border-none shadow-xl rounded-[2.5rem] bg-orange-50 border border-orange-100 overflow-hidden">
@@ -266,7 +262,7 @@ export default function Home() {
           <h2 className="text-lg font-black">آخر الفواتير</h2>
         </div>
         <div className="space-y-4">
-          {loadingInvoices ? (
+          {!allInvoices ? (
             <div className="flex justify-center p-4">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>

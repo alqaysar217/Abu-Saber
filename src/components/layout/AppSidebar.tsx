@@ -68,7 +68,7 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[2.5rem] overflow-hidden">
+      <SheetContent side="right" className="w-[85%] sm:w-[400px] p-0 border-none shadow-2xl rounded-l-[2.5rem] overflow-hidden [&>button]:hidden">
         <div className="flex flex-col h-full bg-white">
           <SheetHeader className="p-8 lux-gradient text-white text-right space-y-0">
             <div className="flex items-center gap-4 text-right pt-4" dir="rtl">
