@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useState } from "react"
@@ -17,9 +16,7 @@ import {
   Calendar,
   Receipt,
   ShoppingCart,
-  Archive,
   ChevronLeft,
-  FileText,
   ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,7 +32,6 @@ const reportTools = [
   { label: "سجل المصروفات", icon: ShoppingCart, href: "/admin/expenses", color: "bg-accent", desc: "تحليل تكاليف التشغيل اليومية" },
   { label: "جرد المبيعات", icon: Receipt, href: "/admin/sales", color: "bg-primary", desc: "مراجعة كافة الفواتير الصادرة" },
   { label: "سجل المشتريات", icon: ShoppingBag, href: "/admin/purchases", color: "bg-orange-600", desc: "توثيق التوريدات من الموردين" },
-  { label: "الأرشيف التاريخي", icon: Archive, href: "/campaigns?status=completed", color: "bg-blue-600", desc: "مراجعة الحملات والرحلات السابقة" },
 ]
 
 export default function ReportsPage() {
@@ -56,31 +52,7 @@ export default function ReportsPage() {
   }, [db, user])
   const { data: invoices } = useCollection(invoicesQuery)
 
-  const purchasesQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "purchases"))
-  }, [db, user])
-  const { data: purchases } = useCollection(purchasesQuery)
-
-  const expensesQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "expenses"))
-  }, [db, user])
-  const { data: expenses } = useCollection(expensesQuery)
-
-  const customersQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "customers"))
-  }, [db, user])
-  const { data: customers } = useCollection(customersQuery)
-
-  const suppliersQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "suppliers"))
-  }, [db, user])
-  const { data: suppliers } = useCollection(suppliersQuery)
-
-  // 1. Monthly Profit Growth Logic (Demo for Visualization)
+  // Monthly Profit Growth Logic (Demo for Visualization)
   const monthlyProfitData = useMemo(() => {
     return [
       { name: 'يناير', profit: 12500000 },
@@ -92,7 +64,7 @@ export default function ReportsPage() {
     ]
   }, [])
 
-  // 2. Customer Debt Concentration (Demo Fallback)
+  // Customer Debt Concentration (Demo Fallback)
   const customerDebtsData = useMemo(() => {
     return [
       { name: 'مطعم السلمون', value: 8500000 },
@@ -103,7 +75,7 @@ export default function ReportsPage() {
     ]
   }, [])
 
-  // 3. Supplier Debt Concentration (Demo Fallback)
+  // Supplier Debt Concentration (Demo Fallback)
   const supplierDebtsData = useMemo(() => {
     return [
       { name: 'مصنع الثلج', value: 5400000 },
