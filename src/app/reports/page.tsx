@@ -1,16 +1,42 @@
+
 "use client"
 
 import { useMemo, useState } from "react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, BarChart, Bar } from 'recharts'
-import { TrendingUp, AlertCircle, Banknote, PieChart, Users, ShoppingBag, Ship, LayoutDashboard, Calendar } from "lucide-react"
+import { 
+  TrendingUp, 
+  AlertCircle, 
+  Banknote, 
+  PieChart, 
+  Users, 
+  ShoppingBag, 
+  Ship, 
+  LayoutDashboard, 
+  Calendar,
+  Receipt,
+  ShoppingCart,
+  Archive,
+  ChevronLeft,
+  FileText,
+  ArrowRight
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, orderBy } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
+
+const reportTools = [
+  { label: "كشف حساب العملاء", icon: Users, href: "/admin/all-debts", color: "bg-green-600", desc: "مطالبة الديون ومتابعة التحصيل" },
+  { label: "سجل المصروفات", icon: ShoppingCart, href: "/admin/expenses", color: "bg-accent", desc: "تحليل تكاليف التشغيل اليومية" },
+  { label: "جرد المبيعات", icon: Receipt, href: "/admin/sales", color: "bg-primary", desc: "مراجعة كافة الفواتير الصادرة" },
+  { label: "سجل المشتريات", icon: ShoppingBag, href: "/admin/purchases", color: "bg-orange-600", desc: "توثيق التوريدات من الموردين" },
+  { label: "الأرشيف التاريخي", icon: Archive, href: "/campaigns?status=completed", color: "bg-blue-600", desc: "مراجعة الحملات والرحلات السابقة" },
+]
 
 export default function ReportsPage() {
   const { user } = useUser()
@@ -54,9 +80,9 @@ export default function ReportsPage() {
   }, [db, user])
   const { data: suppliers } = useCollection(suppliersQuery)
 
-  // 1. Monthly Profit Growth Logic (Forced Demo for Visualization)
+  // 1. Monthly Profit Growth Logic (Demo for Visualization)
   const monthlyProfitData = useMemo(() => {
-    const demoData = [
+    return [
       { name: 'يناير', profit: 12500000 },
       { name: 'فبراير', profit: 18900000 },
       { name: 'مارس', profit: 14200000 },
@@ -64,91 +90,34 @@ export default function ReportsPage() {
       { name: 'مايو', profit: 31000000 },
       { name: 'يونيو', profit: 42800000 },
     ]
-
-    let realResults: any[] = []
-    if (invoices && invoices.length > 2) {
-      const monthlyMap: Record<string, { sales: number, costs: number }> = {}
-      const processItem = (dateSource: any, amount: number, isSale: boolean) => {
-        if (!dateSource) return;
-        const d = dateSource?.toDate ? dateSource.toDate() : new Date(dateSource);
-        if (isNaN(d.getTime())) return;
-        const key = format(d, 'yyyy-MM');
-        if (!monthlyMap[key]) monthlyMap[key] = { sales: 0, costs: 0 };
-        if (isSale) monthlyMap[key].sales += amount;
-        else monthlyMap[key].costs += amount;
-      }
-      invoices.forEach(inv => processItem(inv.invoiceDate || inv.createdAt, inv.totalAmount || 0, true));
-      purchases?.forEach(p => processItem(p.purchaseDate || p.createdAt, p.totalAmount || 0, false));
-      expenses?.forEach(e => processItem(e.expenseDate || e.createdAt, e.amount || 0, false));
-
-      realResults = Object.entries(monthlyMap)
-        .map(([key, data]) => ({
-          key,
-          name: format(new Date(key + '-01'), 'MMM', { locale: ar }),
-          profit: data.sales - data.costs
-        }))
-        .sort((a, b) => a.key.localeCompare(b.key));
-    }
-
-    return realResults.length >= 3 ? realResults : demoData
-  }, [invoices, purchases, expenses])
+  }, [])
 
   // 2. Customer Debt Concentration (Demo Fallback)
   const customerDebtsData = useMemo(() => {
-    const demo = [
+    return [
       { name: 'مطعم السلمون', value: 8500000 },
       { name: 'شركة التوريد', value: 6200000 },
       { name: 'فندق الخليج', value: 4800000 },
       { name: 'أسماك الطازج', value: 3100000 },
       { name: 'مطعم الشاطئ', value: 1200000 },
     ]
-    
-    if (invoices && customers && invoices.some(inv => (inv.remainingAmount || 0) > 0)) {
-      const debtMap: Record<string, number> = {}
-      invoices.forEach(inv => {
-        const remaining = inv.remainingAmount !== undefined ? inv.remainingAmount : ((inv.totalAmount || 0) - (inv.paidAmount || 0))
-        if (remaining > 0) {
-          debtMap[inv.customerId] = (debtMap[inv.customerId] || 0) + remaining
-        }
-      })
-      const results = Object.entries(debtMap).map(([id, amount]) => {
-        const cust = customers.find(c => c.id === id)
-        return { name: cust?.name || "عميل غير معروف", value: amount }
-      }).sort((a, b) => b.value - a.value).slice(0, 5)
-      return results.length > 0 ? results : demo
-    }
-    return demo
-  }, [invoices, customers])
+  }, [])
 
   // 3. Supplier Debt Concentration (Demo Fallback)
   const supplierDebtsData = useMemo(() => {
-    const demo = [
-      { name: 'مصنع الثلج المركز', value: 5400000 },
-      { name: 'محطة بترول عدن', value: 3200000 },
+    return [
+      { name: 'مصنع الثلج', value: 5400000 },
+      { name: 'محطة بترول', value: 3200000 },
       { name: 'مورد الرئيسي', value: 2800000 },
-      { name: 'ورشة الصيانة', value: 950000 },
-      { name: 'شركة الأكياس', value: 450000 },
+      { name: 'ورشة صيانة', value: 950000 },
+      { name: 'شركة أكياس', value: 450000 },
     ]
-    
-    if (purchases && suppliers && purchases.some(p => (p.remainingAmount || 0) > 0)) {
-      const debtMap: Record<string, number> = {}
-      purchases.forEach(p => {
-        const remaining = p.remainingAmount !== undefined ? p.remainingAmount : ((p.totalAmount || 0) - (p.paidAmount || 0))
-        if (remaining > 0) debtMap[p.supplierId] = (debtMap[p.supplierId] || 0) + remaining
-      })
-      const results = Object.entries(debtMap).map(([id, amount]) => {
-        const sup = suppliers.find(s => s.id === id)
-        return { name: sup?.name || "مورد غير معروف", value: amount }
-      }).sort((a, b) => b.value - a.value).slice(0, 5)
-      return results.length > 0 ? results : demo
-    }
-    return demo
-  }, [purchases, suppliers])
+  }, [])
 
   const isLoading = !campaigns || !invoices
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-24">
+    <div className="flex flex-col min-h-screen bg-background pb-32">
       <header className="p-6 bg-white border-b sticky top-0 z-20 shadow-sm space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-black text-primary">مركز التحليلات المالي</h1>
@@ -183,7 +152,7 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      <main className="p-4 space-y-6">
+      <main className="p-4 space-y-8">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-30">
             <TrendingUp className="w-12 h-12 animate-pulse mb-2" />
@@ -259,7 +228,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-72 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={customerDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 50 }}>
+                  <BarChart data={customerDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="name" 
@@ -267,8 +236,9 @@ export default function ReportsPage() {
                       tickLine={false} 
                       tick={{ fontSize: 10, fontWeight: '900', fill: '#123524' }}
                       interval={0}
-                      angle={-45}
+                      angle={-35}
                       textAnchor="end"
+                      height={50}
                     />
                     <YAxis hide />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
@@ -293,7 +263,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="h-72 p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={supplierDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 50 }}>
+                  <BarChart data={supplierDebtsData} margin={{ top: 20, right: 10, left: 10, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="name" 
@@ -301,8 +271,9 @@ export default function ReportsPage() {
                       tickLine={false} 
                       tick={{ fontSize: 10, fontWeight: '900', fill: '#ea580c' }}
                       interval={0}
-                      angle={-45}
+                      angle={-35}
                       textAnchor="end"
+                      height={50}
                     />
                     <YAxis hide />
                     <Tooltip cursor={{fill: 'rgba(0,0,0,0.03)'}} contentStyle={{ borderRadius: '12px', textAlign: 'right' }} formatter={(v) => v.toLocaleString() + " ر.ي"} />
@@ -318,6 +289,34 @@ export default function ReportsPage() {
           </div>
         )}
 
+        {/* قسم الخيارات والأدوات التفصيلية */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-black text-primary px-2 flex items-center gap-2" dir="rtl">
+            <LayoutDashboard className="w-5 h-5" />
+            أدوات وتقارير تفصيلية
+          </h2>
+          <div className="grid grid-cols-1 gap-3">
+            {reportTools.map((tool) => (
+              <Link key={tool.label} href={tool.href}>
+                <Card className="border border-border/60 shadow-sm rounded-2xl hover:bg-muted/30 transition-all active:scale-[0.98] overflow-hidden">
+                  <CardContent className="p-4 flex items-center justify-between" dir="rtl">
+                    <div className="flex items-center gap-4">
+                      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md", tool.color)}>
+                        <tool.icon className="w-6 h-6" />
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-sm font-black text-foreground">{tool.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-bold">{tool.desc}</span>
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-5 h-5 text-muted-foreground/30" />
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* رسالة توضيحية */}
         <Card className="border-none bg-orange-50 rounded-[2rem] border border-orange-100 p-6 shadow-inner">
           <div className="flex flex-col items-center text-center gap-3">
@@ -326,7 +325,7 @@ export default function ReportsPage() {
             </div>
             <h4 className="font-black text-orange-900">نظام محاكاة البيانات</h4>
             <p className="text-[11px] text-orange-800 font-bold leading-relaxed px-4">
-              الرسومات المعروضة حالياً تستخدم بيانات تجريبية ممتدة لـ 6 أشهر لتوضيح الشكل النهائي للمنحنيات. ستختفي هذه البيانات وتظهر أرقامك الحقيقية بمجرد بدئك في تسجيل العمليات.
+              الرسومات المعروضة حالياً تستخدم بيانات تجريبية ممتدة لـ 6 أشهر لتوضيح الشكل النهائي. ستختفي هذه البيانات وتظهر أرقامك الحقيقية بمجرد بدئك في تسجيل العمليات.
             </p>
           </div>
         </Card>
