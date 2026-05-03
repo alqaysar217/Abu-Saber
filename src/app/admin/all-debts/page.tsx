@@ -34,7 +34,7 @@ import {
   useUser, 
   useMemoFirebase 
 } from "@/firebase"
-import { collection, query, orderBy } from "firebase/firestore"
+import { collection, query } from "firebase/firestore"
 import { format, startOfDay, endOfDay } from "date-fns"
 import { ar } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -50,44 +50,44 @@ export default function AllDebtsDetailedPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>('date_desc')
   const [filterCampaignId, setFilterCampaignId] = useState<string>("all")
-  const [filterDebtStatus, setFilterDebtStatus] = useState<string>("unpaid") 
+  const [filterDebtStatus, setFilterDebtStatus] = useState<string>("all") 
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
 
-  // Data Subscriptions
+  // Data Subscriptions (Removed strict orderBy to ensure all data shows)
   const customersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "customers"))
+    return collection(db, "users", user.uid, "customers")
   }, [db, user])
   const { data: customers } = useCollection(customersQuery)
 
   const suppliersQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "suppliers"))
+    return collection(db, "users", user.uid, "suppliers")
   }, [db, user])
   const { data: suppliers } = useCollection(suppliersQuery)
 
   const campaignsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "campaigns"))
+    return collection(db, "users", user.uid, "campaigns")
   }, [db, user])
   const { data: campaigns } = useCollection(campaignsQuery)
 
   const invoicesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "invoices"), orderBy("createdAt", "desc"))
+    return collection(db, "users", user.uid, "invoices")
   }, [db, user])
   const { data: invoices } = useCollection(invoicesQuery)
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "purchases"), orderBy("createdAt", "desc"))
+    return collection(db, "users", user.uid, "purchases")
   }, [db, user])
   const { data: purchases } = useCollection(purchasesQuery)
 
   const expensesQuery = useMemoFirebase(() => {
     if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "expenses"), orderBy("createdAt", "desc"))
+    return collection(db, "users", user.uid, "expenses")
   }, [db, user])
   const { data: expenses } = useCollection(expensesQuery)
 
@@ -104,7 +104,7 @@ export default function AllDebtsDetailedPage() {
           ...inv,
           id: inv.id,
           entityName: customer?.name || "عميل غير معروف",
-          date: inv.invoiceDate,
+          date: inv.invoiceDate || inv.date,
           remainingAmount: remaining,
           trType: 'sale',
           category: 'to_me',
@@ -123,7 +123,7 @@ export default function AllDebtsDetailedPage() {
           ...p,
           id: p.id,
           entityName: supplier?.name || "مورد غير معروف",
-          date: p.purchaseDate,
+          date: p.purchaseDate || p.date,
           remainingAmount: remaining,
           trType: 'purchase',
           category: 'by_me',
@@ -170,8 +170,8 @@ export default function AllDebtsDetailedPage() {
     }).sort((a, b) => {
       if (sortBy === 'amount_desc') return b.remainingAmount - a.remainingAmount
       if (sortBy === 'amount_asc') return a.remainingAmount - b.remainingAmount
-      if (sortBy === 'date_desc') return new Date(b.date).getTime() - new Date(a.date).getTime()
-      if (sortBy === 'date_asc') return new Date(a.date).getTime() - new Date(b.date).getTime()
+      if (sortBy === 'date_desc') return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      if (sortBy === 'date_asc') return new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
       return 0
     })
   }, [invoices, purchases, expenses, customers, suppliers, campaigns, searchTerm, filterCampaignId, filterDebtStatus, fromDate, toDate, sortBy, activeView])
@@ -187,27 +187,25 @@ export default function AllDebtsDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <Wallet className="w-5 h-5" />
-            سجل الديون التفصيلي
+            سجل الديون الشامل
           </h1>
           <div className="w-10" />
         </div>
         
         <Tabs value={activeView} onValueChange={setActiveTab} className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-2 h-12 rounded-2xl p-1 bg-muted/50 border shadow-inner">
+          <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl p-1.5 bg-muted/50 border shadow-inner overflow-hidden">
             <TabsTrigger 
               value="to_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:!bg-none border-none"
-              style={{ padding: '0 12px' }}
+              className="rounded-xl font-black text-xs h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg border-none"
             >
-              <ArrowDownToLine className="w-4 h-4" />
+              <ArrowDownToLine className="w-3.5 h-3.5 ml-1.5" />
               ديون لك
             </TabsTrigger>
             <TabsTrigger 
               value="by_me" 
-              className="rounded-xl font-black text-xs gap-2 h-full transition-all data-[state=active]:lux-gradient data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:!bg-none border-none"
-              style={{ padding: '0 12px' }}
+              className="rounded-xl font-black text-xs h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white data-[state=active]:shadow-lg border-none"
             >
-              <ArrowUpFromLine className="w-4 h-4" />
+              <ArrowUpFromLine className="w-3.5 h-3.5 ml-1.5" />
               ديون عليك
             </TabsTrigger>
           </TabsList>
@@ -227,8 +225,8 @@ export default function AllDebtsDetailedPage() {
              <select className="h-11 flex-1 rounded-2xl bg-muted/30 border-none text-[10px] font-black px-3 outline-none" value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)}>
                <option value="date_desc">الأحدث</option>
                <option value="date_asc">الأقدم</option>
-               <option value="amount_desc">الأكبر مبلغاً</option>
-               <option value="amount_asc">الأقل مبلغاً</option>
+               <option value="amount_desc">المبلغ (الأكبر)</option>
+               <option value="amount_asc">المبلغ (الأقل)</option>
              </select>
              <select className="h-11 flex-1 rounded-2xl bg-muted/30 border-none text-[10px] font-black px-3 outline-none" value={filterDebtStatus} onChange={e => setFilterDebtStatus(e.target.value)}>
                <option value="all">كل الحالات</option>
@@ -258,10 +256,10 @@ export default function AllDebtsDetailedPage() {
         ) : (
           <div className="bg-white rounded-[1.5rem] border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <Table dir="rtl" className="min-w-[650px]">
+              <Table dir="rtl" className="min-w-[700px]">
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="text-right font-black text-[9px] py-4 px-2">رقم الفاتورة</TableHead>
+                    <TableHead className="text-right font-black text-[9px] py-4 px-2">رقم</TableHead>
                     <TableHead className="text-right font-black text-[9px] px-2">الجهة</TableHead>
                     <TableHead className="text-center font-black text-[9px] px-2">المبلغ</TableHead>
                     <TableHead className="text-center font-black text-[9px] px-2">المدفوع</TableHead>
@@ -282,7 +280,7 @@ export default function AllDebtsDetailedPage() {
                           {item.invoiceNumber || "-"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right text-[10px] font-bold px-2">{item.entityName}</TableCell>
+                      <TableCell className="text-right text-[10px] font-bold px-2 truncate max-w-[120px]">{item.entityName}</TableCell>
                       <TableCell className="text-center font-bold text-[10px] tabular-nums px-2">{(item.totalAmount || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-center font-bold text-[10px] tabular-nums text-green-700 px-2">{(item.paidAmount || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-center font-black text-[10px] tabular-nums text-destructive px-2">{(item.remainingAmount || 0).toLocaleString()}</TableCell>
@@ -290,9 +288,9 @@ export default function AllDebtsDetailedPage() {
                       <TableCell className="text-center px-2">
                         <Badge variant="outline" className={cn(
                           "text-[8px] font-black px-1.5",
-                          item.remainingAmount <= 0 ? "text-green-600 border-green-200" : "text-destructive border-red-200"
+                          item.remainingAmount <= 0 ? "text-green-600 border-green-200 bg-green-50" : "text-destructive border-red-200 bg-red-50"
                         )}>
-                          {item.remainingAmount <= 0 ? "مُسددة" : "دين"}
+                          {item.remainingAmount <= 0 ? "مُسدد" : "دين"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right max-w-[100px] px-2">
@@ -304,7 +302,7 @@ export default function AllDebtsDetailedPage() {
                       <TableCell colSpan={8} className="text-center py-20">
                         <div className="flex flex-col items-center gap-2 opacity-20">
                           <FileText className="w-12 h-12" />
-                          <p className="font-black text-xs">لا توجد بيانات متاحة</p>
+                          <p className="font-black text-xs">لا توجد بيانات متاحة لهذا الفلتر</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -316,9 +314,9 @@ export default function AllDebtsDetailedPage() {
         )}
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t flex justify-between items-center z-30">
-         <div className="flex flex-col">
-            <span className="text-[9px] font-black text-muted-foreground">إجمالي المتبقي المفلتر</span>
+      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t flex justify-between items-center z-30 shadow-lg">
+         <div className="flex flex-col text-right">
+            <span className="text-[9px] font-black text-muted-foreground">إجمالي المتبقي (المفلتر)</span>
             <span className={cn(
               "text-lg font-black tabular-nums",
               activeView === 'to_me' ? "text-green-700" : "text-orange-700"
@@ -327,10 +325,10 @@ export default function AllDebtsDetailedPage() {
             </span>
          </div>
          <Button 
-          className="rounded-2xl lux-gradient h-11 px-6 font-black gap-2 text-white text-xs shadow-xl"
+          className="rounded-2xl bg-gradient-to-br from-[#123524] to-[#236045] h-11 px-6 font-black gap-2 text-white text-xs shadow-xl active:scale-95 transition-transform"
           onClick={() => router.push("/debts")}
          >
-            <Wallet className="w-4 h-4" />
+            <ArrowDownToLine className="w-4 h-4" />
             السداد السريع
          </Button>
       </footer>
