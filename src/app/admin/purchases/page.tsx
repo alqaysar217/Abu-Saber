@@ -225,7 +225,7 @@ export default function AllPurchasesDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
-            سجل المشتريات التفصيلي
+            سجل المشتريات 
           </h1>
           <Button 
             variant="outline" 

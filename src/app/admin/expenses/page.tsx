@@ -185,7 +185,7 @@ export default function AllExpensesDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            سجل المصروفات التفصيلي
+            سجل المصروفات 
           </h1>
           <Button 
             variant="outline" 
