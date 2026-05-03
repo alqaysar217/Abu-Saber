@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useDoc, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { doc, collection, query, where, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
+import { doc, collection, query, where, updateDoc, deleteDoc, orderBy, setDoc, serverTimestamp } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import { BottomNav } from "@/components/layout/BottomNav"
@@ -83,23 +83,39 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
   const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const customer = customers?.find(c => c.id === invoice.customerId)
 
   const handleDeleteInvoice = async () => {
     if (!db || !userId) return
+    setIsDeleting(true)
     const invoiceRef = doc(db, "users", userId, "invoices", invoice.id)
     
-    deleteDoc(invoiceRef)
-      .then(() => {
-        toast({ title: "تم حذف الفاتورة بنجاح" })
-        setOpen(false)
+    try {
+      // 1. الانتقال إلى سلة المحذوفات أولاً
+      const trashRef = doc(collection(db, "users", userId, "trash"))
+      await setDoc(trashRef, {
+        id: trashRef.id,
+        originalId: invoice.id,
+        originalCollection: "invoices",
+        originalType: "invoice",
+        data: invoice,
+        deletedAt: serverTimestamp(),
+        userId: userId
       })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: invoiceRef.path,
-          operation: 'delete'
-        }))
-      })
+
+      // 2. الحذف من المجموعة الأساسية
+      await deleteDoc(invoiceRef)
+      toast({ title: "تم نقل الفاتورة إلى سجل المحذوفات" })
+      setOpen(false)
+    } catch (err) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: invoiceRef.path,
+        operation: 'delete'
+      }))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -203,8 +219,8 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
            <div className="flex gap-3 pt-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold">
-                    <Trash2 className="w-4 h-4" />
+                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold" disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     حذف الفاتورة
                   </Button>
                 </AlertDialogTrigger>
@@ -215,12 +231,12 @@ function InvoiceDetailRow({ invoice, customers, userId }: { invoice: any, custom
                       حذف فاتورة المبيعات؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
-                      هل أنت متأكد من حذف هذه الفاتورة؟ سيؤثر ذلك على تقارير الأرباح.
+                      سيتم نقل الفاتورة إلى "سجل المحذوفات" ويمكنك استعادتها لاحقاً. هل تريد المتابعة؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="flex-row gap-2 mt-4">
                     <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteInvoice} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteInvoice} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، حذف</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -245,6 +261,7 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
   const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const supplier = suppliers?.find(s => s.id === purchase.supplierId)
 
   const itemsQuery = useMemoFirebase(() => {
@@ -256,19 +273,33 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
 
   const handleDeletePurchase = async () => {
     if (!db || !userId) return
+    setIsDeleting(true)
     const purchaseRef = doc(db, "users", userId, "purchases", purchase.id)
     
-    deleteDoc(purchaseRef)
-      .then(() => {
-        toast({ title: "تم حذف عملية الشراء بنجاح" })
-        setOpen(false)
+    try {
+      // نقل للسلة
+      const trashRef = doc(collection(db, "users", userId, "trash"))
+      await setDoc(trashRef, {
+        id: trashRef.id,
+        originalId: purchase.id,
+        originalCollection: "purchases",
+        originalType: "purchase",
+        data: { ...purchase, items: items || [] },
+        deletedAt: serverTimestamp(),
+        userId: userId
       })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: purchaseRef.path,
-          operation: 'delete'
-        }))
-      })
+
+      await deleteDoc(purchaseRef)
+      toast({ title: "تم نقل الشراء إلى سجل المحذوفات" })
+      setOpen(false)
+    } catch (err) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: purchaseRef.path,
+        operation: 'delete'
+      }))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -371,8 +402,8 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
            <div className="flex gap-3 pt-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold">
-                    <Trash2 className="w-4 h-4" />
+                  <Button variant="destructive" className="flex-1 rounded-xl h-12 gap-2 shadow-md font-bold" disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     حذف الفاتورة
                   </Button>
                 </AlertDialogTrigger>
@@ -383,12 +414,12 @@ function PurchaseDetailRow({ purchase, suppliers, userId }: { purchase: any, sup
                       حذف عملية الشراء؟
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-right font-medium">
-                      هل أنت متأكد من حذف هذه الفاتورة وجميع أصنافها؟ هذا الإجراء لا يمكن التراجع عنه.
+                       سيتم نقل الفاتورة لـ "سجل المحذوفات". هل أنت متأكد؟
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="flex-row gap-2 mt-4">
                     <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeletePurchase} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeletePurchase} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، حذف</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -412,21 +443,35 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
   const db = useFirestore()
   const router = useRouter()
   const { toast } = useToast()
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async () => {
     if (!db || !userId) return
+    setIsDeleting(true)
     const expenseRef = doc(db, "users", userId, "expenses", expense.id)
     
-    deleteDoc(expenseRef)
-      .then(() => {
-        toast({ title: "تم حذف المصروف بنجاح" })
+    try {
+      const trashRef = doc(collection(db, "users", userId, "trash"))
+      await setDoc(trashRef, {
+        id: trashRef.id,
+        originalId: expense.id,
+        originalCollection: "expenses",
+        originalType: "expense",
+        data: expense,
+        deletedAt: serverTimestamp(),
+        userId: userId
       })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: expenseRef.path,
-          operation: 'delete'
-        }))
-      })
+
+      await deleteDoc(expenseRef)
+      toast({ title: "تم نقل المصروف إلى سجل المحذوفات" })
+    } catch (err) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: expenseRef.path,
+        operation: 'delete'
+      }))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -463,8 +508,8 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
           
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-1.5 text-destructive hover:bg-destructive/10 rounded-full transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
+              <button className="p-1.5 text-destructive hover:bg-destructive/10 rounded-full transition-colors" disabled={isDeleting}>
+                {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto">
@@ -474,12 +519,12 @@ function ExpenseTableRow({ expense, campaignId, userId }: { expense: any, campai
                   حذف المصروف؟
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-right font-medium">
-                  هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
+                  سيتم نقل هذا المصروف إلى سلة المحذوفات.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row gap-2 mt-4">
                 <AlertDialogCancel className="flex-1 rounded-xl font-bold">إلغاء</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، احذف</AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete} className="flex-1 rounded-xl bg-destructive text-white border-none font-bold">نعم، حذف</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

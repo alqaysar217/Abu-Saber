@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, addDoc, serverTimestamp, query, orderBy, deleteDoc, doc } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, orderBy, deleteDoc, doc, setDoc } from "firebase/firestore"
 import { format } from "date-fns"
 import { ar } from "date-fns/locale"
 import {
@@ -77,10 +77,27 @@ export default function NotebookPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (note: any) => {
     if (!db || !user) return
-    await deleteDoc(doc(db, "users", user.uid, "notes", id))
-    toast({ title: "تم حذف الملاحظة" })
+    
+    try {
+      // نقل للسلة
+      const trashRef = doc(collection(db, "users", user.uid, "trash"))
+      await setDoc(trashRef, {
+        id: trashRef.id,
+        originalId: note.id,
+        originalCollection: "notes",
+        originalType: "note",
+        data: note,
+        deletedAt: serverTimestamp(),
+        userId: user.uid
+      })
+
+      await deleteDoc(doc(db, "users", user.uid, "notes", note.id))
+      toast({ title: "تم نقل الملاحظة لسجل المحذوفات" })
+    } catch (e) {
+      toast({ variant: "destructive", title: "حدث خطأ أثناء الحذف" })
+    }
   }
 
   return (
@@ -127,7 +144,7 @@ export default function NotebookPage() {
                       {note.createdAt?.toDate ? format(note.createdAt.toDate(), "PPP", { locale: ar }) : ""}
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(note.id)} className="p-2 text-destructive/20 hover:text-destructive transition-colors">
+                  <button onClick={() => handleDelete(note)} className="p-2 text-destructive/20 hover:text-destructive transition-colors">
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
