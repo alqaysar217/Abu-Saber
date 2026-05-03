@@ -16,7 +16,9 @@ import {
   Settings,
   ShieldCheck,
   FileText,
-  LayoutDashboard
+  LayoutDashboard,
+  Box,
+  DatabaseBackup
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -57,11 +59,14 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
     { label: "سجل المحذوفات", icon: Trash2, href: "/trash", category: "أدوات" },
     { label: "الأرشيف", icon: Archive, href: "/campaigns?status=completed", category: "أدوات" },
     
+    { label: "المخزون الحالي", icon: Box, href: "/inventory", category: "الإدارة المالية" },
     { label: "كل المبيعات", icon: Receipt, href: "/admin/sales", category: "الإدارة المالية" },
     { label: "كل المشتريات", icon: ShoppingBag, href: "/admin/purchases", category: "الإدارة المالية" },
     { label: "كل المصروفات", icon: ShoppingCart, href: "/admin/expenses", category: "الإدارة المالية" },
     { label: "سجل الديون (الجدول)", icon: Wallet, href: "/admin/all-debts", category: "الإدارة المالية" },
     { label: "كل الإيصالات", icon: FileText, href: "/admin/receipts", category: "الإدارة المالية" },
+    
+    { label: "النسخ الاحتياطي", icon: DatabaseBackup, href: "/backup", category: "الأمان والنظام" },
   ]
 
   const categories = Array.from(new Set(menuItems.map(item => item.category)))
