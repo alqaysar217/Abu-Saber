@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection, doc, setDoc, serverTimestamp, query, where } from "firebase/firestore"
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
@@ -174,40 +174,56 @@ function NewPurchaseContent() {
     }
 
     setLoading(true)
-    const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
     
-    // Generate a unique integer for invoice number
-    const uniqueInt = Math.floor(Date.now() / 1000);
-    const invoiceNumber = `P-${uniqueInt}`;
+    try {
+      const purchasesRef = collection(db, "users", user.uid, "purchases")
+      const purchasesSnap = await getDocs(purchasesRef)
+      
+      // منطق ترقيم الفاتورة التسلسلي (P-0001)
+      const nextSequence = purchasesSnap.size + 1
+      const invoiceNumber = `P-${nextSequence.toString().padStart(4, '0')}`
 
-    const purchaseData = {
-      id: purchaseRef.id,
-      invoiceNumber,
-      campaignId,
-      supplierId,
-      totalAmount: grandTotal,
-      paidAmount: totalPaid,
-      remainingAmount: totalDue,
-      status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
-      purchaseDate: new Date(date).toISOString(),
-      userId: user.uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }
+      const purchaseRef = doc(purchasesRef)
 
-    setDoc(purchaseRef, purchaseData)
-      .then(() => {
-        addedItems.forEach((item) => {
-          const itemRef = doc(collection(purchaseRef, "items"))
-          setDoc(itemRef, { ...item, purchaseId: purchaseRef.id, userId: user.uid, unitPrice: item.pricePerKg })
+      const purchaseData = {
+        id: purchaseRef.id,
+        invoiceNumber,
+        campaignId,
+        supplierId,
+        totalAmount: grandTotal,
+        paidAmount: totalPaid,
+        remainingAmount: totalDue,
+        status: totalDue === 0 ? "مدفوعة" : (totalPaid === 0 ? "دين" : "جزئي"),
+        purchaseDate: new Date(date).toISOString(),
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      await setDoc(purchaseRef, purchaseData)
+
+      // حفظ أصناف الفاتورة
+      for (const item of addedItems) {
+        const itemRef = doc(collection(purchaseRef, "items"))
+        await setDoc(itemRef, { 
+          ...item, 
+          purchaseId: purchaseRef.id, 
+          userId: user.uid, 
+          unitPrice: item.pricePerKg 
         })
-        toast({ title: "تم الحفظ بنجاح", description: `رقم الفاتورة: ${invoiceNumber}` })
-        router.push("/campaigns/" + campaignId)
-      })
-      .catch((error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchaseRef.path, operation: 'create' }))
-      })
-      .finally(() => setLoading(false))
+      }
+
+      toast({ title: "تم الحفظ بنجاح", description: `تم إصدار فاتورة برقم: ${invoiceNumber}` })
+      router.push("/campaigns/" + campaignId)
+    } catch (error) {
+      console.error(error)
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: `users/${user.uid}/purchases`, 
+        operation: 'create' 
+      }))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
