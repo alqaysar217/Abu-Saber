@@ -34,7 +34,8 @@ import {
   Hash,
   Eye,
   Download,
-  ArrowRight
+  ArrowRight,
+  Users
 } from "lucide-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { Input } from "@/components/ui/input"
@@ -103,6 +104,7 @@ export default function DebtsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('date_desc')
   const [filterCampaignId, setFilterCampaignId] = useState<string>("all")
   const [filterDebtStatus, setFilterDebtStatus] = useState<string>("unpaid") 
+  const [filterEntityId, setFilterEntityId] = useState<string>("all")
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   
@@ -150,19 +152,17 @@ export default function DebtsPage() {
   }, [db, user])
   const { data: expenses } = useCollection(expensesQuery)
 
-  const transactionsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "users", user.uid, "paymentTransactions"), orderBy("transactionDate", "desc"))
-  }, [db, user])
-  const { data: historyTransactions } = useCollection(transactionsQuery)
+  // Reset entity filter when changing tabs
+  useEffect(() => {
+    setFilterEntityId("all")
+  }, [activeTab])
 
   // Data processing helpers
   const applyFilters = (data: any[]) => {
     return data.filter(item => {
       const matchesSearch = 
         item.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.type?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesCampaign = filterCampaignId === "all" || item.campaignId === filterCampaignId
       
@@ -170,6 +170,9 @@ export default function DebtsPage() {
         filterDebtStatus === "all" || 
         (filterDebtStatus === "unpaid" && item.remainingAmount > 0) ||
         (filterDebtStatus === "paid" && item.remainingAmount <= 0)
+
+      const entityId = item.customerId || item.supplierId || item.payeeId
+      const matchesEntity = filterEntityId === "all" || entityId === filterEntityId
 
       let matchesDate = true
       if (fromDate || toDate) {
@@ -179,7 +182,7 @@ export default function DebtsPage() {
         matchesDate = itemDate >= start && itemDate <= end
       }
 
-      return matchesSearch && matchesCampaign && matchesStatus && matchesDate
+      return matchesSearch && matchesCampaign && matchesStatus && matchesDate && matchesEntity
     }).sort((a, b) => {
       if (sortBy === 'amount_desc') return b.remainingAmount - a.remainingAmount
       if (sortBy === 'amount_asc') return a.remainingAmount - b.remainingAmount
@@ -245,8 +248,8 @@ export default function DebtsPage() {
     return combined
   }, [purchases, expenses, suppliers, campaigns])
 
-  const filteredCustomerTable = useMemo(() => applyFilters(customerDebts), [customerDebts, searchTerm, filterCampaignId, filterDebtStatus, fromDate, toDate, sortBy])
-  const filteredSupplierTable = useMemo(() => applyFilters(supplierDebts), [supplierDebts, searchTerm, filterCampaignId, filterDebtStatus, fromDate, toDate, sortBy])
+  const filteredCustomerTable = useMemo(() => applyFilters(customerDebts), [customerDebts, searchTerm, filterCampaignId, filterDebtStatus, filterEntityId, fromDate, toDate, sortBy])
+  const filteredSupplierTable = useMemo(() => applyFilters(supplierDebts), [supplierDebts, searchTerm, filterCampaignId, filterDebtStatus, filterEntityId, fromDate, toDate, sortBy])
 
   const exportToCSV = () => {
     const dataToExport = activeTab === "customers" ? filteredCustomerTable : filteredSupplierTable
@@ -283,7 +286,7 @@ export default function DebtsPage() {
   const handleSettleDebt = async () => {
     if (!db || !user || !paymentTarget) return
     const amount = parseFloat(paymentAmount.replace(/,/g, ""))
-    if (isNaN(amount) || amount <= 0 || amount > paymentTarget.remainingAmount) {
+    if (isNaN(amount) || amount <= 0 || amount > (paymentTarget.remainingAmount + 1)) {
       toast({ variant: "destructive", title: "مبلغ غير صالح" })
       return
     }
@@ -292,7 +295,8 @@ export default function DebtsPage() {
     let collectionName = paymentTarget.trType === 'sale' ? "invoices" : (paymentTarget.trType === 'purchase' ? "purchases" : "expenses")
     const docRef = doc(db, "users", user.uid, collectionName, paymentTarget.id)
     const newPaidAmount = (paymentTarget.paidAmount || 0) + amount
-    const newRemainingAmount = paymentTarget.remainingAmount - amount
+    const newRemainingAmount = Math.max(0, paymentTarget.remainingAmount - amount)
+    
     const updateData = { 
       paidAmount: newPaidAmount, 
       remainingAmount: newRemainingAmount, 
@@ -329,7 +333,7 @@ export default function DebtsPage() {
     }
   }
 
-  const isLoading = !invoices || !purchases || !campaigns || !expenses || !historyTransactions
+  const isLoading = !invoices || !purchases || !campaigns || !expenses
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-24">
@@ -340,7 +344,7 @@ export default function DebtsPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <Wallet className="w-5 h-5" />
-            سجل الديون والوصولات
+            سجل الديون المستحقة
           </h1>
           <Button 
             variant="outline" 
@@ -403,19 +407,37 @@ export default function DebtsPage() {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             <div className="min-w-[120px]">
               <Select value={filterDebtStatus} onValueChange={setFilterDebtStatus}>
                 <SelectTrigger className="h-10 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4">
                   <SelectValue placeholder="حالة الدين" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="all">الكل</SelectItem>
-                  <SelectItem value="unpaid">ديون قائمة</SelectItem>
+                  <SelectItem value="all">الكل (مدفوع وباقي)</SelectItem>
+                  <SelectItem value="unpaid">ديون قائمة فقط</SelectItem>
                   <SelectItem value="paid">حسابات مُصفرة</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="min-w-[120px]">
+              <Select value={filterEntityId} onValueChange={setFilterEntityId}>
+                <SelectTrigger className="h-10 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4">
+                   <div className="flex items-center gap-2">
+                     <Users className="w-3 h-3 opacity-50" />
+                     <SelectValue placeholder={activeTab === 'customers' ? "كل العملاء" : "كل الموردين"} />
+                   </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">الكل</SelectItem>
+                  {(activeTab === 'customers' ? customers : suppliers)?.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="min-w-[120px]">
               <Select value={filterCampaignId} onValueChange={setFilterCampaignId}>
                 <SelectTrigger className="h-10 rounded-full bg-muted/50 border-none text-[10px] font-bold px-4">
@@ -436,10 +458,9 @@ export default function DebtsPage() {
           <div className="flex flex-col items-center justify-center p-20 gap-3"><Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" /><p className="text-xs font-bold text-muted-foreground">جاري تحميل البيانات...</p></div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-            <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl p-1 mb-6 bg-muted/50 border border-border/50 shadow-inner">
-              <TabsTrigger value="customers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون لك</TabsTrigger>
-              <TabsTrigger value="suppliers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون عليك</TabsTrigger>
-              <TabsTrigger value="history" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">سجل الوصولات</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-14 rounded-2xl p-1 mb-6 bg-muted/50 border border-border/50 shadow-inner">
+              <TabsTrigger value="customers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون لك (عملاء)</TabsTrigger>
+              <TabsTrigger value="suppliers" className="rounded-xl font-black text-[10px] h-full transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#123524] data-[state=active]:to-[#236045] data-[state=active]:text-white">ديون عليك (موردين)</TabsTrigger>
             </TabsList>
             
             <TabsContent value="customers" className="space-y-4 outline-none animate-in fade-in duration-300">
@@ -559,42 +580,6 @@ export default function DebtsPage() {
                 {filteredSupplierTable.length === 0 && <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">لا توجد مديونيات للموردين تطابق الفلاتر</div>}
                </div>
             </TabsContent>
-
-            <TabsContent value="history" className="space-y-4 outline-none animate-in fade-in duration-300">
-              <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <Table dir="rtl" className="min-w-[900px]">
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="text-right font-black text-[10px] py-4">نوع العملية</TableHead>
-                        <TableHead className="text-right font-black text-[10px]">الاسم / المستلم</TableHead>
-                        <TableHead className="text-center font-black text-[10px]">المبلغ</TableHead>
-                        <TableHead className="text-center font-black text-[10px]">رقم المرجع</TableHead>
-                        <TableHead className="text-center font-black text-[10px]">تاريخ السداد</TableHead>
-                        <TableHead className="text-right font-black text-[10px]">ملاحظات</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {applyFilters(historyTransactions || []).map((tr, index) => (
-                        <TableRow key={tr.id} className={cn(index % 2 !== 0 ? "bg-muted/5" : "bg-white")}>
-                          <TableCell className="text-right py-4">
-                            <Badge className={cn("text-[9px] font-black border-none", tr.type === 'customer_payment' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white')}>
-                              {tr.type === 'customer_payment' ? 'استلام (قبض)' : 'صرف (دفع)'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right text-xs font-bold text-foreground">{tr.entityName}</TableCell>
-                          <TableCell className="text-center font-black text-sm tabular-nums text-primary">{tr.amount.toLocaleString('en-US')}</TableCell>
-                          <TableCell className="text-center text-[10px] font-bold text-muted-foreground">{tr.sourceNumber || "-"}</TableCell>
-                          <TableCell className="text-center text-[10px] tabular-nums font-bold text-muted-foreground">{tr.transactionDate ? format(new Date(tr.transactionDate), "yyyy/MM/dd") : "-"}</TableCell>
-                          <TableCell className="text-right text-[10px] font-medium text-muted-foreground italic truncate max-w-[200px]">{tr.notes || "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                {(historyTransactions || []).length === 0 && <div className="text-center py-20 text-muted-foreground font-bold text-sm bg-muted/5">لا توجد عمليات سداد مسجلة</div>}
-              </div>
-            </TabsContent>
           </Tabs>
         )}
       </div>
@@ -614,7 +599,7 @@ export default function DebtsPage() {
             <div className="space-y-2.5 text-right">
               <Label className="text-sm font-black mr-1 flex items-center gap-2 text-primary"><Coins className="w-5 h-5" />المبلغ المراد سداده الآن</Label>
               <Input type="text" inputMode="decimal" className="h-16 rounded-[1.5rem] text-center text-2xl font-black tabular-nums border-2 focus:ring-primary shadow-inner" value={paymentAmount} onChange={(e) => { const v = e.target.value.replace(/,/g, ""); if (v === "" || /^\d*\.?\d*$/.test(v)) setPaymentAmount(v); }} placeholder="0.00" />
-              {parseFloat(paymentAmount) > paymentTarget?.remainingAmount && <p className="text-[10px] text-destructive font-black flex items-center gap-1.5 justify-end mt-2 animate-pulse"><AlertCircle className="w-4 h-4" /> خطأ: المبلغ المدخل أكبر من المتبقي</p>}
+              {parseFloat(paymentAmount) > (paymentTarget?.remainingAmount + 1) && <p className="text-[10px] text-destructive font-black flex items-center gap-1.5 justify-end mt-2 animate-pulse"><AlertCircle className="w-4 h-4" /> خطأ: المبلغ المدخل أكبر من المتبقي</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-5">
@@ -624,7 +609,7 @@ export default function DebtsPage() {
           </div>
           <DialogFooter className="p-6 bg-muted/30 border-t flex flex-row gap-4">
             <Button variant="outline" className="flex-1 rounded-2xl h-14 font-black border-muted-foreground/20 hover:bg-white text-muted-foreground" onClick={() => setPaymentTarget(null)} disabled={submittingPayment}>إلغاء</Button>
-            <Button className="flex-1 rounded-2xl h-14 font-black lux-gradient gap-3 shadow-xl active:scale-95 transition-all" onClick={handleSettleDebt} disabled={submittingPayment || !paymentAmount || parseFloat(paymentAmount) > (paymentTarget?.remainingAmount || 0)}>{submittingPayment ? <Loader2 className="w-6 h-6 animate-spin" /> : <Check className="w-6 h-6" />} تأكيد وحفظ السداد</Button>
+            <Button className="flex-1 rounded-2xl h-14 font-black lux-gradient gap-3 shadow-xl active:scale-95 transition-all" onClick={handleSettleDebt} disabled={submittingPayment || !paymentAmount || parseFloat(paymentAmount) > (paymentTarget?.remainingAmount + 1)}>{submittingPayment ? <Loader2 className="w-6 h-6 animate-spin" /> : <Check className="w-6 h-6" />} تأكيد وحفظ السداد</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
