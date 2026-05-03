@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -19,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy } from "firebase/firestore"
+import { collection, query, orderBy, limit } from "firebase/firestore"
 import { smartChat, type ChatMessage } from "@/ai/flows/smart-chat-flow"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
@@ -37,14 +36,27 @@ export default function SmartChatPage() {
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Subscriptions to build live context
-  const invoicesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "invoices") : null, [db, user])
-  const purchasesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "purchases") : null, [db, user])
-  const expensesQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "expenses") : null, [db, user])
+  // Subscriptions with ordering to ensure latest data first
+  const invoicesQuery = useMemoFirebase(() => 
+    user ? query(collection(db!, "users", user.uid, "invoices"), orderBy("invoiceDate", "desc"), limit(30)) : null, 
+    [db, user]
+  )
+  const purchasesQuery = useMemoFirebase(() => 
+    user ? query(collection(db!, "users", user.uid, "purchases"), orderBy("purchaseDate", "desc"), limit(30)) : null, 
+    [db, user]
+  )
+  const expensesQuery = useMemoFirebase(() => 
+    user ? query(collection(db!, "users", user.uid, "expenses"), orderBy("expenseDate", "desc"), limit(30)) : null, 
+    [db, user]
+  )
+  const transactionsQuery = useMemoFirebase(() => 
+    user ? query(collection(db!, "users", user.uid, "paymentTransactions"), orderBy("transactionDate", "desc"), limit(20)) : null, 
+    [db, user]
+  )
+  
   const customersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "customers") : null, [db, user])
   const suppliersQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "suppliers") : null, [db, user])
   const campaignsQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "campaigns") : null, [db, user])
-  const transactionsQuery = useMemoFirebase(() => user ? collection(db!, "users", user.uid, "paymentTransactions") : null, [db, user])
 
   const { data: invoices } = useCollection(invoicesQuery)
   const { data: purchases } = useCollection(purchasesQuery)
@@ -54,11 +66,9 @@ export default function SmartChatPage() {
   const { data: campaigns } = useCollection(campaignsQuery)
   const { data: historyTransactions } = useCollection(transactionsQuery)
 
-  // تجهيز "لقطة" ذكية ومختصرة لضمان الأداء وتوفير التكلفة
   const contextSnapshot = useMemo(() => {
     if (!invoices || !purchases || !expenses || !historyTransactions) return null
 
-    // 1. ملخص الحملات (مع الأرباح الصافية فقط لتقليل الحجم)
     const campaignSummaries = campaigns?.map(camp => {
       const cInvoices = invoices.filter(i => i.campaignId === camp.id)
       const cPurchases = purchases.filter(p => p.campaignId === camp.id)
@@ -69,6 +79,7 @@ export default function SmartChatPage() {
       const costE = cExpenses.reduce((acc, e) => acc + (e.amount || 0), 0)
       
       return {
+        id: camp.id,
         name: camp.name,
         status: camp.status === 'open' ? 'نشطة' : 'مؤرشفة',
         revenue,
@@ -77,54 +88,53 @@ export default function SmartChatPage() {
       }
     })
 
-    // 2. مبيعات تفصيلية (آخر 15 فاتورة فقط للحفاظ على Context Window)
-    const detailedSales = invoices.slice(0, 15).map(inv => {
+    const detailedSales = invoices.map(inv => {
       const customer = customers?.find(c => c.id === inv.customerId)
       return {
+        id: inv.id,
         no: inv.invoiceNumber,
         client: customer?.name || "مجهول",
         total: inv.totalAmount,
         paid: inv.paidAmount,
         rem: inv.remainingAmount,
         date: inv.invoiceDate,
-        items: inv.items?.map((it: any) => `${it.fishType}(${it.quantity}kg)`).join(", ")
+        items: inv.items || [] // التأكد من إرسال الأصناف كاملة
       }
     })
 
-    // 3. مشتريات تفصيلية (آخر 15 فقط)
-    const detailedPurchases = purchases.slice(0, 15).map(p => {
+    const detailedPurchases = purchases.map(p => {
       const supplier = suppliers?.find(s => s.id === p.supplierId)
       return {
+        id: p.id,
         no: p.invoiceNumber,
         supp: supplier?.name || "مجهول",
         total: p.totalAmount,
         paid: p.paidAmount,
         rem: p.remainingAmount,
         date: p.purchaseDate,
-        items: p.items?.map((it: any) => `${it.fishType}(${it.quantity}kg)`).join(", ")
+        items: p.items || [] // التأكد من إرسال الأصناف كاملة
       }
     })
 
-    // 4. سجل السداد (آخر 15 وصولات)
-    const recentPayments = historyTransactions.slice(0, 15).map(tr => ({
+    const recentPayments = historyTransactions.map(tr => ({
       name: tr.entityName,
       amt: tr.amount,
       type: tr.type === 'customer_payment' ? 'استلام' : 'صرف',
       date: tr.transactionDate,
-      ref: tr.sourceNumber
+      ref: tr.sourceNumber,
+      notes: tr.notes
     }))
 
-    // 5. ديون العملاء والموردين (المدينين فعلياً فقط)
     const debtClients = customers?.map(c => {
       const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
       return { name: c.name, debt }
-    }).filter(c => c.debt > 0).sort((a,b) => b.debt - a.debt).slice(0, 10)
+    }).filter(c => c.debt > 0).sort((a,b) => b.debt - a.debt)
 
     const debtSuppliers = suppliers?.map(s => {
       const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
       const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
       return { name: s.name, debt: debtP + debtE }
-    }).filter(s => s.debt > 0).sort((a,b) => b.debt - a.debt).slice(0, 10)
+    }).filter(s => s.debt > 0).sort((a,b) => b.debt - a.debt)
 
     return {
       stats: {
@@ -135,6 +145,7 @@ export default function SmartChatPage() {
       campaigns: campaignSummaries,
       recentSales: detailedSales,
       recentPurchases: detailedPurchases,
+      recentExpenses: expenses.map(e => ({ type: e.type, amt: e.amount, date: e.expenseDate, payee: e.payeeName })),
       repayments: recentPayments,
       topDebtors: debtClients,
       topCreditors: debtSuppliers
