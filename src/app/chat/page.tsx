@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -91,28 +92,26 @@ export default function SmartChatPage() {
     const detailedSales = invoices.map(inv => {
       const customer = customers?.find(c => c.id === inv.customerId)
       return {
-        id: inv.id,
         no: inv.invoiceNumber,
         client: customer?.name || "مجهول",
         total: inv.totalAmount,
         paid: inv.paidAmount,
         rem: inv.remainingAmount,
         date: inv.invoiceDate,
-        items: inv.items || []
+        items: inv.items?.map((it: any) => ({ type: it.fishType, q: it.quantity, p: it.pricePerKg })) || []
       }
     })
 
     const detailedPurchases = purchases.map(p => {
       const supplier = suppliers?.find(s => s.id === p.supplierId)
       return {
-        id: p.id,
         no: p.invoiceNumber,
         supp: supplier?.name || "مجهول",
         total: p.totalAmount,
         paid: p.paidAmount,
         rem: p.remainingAmount,
         date: p.purchaseDate,
-        items: p.items || []
+        items: p.items?.map((it: any) => ({ type: it.fishType, q: it.quantity, p: it.unitPrice || it.pricePerKg })) || []
       }
     })
 
@@ -121,20 +120,8 @@ export default function SmartChatPage() {
       amt: tr.amount,
       type: tr.type === 'customer_payment' ? 'استلام' : 'صرف',
       date: tr.transactionDate,
-      ref: tr.sourceNumber,
-      notes: tr.notes
+      ref: tr.sourceNumber
     }))
-
-    const debtClients = customers?.map(c => {
-      const debt = invoices.filter(i => i.customerId === c.id).reduce((acc, i) => acc + (i.remainingAmount || 0), 0)
-      return { name: c.name, debt }
-    }).filter(c => c.debt > 0).sort((a,b) => b.debt - a.debt)
-
-    const debtSuppliers = suppliers?.map(s => {
-      const debtP = purchases.filter(p => p.supplierId === s.id).reduce((acc, p) => acc + (p.remainingAmount || 0), 0)
-      const debtE = expenses.filter(e => e.payeeId === s.id).reduce((acc, e) => acc + (e.remainingAmount || 0), 0)
-      return { name: s.name, debt: debtP + debtE }
-    }).filter(s => s.debt > 0).sort((a,b) => b.debt - a.debt)
 
     return {
       stats: {
@@ -146,9 +133,7 @@ export default function SmartChatPage() {
       recentSales: detailedSales,
       recentPurchases: detailedPurchases,
       recentExpenses: expenses.map(e => ({ type: e.type, amt: e.amount, date: e.expenseDate, payee: e.payeeName })),
-      repayments: recentPayments,
-      topDebtors: debtClients,
-      topCreditors: debtSuppliers
+      repayments: recentPayments
     }
   }, [invoices, purchases, expenses, customers, suppliers, campaigns, historyTransactions])
 
@@ -167,15 +152,14 @@ export default function SmartChatPage() {
     try {
       const history = [...messages, userMsg]
       
-      // CRITICAL: Sanitize the snapshot to remove non-serializable objects (like Firestore Timestamps)
-      // and ensure a clean JSON payload for the Server Action.
-      const sanitizedContext = JSON.parse(JSON.stringify(contextSnapshot));
+      // CRITICAL: Deep sanitization for Next.js 15 Server Actions
+      const sanitizedContext = JSON.parse(JSON.stringify(contextSnapshot || {}));
       
       const response = await smartChat(history, sanitizedContext)
       setMessages(prev => [...prev, { role: 'model', content: response }])
     } catch (e: any) {
       console.error("Chat Error:", e);
-      setMessages(prev => [...prev, { role: 'model', content: `عذراً، حدث خطأ فني أثناء معالجة الطلب. يرجى إعادة المحاولة.` }])
+      setMessages(prev => [...prev, { role: 'model', content: 'عذراً، واجهت مشكلة في معالجة طلبك حالياً. يرجى المحاولة مرة أخرى.' }])
     } finally {
       setLoading(false)
     }
@@ -223,13 +207,6 @@ export default function SmartChatPage() {
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    h1: ({node, ...props}) => <h1 className="text-lg font-black mb-2 text-primary" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-md font-bold mb-2 text-primary" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-sm font-black mb-1 text-primary" {...props} />,
-                    p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
-                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                    li: ({node, ...props}) => <li className="font-medium" {...props} />,
                     table: ({node, ...props}) => (
                       <div className="overflow-x-auto my-3 rounded-xl border border-border/50 bg-muted/20">
                         <table className="min-w-full divide-y divide-border/50 text-right" {...props} />
@@ -238,8 +215,6 @@ export default function SmartChatPage() {
                     thead: ({node, ...props}) => <thead className="bg-muted/50" {...props} />,
                     th: ({node, ...props}) => <th className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase" {...props} />,
                     td: ({node, ...props}) => <td className="px-3 py-2 text-[11px] font-bold border-t border-border/30 tabular-nums" {...props} />,
-                    strong: ({node, ...props}) => <strong className="font-black text-primary" {...props} />,
-                    em: ({node, ...props}) => <em className="italic opacity-80" {...props} />,
                   }}
                 >
                   {msg.content}
@@ -252,7 +227,7 @@ export default function SmartChatPage() {
           <div className="flex justify-start animate-in fade-in duration-300">
              <div className="bg-white border p-4 rounded-3xl rounded-tl-none flex items-center gap-3">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-xs font-bold text-muted-foreground">جاري تحليل البيانات وصياغة التقرير...</span>
+                <span className="text-xs font-bold text-muted-foreground">جاري تحليل البيانات...</span>
              </div>
           </div>
         )}
