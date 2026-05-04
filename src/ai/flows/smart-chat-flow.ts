@@ -23,7 +23,7 @@ export async function smartChat(history: ChatMessage[], contextData: any): Promi
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('CRITICAL: OPENROUTER_API_KEY is missing from environment variables.');
-    return 'عذراً، مفتاح API الخاص بـ OpenRouter غير مضاف في إعدادات الخادم (Vercel). يرجى التواصل مع المطور لضبط مفتاح OPENROUTER_API_KEY.';
+    return 'عذراً، مفتاح API الخاص بـ OpenRouter غير مضاف في إعدادات الخادم (Vercel). يرجى الذهاب إلى إعدادات مشروعك في Vercel وإضافة OPENROUTER_API_KEY في قسم Environment Variables ثم عمل Redeploy.';
   }
 
   try {
@@ -68,7 +68,7 @@ ${JSON.stringify(contextData, null, 2)}`;
     if (!response.ok) {
       const errText = await response.text();
       console.error('OpenRouter Error:', errText);
-      return 'عذراً، واجهت مشكلة في الاتصال بمزود الذكاء الاصطناعي. يرجى التأكد من رصيد حساب OpenRouter وصلاحية المفتاح.';
+      return 'عذراً، واجهت مشكلة في الاتصال بمزود الذكاء الاصطناعي. يرجى التأكد من رصيد حساب OpenRouter وصلاحية المفتاح المضاف في Vercel.';
     }
 
     const result = await response.json();
