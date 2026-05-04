@@ -26,7 +26,8 @@ import {
   AlertCircle,
   X,
   Check,
-  ClipboardList
+  ClipboardList,
+  UserPlus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -142,7 +143,7 @@ function NewExpenseContent() {
 
   const handleAddToList = () => {
     if (!type || numAmount <= 0) {
-      toast({ variant: "destructive", title: "خطأ في الإدخال", description: "يرجى اختيار النوع وإدخال مبلغ صحيح" })
+      toast({ variant: "destructive", title: "خطأ في الإدخال", description: "يرجى اختيار النوع وإدخل مبلغ صحيح" })
       return
     }
 
@@ -301,7 +302,15 @@ function NewExpenseContent() {
             {(paymentType === "دين" || paymentType === "جزئي") && (
               <div className="space-y-4 animate-in slide-in-from-top-2">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold">المورد المستحق</Label>
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-[11px] font-bold">المورد المستحق</Label>
+                    <Link href="/suppliers/new">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-primary gap-1 font-bold text-[10px]">
+                        <UserPlus className="w-3 h-3" />
+                        مورد جديد
+                      </Button>
+                    </Link>
+                  </div>
                   <Select onValueChange={setPayeeId} value={payeeId} dir="rtl">
                     <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="اختر المورد..." /></SelectTrigger>
                     <SelectContent className="rounded-xl">
