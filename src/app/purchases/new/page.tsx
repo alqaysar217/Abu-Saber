@@ -24,7 +24,8 @@ import {
   X,
   CreditCard,
   Hash,
-  ArrowDownToLine
+  ArrowDownToLine,
+  UserPlus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +47,7 @@ import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 interface PurchaseItem {
   tempId: string
@@ -259,10 +261,18 @@ function NewPurchaseContent() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold flex items-center gap-2 text-muted-foreground">
-                <User className="w-3.5 h-3.5 text-orange-600" />
-                المورد (البائع) *
-              </Label>
+              <div className="flex justify-between items-center px-1">
+                <Label className="text-[11px] font-bold flex items-center gap-2 text-muted-foreground">
+                  <User className="w-3.5 h-3.5 text-orange-600" />
+                  المورد (البائع) *
+                </Label>
+                <Link href="/suppliers/new">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-primary gap-1 font-bold text-[10px]">
+                    <UserPlus className="w-3 h-3" />
+                    مورد جديد
+                  </Button>
+                </Link>
+              </div>
               <Select onValueChange={setSupplierId} value={supplierId} dir="rtl">
                 <SelectTrigger className="h-12 rounded-xl border-muted-foreground/20">
                   <SelectValue placeholder="اختر المورد..." />
