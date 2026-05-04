@@ -189,7 +189,7 @@ export default function AllReceiptsDetailedPage() {
           </button>
           <h1 className="text-xl font-black text-primary flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            سجل الإيصالات (الوصولات) 
+            سجل الإيصالات
           </h1>
           <Button 
             variant="outline" 

@@ -13,7 +13,10 @@ import {
   Search,
   Calendar,
   MoreVertical,
-  X
+  X,
+  Type,
+  FileText,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +34,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function NotebookPage() {
   const router = useRouter()
@@ -144,9 +158,34 @@ export default function NotebookPage() {
                       {note.createdAt?.toDate ? format(note.createdAt.toDate(), "PPP", { locale: ar }) : ""}
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(note)} className="p-2 text-destructive/20 hover:text-destructive transition-colors">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="p-2 text-destructive/20 hover:text-destructive transition-colors">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-3xl max-w-[90%] mx-auto" dir="rtl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-right flex items-center justify-start gap-2 text-destructive font-bold">
+                          <Trash2 className="w-5 h-5" />
+                          حذف المذكرة؟
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-right font-medium">
+                          هل أنت متأكد من نقل هذه المذكرة إلى سلة المحذوفات؟ يمكنك استعادتها لاحقاً.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter className="flex flex-row gap-3 mt-4">
+                        <AlertDialogCancel className="flex-1 rounded-xl font-bold border-muted-foreground/20">تراجع</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDelete(note)} 
+                          className="flex-1 rounded-xl bg-destructive text-white border-none font-bold"
+                        >
+                          نعم، حذف
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed text-right font-medium whitespace-pre-wrap">
                   {note.content}
@@ -163,7 +202,7 @@ export default function NotebookPage() {
       </main>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-[95%] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-[95%] rounded-3xl border-none shadow-2xl p-0 overflow-hidden [&>button]:left-6 [&>button]:right-auto">
           <DialogHeader className="p-6 lux-gradient text-white">
             <DialogTitle className="text-right flex items-center justify-start gap-2">
               <Plus className="w-5 h-5" />
@@ -172,7 +211,10 @@ export default function NotebookPage() {
           </DialogHeader>
           <div className="p-6 space-y-5" dir="rtl">
             <div className="space-y-2">
-              <Label className="text-xs font-bold mr-1">العنوان</Label>
+              <Label className="text-xs font-bold mr-1 flex items-center gap-2">
+                <Type className="w-4 h-4 text-primary" />
+                العنوان
+              </Label>
               <Input 
                 placeholder="مثال: ملاحظة عن صنف معين..." 
                 className="h-12 rounded-xl"
@@ -181,7 +223,10 @@ export default function NotebookPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold mr-1">المحتوى</Label>
+              <Label className="text-xs font-bold mr-1 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                المحتوى
+              </Label>
               <Textarea 
                 placeholder="اكتب تفاصيل المذكرة هنا..." 
                 className="min-h-[150px] rounded-xl resize-none"
