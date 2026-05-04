@@ -94,15 +94,15 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
             </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-4 pb-24">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
             {categories.map((cat) => (
-              <div key={cat} className="space-y-1.5">
+              <div key={cat} className="space-y-1">
                 <h4 className="px-3 text-[9px] font-black text-muted-foreground uppercase tracking-wider text-right opacity-60">{cat}</h4>
-                <div className="grid gap-1">
+                <div className="grid gap-0.5">
                   {menuItems.filter(item => item.category === cat).map((item) => (
                     <Link key={item.href} href={item.href} onClick={() => onOpenChange(false)}>
                       <div className={cn(
-                        "flex items-center justify-between p-3 rounded-xl transition-all active:scale-95",
+                        "flex items-center justify-between p-2.5 rounded-xl transition-all active:scale-95",
                         pathname === item.href ? "bg-primary/5 text-primary" : "hover:bg-muted/50 text-foreground"
                       )}>
                         <div className="flex items-center gap-3">
