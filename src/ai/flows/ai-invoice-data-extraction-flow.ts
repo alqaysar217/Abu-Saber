@@ -49,7 +49,8 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
     const apiKey = process.env.OPENROUTER_API_KEY;
     
     if (!apiKey) {
-      throw new Error('فشل التكوين: مفتاح OPENROUTER_API_KEY غير موجود في إعدادات الخادم.');
+      console.error('CRITICAL: OPENROUTER_API_KEY is missing from environment variables.');
+      throw new Error('فشل التكوين: مفتاح API غير موجود. يرجى إضافته في إعدادات Vercel باسم OPENROUTER_API_KEY.');
     }
 
     try {
@@ -109,7 +110,7 @@ const aiInvoiceDataExtractionFlow = ai.defineFlow(
       if (!response.ok) {
         const errorText = await response.text();
         console.error('AI Provider Error:', errorText);
-        throw new Error('حدث خطأ في الاتصال بمزود الذكاء الاصطناعي.');
+        throw new Error('حدث خطأ في الاتصال بمزود الذكاء الاصطناعي. تأكد من صلاحية المفتاح ورصيد الحساب.');
       }
 
       const result = await response.json();

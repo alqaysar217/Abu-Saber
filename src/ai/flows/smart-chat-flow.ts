@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview AI Chat agent for querying business data using OpenRouter.
@@ -22,7 +21,10 @@ export type ChatMessage = z.infer<typeof MessageSchema>;
  */
 export async function smartChat(history: ChatMessage[], contextData: any): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return 'عذراً، مفتاح API الخاص بـ OpenRouter غير متوفر حالياً. يرجى مراجعة إعدادات الخادم.';
+  if (!apiKey) {
+    console.error('CRITICAL: OPENROUTER_API_KEY is missing from environment variables.');
+    return 'عذراً، مفتاح API الخاص بـ OpenRouter غير مضاف في إعدادات الخادم (Vercel). يرجى التواصل مع المطور لضبط مفتاح OPENROUTER_API_KEY.';
+  }
 
   try {
     const systemPrompt = `أنت "مساعد أبو صابر الذكي"، الخبير المالي والمساعد الإداري الأول لتجارة الأسماك.
@@ -66,7 +68,7 @@ ${JSON.stringify(contextData, null, 2)}`;
     if (!response.ok) {
       const errText = await response.text();
       console.error('OpenRouter Error:', errText);
-      return 'عذراً، واجهت مشكلة في الاتصال بمزود الذكاء الاصطناعي. يرجى المحاولة لاحقاً.';
+      return 'عذراً، واجهت مشكلة في الاتصال بمزود الذكاء الاصطناعي. يرجى التأكد من رصيد حساب OpenRouter وصلاحية المفتاح.';
     }
 
     const result = await response.json();
